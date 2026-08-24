@@ -285,6 +285,7 @@ function setDeviceControlStatus(kind, text) {
         deviceCalibRevision = null;
         deviceUvChannels = null;
         deviceSensorCfg = null;
+        deviceSensorCfgSeen = null;
     }
 }
 
@@ -933,7 +934,29 @@ function saveDeviceUvChannel() {
 // stick with nothing on screen to point at.
 
 let deviceSensorCfg = null;      // {settings, saved, drive} — null = not asked yet
+let deviceSensorCfgSeen = null;  // the STATE signature the cache above was read at
 let deviceSensorCfgPending = false;
+
+// What the sensors are set to, as one comparable string.
+//
+// The keyed settings cost a serial round trip, so they are cached — but the
+// cache holds BOTH halves of the comparison, and the running half goes stale the
+// moment the operator turns the gain on the device. It did: the panel kept the
+// values from its first read, they still matched the file, and Save stayed
+// greyed out however many times the gain was changed.
+//
+// The other panels do not have this problem because they cache only the *saved*
+// half and read the running half from the 1.5 s poll. STATE carries `gains`,
+// `itimes` and `chans` on every one of those polls, so the change is already on
+// the wire — this turns it into the signal to re-read the keyed settings, and
+// costs nothing until something actually moves.
+function deviceSensorSignature(state) {
+    return [
+        (state.chans || []).join(','),
+        (state.gains || []).join(','),
+        (state.itimes || []).join(','),
+    ].join('|');
+}
 
 function deviceSupportsSensorConfig(state) {
     return (state.caps || []).indexOf('senscfg') !== -1;
@@ -947,10 +970,14 @@ function renderDeviceSensorConfig(state) {
         return;
     }
     panel.classList.remove('hidden');
-    if (deviceSensorCfg === null) {
-        loadDeviceSensorConfig();
-        return;
+
+    const signature = deviceSensorSignature(state);
+    if (deviceSensorCfg === null || deviceSensorCfgSeen !== signature) {
+        loadDeviceSensorConfig(signature);
     }
+    // Nothing read yet — but a stale cache is still drawn while its replacement
+    // is in flight, so the row does not blank out every time a gain is turned.
+    if (deviceSensorCfg === null) return;
 
     const settings = deviceSensorCfg.settings || {};
     const keys = Object.keys(settings);
@@ -962,8 +989,12 @@ function renderDeviceSensorConfig(state) {
     const unsaved = !!keys.length && (!saved || keys.some(key => saved[key] !== settings[key]));
     drawSavedNote('devctl-sensorcfg-saved', unsaved,
         t('devctl.sensorcfg_saved', 'These are the settings the device starts on.'));
+    // Deliberately not gated on the fetch being in flight: a re-read is not a
+    // reason to take Save away, and doing so put the button back to grey for a
+    // tick every time the operator moved the gain — which is exactly when they
+    // are reaching for it.
     $disabled('devctl-sensorcfg-save',
-        !deviceSensorCfg.drive || !unsaved || !keys.length || deviceSensorCfgPending);
+        !deviceSensorCfg.drive || !unsaved || !keys.length);
 }
 
 // "med · 500ms" on a single-sensor build, "sensor_0 med · 500ms" where there is
@@ -986,19 +1017,26 @@ function describeSensorSettings(settings) {
     return parts.join('   ') || '\u2014';
 }
 
-async function loadDeviceSensorConfig() {
+async function loadDeviceSensorConfig(signature) {
     if (deviceSensorCfgPending) return;
     deviceSensorCfgPending = true;
+    // Recorded before the request, not after: a gain turned while it is in
+    // flight then reads as stale on the next tick, instead of being baked in as
+    // the state this answer describes.
+    deviceSensorCfgSeen = signature;
     try {
         const res = await fetch('/device/sensor-settings');
         const data = await res.json();
         if (data.status === 'success') {
             deviceSensorCfg = data;
             if (deviceState) renderDeviceSensorConfig(deviceState);
+        } else {
+            deviceSensorCfgSeen = null;
         }
-        // A failure leaves it null so the next poll asks again.
     } catch (err) {
-        /* same: retried by the next poll */
+        // Forget the signature too, or the next poll would take this failure
+        // for an up-to-date answer and never ask again.
+        deviceSensorCfgSeen = null;
     } finally {
         deviceSensorCfgPending = false;
     }
@@ -1008,6 +1046,7 @@ async function loadDeviceSensorConfig() {
 // matters afterwards is what the FILE holds, which is the thing being asserted.
 function forgetDeviceSensorConfig() {
     deviceSensorCfg = null;
+    deviceSensorCfgSeen = null;
 }
 
 function saveDeviceSensorSettings() {
