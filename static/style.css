@@ -5701,7 +5701,7 @@ body.dark #run-script-btn:enabled {
 .devctl-status--offline { color: var(--ink-dim); }
 .devctl-status--offline .devctl-status-dot { background: var(--ink-dim); }
 
-.devctl-body {
+#device-control-body {
     display: grid;
     /* One column that may not exceed the panel. Without the minmax the column is
        auto-sized to the face's max-content, so a keypad wider than the panel
@@ -5855,11 +5855,14 @@ body.dark #run-script-btn:enabled {
 .devctl-btn--ka { margin-left: calc(var(--devctl-key-w) / 2); }
 .devctl-btn--kb { margin-left: 0; }
 
-/* Four classes deep on purpose: the sheet's blanket button rule carries three
-   :not()s (0,3,1), and it centres its content, forces white-space: nowrap and
-   clips the overflow — which quietly truncated every key label here. A key is a
-   third of a column wide and its label is a sentence, so it has to wrap. */
-.devctl-body .devctl-keypad .devctl-cluster .devctl-btn {
+/* Scoped by the panel's id, because the sheet's blanket button rule is heavier
+   than it looks: it carries TEN :not(.class)s, and `:not()` takes its argument's
+   specificity, so it weighs (0,10,1) — not the (0,3,1) this comment used to
+   claim. Four classes lost to it outright, and the rule centres its content,
+   forces white-space: nowrap and clips the overflow, which is what truncated
+   every key label here and centred the glyph that is supposed to sit left. A key
+   is a third of a column wide and its label is a sentence, so it has to wrap. */
+#device-control-body .devctl-keypad .devctl-cluster .devctl-btn {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -5884,7 +5887,7 @@ body.dark #run-script-btn:enabled {
     cursor: pointer;
 }
 
-.devctl-body .devctl-keypad .devctl-cluster .devctl-btn:enabled:hover {
+#device-control-body .devctl-keypad .devctl-cluster .devctl-btn:enabled:hover {
     border-color: var(--accent);
     background: var(--accent-wash);
     color: var(--ink);
@@ -5971,10 +5974,14 @@ body.dark #run-script-btn:enabled {
 }
 
 /* A button with no effect on the current screen is shown, not hidden: knowing
-   that Up does nothing here is part of what the panel is for. It is disabled,
-   so this has to out-weigh the blanket :disabled rule (0,4,1) as well — a key
-   greyed to the generic disabled fill stops reading as part of the keypad. */
-.devctl-body .devctl-keypad .devctl-cluster .devctl-btn--idle:disabled {
+   that Up does nothing here is part of what the panel is for. It is disabled, so
+   it also has to out-weigh the blanket :disabled rule — which is (0,11,1), the
+   ten :not()s plus the pseudo-class, and which paints `#eef1f2` on `#8a959b`.
+   Those are LIGHT-theme literals with no dark counterpart, so before the id
+   scope every idle key on the keypad went pale grey in dark mode: exactly the
+   "greyed to the generic disabled fill stops reading as part of the keypad" this
+   rule was written to prevent, silently losing the argument it was making. */
+#device-control-body .devctl-keypad .devctl-cluster .devctl-btn--idle:disabled {
     background: var(--panel);
     color: var(--ink);
     border: 1px solid var(--hairline);
@@ -6065,7 +6072,7 @@ body.dark #run-script-btn:enabled {
    the keypad, not the panel: a container query styles the container's
    descendants, never the container itself. */
 @container (max-width: 420px) { .devctl-keypad { --devctl-key-w: 62px; } }
-@media (max-width: 420px) { .devctl-body { --devctl-key-w: 62px; } }
+@media (max-width: 420px) { #device-control-body { --devctl-key-w: 62px; } }
 
 .devctl-channels {
     flex: 1 1 100%;
@@ -6230,7 +6237,7 @@ body.dark #run-script-btn:enabled {
 /* Scoped past the sheet's `input[type="number"] { width: 100% }` and
    `select { min-width: 150px }` — left alone, the value box took the whole row
    and pushed Set onto a line of its own. */
-.devctl-body .devctl-conc .devctl-conc-row .devctl-conc-input {
+#device-control-body .devctl-conc .devctl-conc-row .devctl-conc-input {
     flex: none;
     width: 110px;
     padding: 6px 10px;
@@ -6243,7 +6250,7 @@ body.dark #run-script-btn:enabled {
     border-radius: var(--r-flat);
 }
 
-.devctl-body .devctl-conc .devctl-conc-row .devctl-conc-unit {
+#device-control-body .devctl-conc .devctl-conc-row .devctl-conc-unit {
     flex: none;
     width: auto;
     min-width: 90px;
@@ -6272,7 +6279,7 @@ body.dark #run-script-btn:enabled {
     gap: 6px;
 }
 
-.devctl-body .devctl-conc .devctl-calib-field input[type="number"] {
+#device-control-body .devctl-conc .devctl-calib-field input[type="number"] {
     flex: none;
     width: 92px;
     padding: 6px 10px;
@@ -6295,13 +6302,13 @@ body.dark #run-script-btn:enabled {
 
 /* Narrow panel: the form stacks with the strips, each control full width. */
 @container (max-width: 620px) {
-    .devctl-body .devctl-conc .devctl-conc-row > * { width: 100%; }
-    .devctl-body .devctl-conc .devctl-conc-current { justify-content: space-between; }
+    #device-control-body .devctl-conc .devctl-conc-row > * { width: 100%; }
+    #device-control-body .devctl-conc .devctl-conc-current { justify-content: space-between; }
 }
 
 @media (max-width: 620px) {
-    .devctl-body .devctl-conc .devctl-conc-row > * { width: 100%; }
-    .devctl-body .devctl-conc .devctl-conc-current { justify-content: space-between; }
+    #device-control-body .devctl-conc .devctl-conc-row > * { width: 100%; }
+    #device-control-body .devctl-conc .devctl-conc-current { justify-content: space-between; }
 }
 
 /* Entries are device text of any length, so a menu chip is not a fixed box the

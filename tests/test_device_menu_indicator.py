@@ -181,18 +181,36 @@ def test_nothing_is_marked_before_the_menu_has_been_fetched():
     assert _run(probes) == [None, None, None, None]
 
 
-# ── the mark has to survive the cascade, not just be written ────────────────
+# ── the panel's buttons have to survive the cascade, not just be written ────
 # deviceMenuOpenName() was returning the right entry and the class was going on
 # the right chip — and the bar still showed nothing, because every property the
 # marks set (border, color, font-weight, box-shadow) is also set by the blanket
 # `button:not(...)` rule, which out-specifies them. `:not(.x)` carries its
 # argument's specificity and there are ten of them, so that rule is (0,10,1) —
-# not the (0,3,1) the stylesheet's comment claimed. A correct mapping into an
-# invisible mark is the same bug to an operator, so it is checked here too.
+# not the (0,3,1) the stylesheet's comments claimed in two places. A correct
+# mapping into an invisible mark is the same bug to an operator.
+#
+# The keypad was losing the same argument: its idle-key rule is written to keep a
+# no-effect key looking like part of the keypad, and the blanket :disabled rule
+# (0,11,1) painted #eef1f2 on #8a959b over it — light-theme literals, in dark
+# mode. So this checks the whole panel, not just the two marks.
 
 STYLE = REPO / 'static' / 'style.css'
 BLANKET_PREFIX = 'button:not(.swal2-confirm)'
-MARK_SELECTORS = ('.devctl-menu-item--open', '.devctl-menu-item--cursor')
+
+# Subjects that are actually <button> elements. `devctl-btn-glyph` /
+# `devctl-btn-fn` / `devctl-btn-fn-track` are spans INSIDE a key, which
+# `button:not(...)` never matches — hence `--modifier` only, not any suffix.
+BUTTON_SUBJECT = re.compile(
+    r'^[.#][\w-]*(devctl-btn|devctl-menu-item)(--[\w-]+)?(:[\w-]+)*$')
+
+# What the blanket button rule and its :disabled sibling declare between them.
+BLANKET_PROPS = {
+    'padding', 'font-family', 'font-weight', 'font-size', 'border-radius',
+    'border', 'border-color', 'cursor', 'transition', 'display', 'align-items',
+    'justify-content', 'gap', 'box-shadow', 'background', 'background-color',
+    'color', 'white-space', 'overflow', 'text-overflow', 'opacity',
+}
 
 
 def _specificity(selector):
@@ -221,21 +239,36 @@ def _rules():
                 yield selector, props
 
 
-def test_the_menu_marks_out_specify_the_blanket_button_rule():
-    blanket = [(_specificity(sel), props) for sel, props in _rules()
-               if sel.startswith(BLANKET_PREFIX) and ':' not in sel[len(BLANKET_PREFIX):].replace(':not(', '')]
+def test_the_blanket_button_rule_is_still_as_heavy_as_we_think():
+    """If someone trims those :not()s, the rules below are over-scoped, not
+    broken — but the reasoning in this file and in style.css would be stale."""
+    blanket = [_specificity(sel) for sel, _ in _rules()
+               if sel.startswith(BLANKET_PREFIX)]
     assert blanket, 'the blanket button rule moved — this check needs updating'
+    assert max(blanket)[1] >= 10, (
+        f'the blanket button rule is lighter than (0,10,1) now: {max(blanket)}')
 
-    marks = [(sel, _specificity(sel), props) for sel, props in _rules()
-             if any(sel.endswith(m) for m in MARK_SELECTORS)]
-    assert marks, 'no rule styles the open/cursor marks any more'
 
+def test_every_panel_button_rule_out_specifies_the_blanket_rule():
+    blanket = [(_specificity(sel), props) for sel, props in _rules()
+               if sel.startswith(BLANKET_PREFIX)]
+    heaviest = max(spec for spec, _ in blanket)
+
+    checked = 0
     problems = []
-    for selector, spec, props in marks:
-        for blanket_spec, blanket_props in blanket:
-            shadowed = props & blanket_props
-            if shadowed and spec <= blanket_spec:
-                problems.append(
-                    f'{selector} is {spec} against the blanket rule {blanket_spec}; '
-                    f'it would lose {", ".join(sorted(shadowed))}')
-    assert not problems, 'the mark is written but never seen:\n  ' + '\n  '.join(problems)
+    for selector, props in _rules():
+        subject = selector.split()[-1]
+        if not BUTTON_SUBJECT.match(subject):
+            continue
+        shadowed = props & BLANKET_PROPS
+        if not shadowed:
+            continue
+        checked += 1
+        spec = _specificity(selector)
+        if spec <= heaviest:
+            problems.append(
+                f'{selector} is {spec} against the blanket rule {heaviest}; '
+                f'it would lose {", ".join(sorted(shadowed))}')
+
+    assert checked, 'no panel button rules found — the selectors moved'
+    assert not problems, ('written but never seen:\n  ' + '\n  '.join(problems))
