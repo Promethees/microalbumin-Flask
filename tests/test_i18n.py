@@ -86,7 +86,7 @@ class TestSearchDirs:
         assert len(dirs) == len(set(dirs))
 
     def test_data_root_copy_recovers_a_missing_bundled_catalog(self, monkeypatch, tmp_path):
-        """The v1.5.3 frozen build shipped without ui_translations/ — dropping the
+        """The v1.5.4 frozen build shipped without ui_translations/ — dropping the
         folder into the data root must restore localization without a reinstall."""
         bundled = tmp_path / "bundle" / "ui_translations"   # deliberately absent
         recovery = tmp_path / "data" / "ui_translations"
