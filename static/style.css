@@ -6307,8 +6307,14 @@ body.dark #run-script-btn:enabled {
 /* Entries are device text of any length, so a menu chip is not a fixed box the
    way a key is — it is sized by its name and the rail scrolls. Four classes deep
    for the same reason the keys are: the blanket button rule is (0,3,1) and would
-   centre the name, which reads wrong the moment the strip stacks full width. */
-.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item {
+   centre the name, which reads wrong the moment the strip stacks full width.
+
+   The UV build's spectral-channel picker is the same chip in a .devctl-channels
+   panel rather than the .devctl-menu one, so every rule here carries a second
+   selector for it. Without it the picker fell through to the blanket button rule
+   and, worse, lost --open — the one mark that says which channel is live. */
+.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item,
+.devctl-body .devctl-channels .devctl-menu-items .devctl-menu-item {
     display: inline-flex;
     align-items: center;
     justify-content: flex-start;
@@ -6323,7 +6329,8 @@ body.dark #run-script-btn:enabled {
     cursor: pointer;
 }
 
-.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item:enabled:hover {
+.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item:enabled:hover,
+.devctl-body .devctl-channels .devctl-menu-items .devctl-menu-item:enabled:hover {
     border-color: var(--accent);
     background: var(--accent-wash);
     color: var(--ink);
@@ -6331,7 +6338,8 @@ body.dark #run-script-btn:enabled {
 
 /* Two different facts, two different marks: the device is *on* the open entry,
    and its keypad cursor is *resting* on the highlighted one. */
-.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--open {
+.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--open,
+.devctl-body .devctl-channels .devctl-menu-items .devctl-menu-item--open {
     border-color: var(--accent);
     color: var(--accent);
     font-weight: 600;
@@ -6575,7 +6583,8 @@ body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):n
    classes deep to out-weigh it, in classic's own indigo rather than the
    instrument accent. Which entry is selected is not decoration: it is the one
    fact the bar exists to show, so it may not be lost to a style switch. */
-body.ui-classic .devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--open {
+body.ui-classic .devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--open,
+body.ui-classic .devctl-body .devctl-channels .devctl-menu-items .devctl-menu-item--open {
     border: 1px solid var(--accent);
     background: var(--accent-wash);
     color: var(--accent);

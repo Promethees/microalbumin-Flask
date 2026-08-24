@@ -108,6 +108,31 @@ const DEVICE_BUTTON_FUNCTIONS = {
     ABORT:   { _any: ['devctl.fn.dismiss', 'Dismiss'] },
 };
 
+// CALIBRATION above is the multi-channel build's Sensor Cal, which MEASURES its
+// factors (capability "calauto"). The UV build has the same mode number but a
+// different screen: its three channels look at different wavelengths on purpose,
+// so nothing can be derived and the operator types the factors instead. Same
+// mode, two keypads — resolved from `caps` in deviceButtonFunction, the way
+// Right in MEASURE is.
+//
+// Without this the panel labelled Menu "Calibrate" (it does nothing there) and
+// called every key that steps a factor "No effect", over a screen taking all of
+// them. Mirrors ButtonHandler._handle_calibration_mode on open-uv.
+const DEVICE_CALIBRATION_MANUAL = {
+    up:    ['devctl.fn.factor_up', 'Factor +0.01'],
+    down:  ['devctl.fn.factor_down', 'Factor \u22120.01'],
+    itime: ['devctl.fn.factor_up_coarse', 'Factor +0.1'],
+    gain:  ['devctl.fn.factor_down_coarse', 'Factor \u22120.1'],
+    blank: ['devctl.fn.factor_reset', 'Reset to 1.000'],
+    right: ['devctl.fn.next_factor', 'Next channel'],
+    left:  ['devctl.fn.back_to_menu', 'Back to menu'],
+};
+
+// True on a build that measures its own factors, false on one that is typed.
+function deviceDerivesCalibration(state) {
+    return (state.caps || []).indexOf('calauto') !== -1;
+}
+
 // Screen names as the operator sees them.
 const DEVICE_MODE_LABELS = {
     MEASURE: ['devctl.mode.measure', 'Measure'],
@@ -276,7 +301,13 @@ function applyDeviceState(state) {
 }
 
 function renderDeviceReadout(state) {
-    const modeLabel = DEVICE_MODE_LABELS[state.mode];
+    // The calibration screen is called Sensor Cal where the device derives its
+    // factors and Cal Factor where they are typed — the device's own menu says
+    // so, and the panel's title line has to agree with the entry the menu bar
+    // marks as open.
+    const modeLabel = (state.mode === 'CALIBRATION' && !deviceDerivesCalibration(state))
+        ? ['devctl.mode.cal_factor', 'Cal Factor']
+        : DEVICE_MODE_LABELS[state.mode];
     $text('devctl-mode', modeLabel ? t(modeLabel[0], modeLabel[1]) : (state.mode || '—'));
     // The UV build reads one spectral channel of its sensor at a time, and which
     // one is part of what the measurement *is* — so it rides on that line rather
@@ -355,6 +386,9 @@ function deviceButtonFunction(state, name) {
         if (caps.indexOf('uvchannel') !== -1) return ['devctl.fn.next_uv_channel', 'Next spectral channel'];
         if (caps.indexOf('selsensor') !== -1) return ['devctl.fn.next_sensor', 'Next sensor'];
         return null;
+    }
+    if (state.mode === 'CALIBRATION' && !deviceDerivesCalibration(state)) {
+        return DEVICE_CALIBRATION_MANUAL[name] || null;
     }
     const table = DEVICE_BUTTON_FUNCTIONS[state.mode];
     if (!table) return null;
@@ -827,7 +861,13 @@ function drawDeviceUvChannels(current) {
         // is the one place a garbled serial line reaches the DOM.
         button.textContent = name;
         button.classList.toggle('devctl-menu-item--open', name === current);
-        button.disabled = deviceUvChannelPending || name === current;
+        // Only the in-flight request disables a chip, never "this one is already
+        // selected". The blanket :disabled rule is (0,11,1) and repaints the
+        // fill grey, so disabling the live channel would strip the --open mark
+        // off the one chip the mark exists for. Re-picking the current channel
+        // is a harmless no-op on the device, exactly as re-opening the current
+        // entry is on the menu bar.
+        button.disabled = deviceUvChannelPending;
         button.setAttribute('data-hint',
             `${t('devctl.uvchannel_pick_hint', 'Measure on this spectral channel')} — ${name}`);
         button.addEventListener('click', () => setDeviceUvChannel(name));
@@ -983,13 +1023,40 @@ function drawDeviceMenuItems(state) {
     });
 }
 
-// Which entry the device currently has open. In Measure that is the measurement
-// itself; the three built-in screens name themselves through the mode.
-function deviceMenuOpenName(state) {
-    if (state.mode === 'SETTINGS') return 'Settings';
-    if (state.mode === 'CONCENTRATION') return 'Concentration';
-    if (state.mode === 'MEASURE') return state.meas || null;
+// Which menu entry each non-Measure mode IS, by the names the firmware branches
+// give them. Resolved against the device's OWN list rather than returned blind:
+// the calibration screen is "Cal Factor" on three builds and "Sensor Cal" on the
+// multi-channel one, so a fixed string would mark nothing on half the fleet —
+// which is exactly what CALIBRATION did before it was listed here at all.
+const DEVICE_MODE_ENTRIES = {
+    SETTINGS: ['Settings'],
+    CONCENTRATION: ['Concentration'],
+    CALIBRATION: ['Cal Factor', 'Sensor Cal'],
+};
+
+// The first of `names` the device actually has, or null.
+function deviceMenuEntryNamed(names) {
+    if (!deviceMenuItems) return null;
+    for (const name of names) {
+        if (deviceMenuItems.indexOf(name) !== -1) return name;
+    }
     return null;
+}
+
+// Which entry the device currently has open. In Measure that is the measurement
+// itself; every other screen is a menu entry, reached from the menu.
+//
+// MESSAGE needs the firmware's `msg` — the message screen's own header — to be
+// told apart: About is a menu entry and gets the mark, an error is not and must
+// not. Builds that do not send `msg` mark nothing there, which is what the whole
+// bar did for those modes before.
+function deviceMenuOpenName(state) {
+    if (state.mode === 'MEASURE') return state.meas || null;
+    if (state.mode === 'MESSAGE') {
+        return state.msg === 'About' ? deviceMenuEntryNamed(['About']) : null;
+    }
+    const names = DEVICE_MODE_ENTRIES[state.mode];
+    return names ? deviceMenuEntryNamed(names) : null;
 }
 
 async function selectDeviceMenu(index) {
