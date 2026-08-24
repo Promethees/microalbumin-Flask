@@ -452,7 +452,7 @@
   "devctl.fn.factor_up_coarse": "Factor +0.1",
   "devctl.fn.factor_down_coarse": "Factor −0.1",
   "devctl.fn.factor_reset": "Reset to 1.000",
-  "devctl.fn.next_factor": "Next channel",
+  "devctl.fn.next_factor": "Next factor",
   "devctl.fn.run_calibration": "Calibrate",
   "devctl.fn.clear_factors": "Clear factors",
   "devctl.fn.increase": "Increase",

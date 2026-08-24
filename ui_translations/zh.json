@@ -452,7 +452,7 @@
   "devctl.fn.factor_up_coarse": "系数 +0.1",
   "devctl.fn.factor_down_coarse": "系数 −0.1",
   "devctl.fn.factor_reset": "重置为 1.000",
-  "devctl.fn.next_factor": "下一个通道",
+  "devctl.fn.next_factor": "下一个系数",
   "devctl.fn.run_calibration": "校准",
   "devctl.fn.clear_factors": "清除系数",
   "devctl.fn.increase": "增加",

@@ -452,7 +452,7 @@
   "devctl.fn.factor_up_coarse": "係数 +0.1",
   "devctl.fn.factor_down_coarse": "係数 −0.1",
   "devctl.fn.factor_reset": "1.000 に戻す",
-  "devctl.fn.next_factor": "次のチャンネル",
+  "devctl.fn.next_factor": "次の係数",
   "devctl.fn.run_calibration": "校正する",
   "devctl.fn.clear_factors": "係数をクリア",
   "devctl.fn.increase": "増やす",

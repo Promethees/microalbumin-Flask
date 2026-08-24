@@ -124,7 +124,7 @@ const DEVICE_CALIBRATION_MANUAL = {
     itime: ['devctl.fn.factor_up_coarse', 'Factor +0.1'],
     gain:  ['devctl.fn.factor_down_coarse', 'Factor \u22120.1'],
     blank: ['devctl.fn.factor_reset', 'Reset to 1.000'],
-    right: ['devctl.fn.next_factor', 'Next channel'],
+    right: ['devctl.fn.next_factor', 'Next factor'],
     left:  ['devctl.fn.back_to_menu', 'Back to menu'],
 };
 
@@ -388,6 +388,13 @@ function deviceButtonFunction(state, name) {
         return null;
     }
     if (state.mode === 'CALIBRATION' && !deviceDerivesCalibration(state)) {
+        // "Next factor", not "next channel": what one entry of the array means
+        // is a spectral channel on the UV build, a sensor position on the
+        // two-sensor one, and the single sensor on the plain one — the panel
+        // labels the fields themselves from CALIBTAGS? for that reason. With
+        // only one factor there is nothing to move between, so the key really
+        // does nothing and is left unlabelled rather than promised.
+        if (name === 'right' && (state.rcf || []).length < 2) return null;
         return DEVICE_CALIBRATION_MANUAL[name] || null;
     }
     const table = DEVICE_BUTTON_FUNCTIONS[state.mode];

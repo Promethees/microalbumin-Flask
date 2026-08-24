@@ -452,7 +452,7 @@
   "devctl.fn.factor_up_coarse": "Hệ số +0,1",
   "devctl.fn.factor_down_coarse": "Hệ số −0,1",
   "devctl.fn.factor_reset": "Đặt lại về 1,000",
-  "devctl.fn.next_factor": "Kênh kế tiếp",
+  "devctl.fn.next_factor": "Hệ số kế tiếp",
   "devctl.fn.run_calibration": "Hiệu chuẩn",
   "devctl.fn.clear_factors": "Xoá hệ số",
   "devctl.fn.increase": "Tăng",

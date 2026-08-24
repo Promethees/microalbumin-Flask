@@ -452,7 +452,7 @@
   "devctl.fn.factor_up_coarse": "계수 +0.1",
   "devctl.fn.factor_down_coarse": "계수 −0.1",
   "devctl.fn.factor_reset": "1.000으로 초기화",
-  "devctl.fn.next_factor": "다음 채널",
+  "devctl.fn.next_factor": "다음 계수",
   "devctl.fn.run_calibration": "캘리브레이션",
   "devctl.fn.clear_factors": "계수 지우기",
   "devctl.fn.increase": "증가",
