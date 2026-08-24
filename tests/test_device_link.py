@@ -1,6 +1,7 @@
 """Virtual controller: STATE parsing, the link's command handling, and the
 routes' one-owner rule (src/device_link.py, routes/hardware_routes.py)."""
 
+import json
 import time
 
 import pytest
@@ -1198,3 +1199,86 @@ def test_write_sensor_settings_inserts_a_missing_itime_beside_its_gain(tmp_path)
     text = (tmp_path / device_config.CONFIGURATION_FILE).read_text()
     assert device_config.read_configuration(str(tmp_path))['itime_sensor_2'] == '100ms'
     assert text.index('gain_sensor_2') < text.index('itime_sensor_2') < text.index('startup')
+
+
+# ── the same path on all four builds ─────────────────────────────────────────
+# One setting, four key schemes. The firmware half is verified by each branch's
+# own SENSCFG? reply; this is the host half — parse the reply, write it into a
+# configuration.json shaped like that build's, and check the values land while
+# everything the device did not report stays exactly as it was.
+#
+# The files below are the real ones, trimmed of keys this path never touches.
+
+BUILD_CONFIGS = {
+    'main': ('{\n'
+             '  "gain" : "med",\n'
+             '  "integration_time" : "500ms",\n'
+             '  "raw_count_factor" : [1.0],\n'
+             '  "startup" : "Absorbance",\n'
+             '  "precision" : 3\n}\n',
+             'SENSCFG gain=high;integration_time=200ms'),
+    'open-plus': ('{\n'
+                  '  "gain_sensor_90"      : "max",\n'
+                  '  "itime_sensor_90"     : "600ms",\n'
+                  '  "gain_sensor_180"     : "high",\n'
+                  '  "itime_sensor_180"    : "600ms",\n'
+                  '  "raw_count_factor"    : [1.0, 1.0],\n'
+                  '  "startup" : "Absorbance"\n}\n',
+                  'SENSCFG gain_sensor_90=high;itime_sensor_90=200ms;'
+                  'gain_sensor_180=low;itime_sensor_180=100ms'),
+    'open-extra': ('{\n'
+                   '  "active_channels" : [0, 2, 3],\n'
+                   '  "gain_sensor_0"     : "med",\n'
+                   '  "itime_sensor_0"    : "500ms",\n'
+                   '  "gain_sensor_1"     : "med",\n'
+                   '  "itime_sensor_1"    : "500ms",\n'
+                   '  "gain_sensor_2"     : "med",\n'
+                   '  "itime_sensor_2"    : "500ms",\n'
+                   '  "startup" : "Absorbance"\n}\n',
+                   # Only channels 0 and 2 are open, so only they are reported.
+                   'SENSCFG gain_sensor_0=high;itime_sensor_0=200ms;'
+                   'gain_sensor_2=low;itime_sensor_2=100ms'),
+    'open-uv': ('{\n'
+                '  "gain": "1024x",\n'
+                '  "integration_time": "32ms",\n'
+                '  "channel": "UVC",\n'
+                '  "raw_count_factor": [1.0, 1.0, 1.0],\n'
+                '  "precision": 3\n}\n',
+                'SENSCFG gain=512x;integration_time=64ms'),
+}
+
+
+@pytest.mark.parametrize('build', sorted(BUILD_CONFIGS))
+def test_sensor_settings_round_trip_on_every_build(build, tmp_path):
+    config, reply = BUILD_CONFIGS[build]
+    (tmp_path / device_config.BOOT_OUT_FILE).write_text(BOOT_OUT)
+    (tmp_path / device_config.CONFIGURATION_FILE).write_text(config)
+
+    settings = FakeLink([reply]).sensor_config()
+    assert settings, f'{build}: nothing parsed out of its own reply'
+
+    device_config.write_sensor_settings(str(tmp_path), settings)
+    after = device_config.read_configuration(str(tmp_path))
+    before = json.loads(config)
+
+    for key, value in settings.items():
+        assert after[key] == value, f'{build}: {key} did not land'
+    for key, value in before.items():
+        if key not in settings:
+            assert after[key] == value, f'{build}: {key} changed and should not have'
+
+
+def test_an_inactive_channels_settings_are_left_alone(tmp_path):
+    """The multi-channel build reports only the channels it has a sensor open
+    on. A slot the operator is not using keeps the gain they put there."""
+    config, reply = BUILD_CONFIGS['open-extra']
+    (tmp_path / device_config.BOOT_OUT_FILE).write_text(BOOT_OUT)
+    (tmp_path / device_config.CONFIGURATION_FILE).write_text(config)
+
+    settings = FakeLink([reply]).sensor_config()
+    assert 'gain_sensor_1' not in settings, 'channel 1 is not open; it must not be reported'
+
+    device_config.write_sensor_settings(str(tmp_path), settings)
+    after = device_config.read_configuration(str(tmp_path))
+    assert after['gain_sensor_1'] == 'med'
+    assert after['itime_sensor_1'] == '500ms'
