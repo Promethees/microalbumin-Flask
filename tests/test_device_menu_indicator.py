@@ -17,6 +17,7 @@ the way Rule.md §2.35 requires of the button table.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -178,3 +179,63 @@ def test_nothing_is_marked_before_the_menu_has_been_fetched():
                          'caps': BRANCHES['open-uv']['caps']}}
               for mode in ('CALIBRATION', 'CONCENTRATION', 'SETTINGS', 'MESSAGE')]
     assert _run(probes) == [None, None, None, None]
+
+
+# ── the mark has to survive the cascade, not just be written ────────────────
+# deviceMenuOpenName() was returning the right entry and the class was going on
+# the right chip — and the bar still showed nothing, because every property the
+# marks set (border, color, font-weight, box-shadow) is also set by the blanket
+# `button:not(...)` rule, which out-specifies them. `:not(.x)` carries its
+# argument's specificity and there are ten of them, so that rule is (0,10,1) —
+# not the (0,3,1) the stylesheet's comment claimed. A correct mapping into an
+# invisible mark is the same bug to an operator, so it is checked here too.
+
+STYLE = REPO / 'static' / 'style.css'
+BLANKET_PREFIX = 'button:not(.swal2-confirm)'
+MARK_SELECTORS = ('.devctl-menu-item--open', '.devctl-menu-item--cursor')
+
+
+def _specificity(selector):
+    """(ids, classes) for one selector — enough to compare against the blanket.
+
+    `:not(...)` contributes its argument's specificity rather than one of its
+    own, which is the whole reason that rule is as heavy as it is.
+    """
+    selector = re.sub(r'::[a-z-]+', '', selector)
+    ids = len(re.findall(r'#[\w-]+', selector))
+    classes = (len(re.findall(r'\.[\w-]+', selector))
+               + len(re.findall(r':(?!not\()[a-z-]+', selector)))
+    return ids, classes
+
+
+def _rules():
+    css = STYLE.read_text(encoding='utf-8')
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    for match in re.finditer(r'([^{}]+)\{([^{}]*)\}', css):
+        head = match.group(1).strip()
+        if not head or head.startswith('@'):
+            continue
+        props = {p.split(':')[0].strip() for p in match.group(2).split(';') if ':' in p}
+        for selector in (s.strip() for s in head.split(',')):
+            if selector:
+                yield selector, props
+
+
+def test_the_menu_marks_out_specify_the_blanket_button_rule():
+    blanket = [(_specificity(sel), props) for sel, props in _rules()
+               if sel.startswith(BLANKET_PREFIX) and ':' not in sel[len(BLANKET_PREFIX):].replace(':not(', '')]
+    assert blanket, 'the blanket button rule moved — this check needs updating'
+
+    marks = [(sel, _specificity(sel), props) for sel, props in _rules()
+             if any(sel.endswith(m) for m in MARK_SELECTORS)]
+    assert marks, 'no rule styles the open/cursor marks any more'
+
+    problems = []
+    for selector, spec, props in marks:
+        for blanket_spec, blanket_props in blanket:
+            shadowed = props & blanket_props
+            if shadowed and spec <= blanket_spec:
+                problems.append(
+                    f'{selector} is {spec} against the blanket rule {blanket_spec}; '
+                    f'it would lose {", ".join(sorted(shadowed))}')
+    assert not problems, 'the mark is written but never seen:\n  ' + '\n  '.join(problems)

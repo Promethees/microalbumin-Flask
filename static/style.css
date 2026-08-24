@@ -6305,16 +6305,22 @@ body.dark #run-script-btn:enabled {
 }
 
 /* Entries are device text of any length, so a menu chip is not a fixed box the
-   way a key is — it is sized by its name and the rail scrolls. Four classes deep
-   for the same reason the keys are: the blanket button rule is (0,3,1) and would
-   centre the name, which reads wrong the moment the strip stacks full width.
+   way a key is — it is sized by its name and the rail scrolls.
 
-   The UV build's spectral-channel picker is the same chip in a .devctl-channels
-   panel rather than the .devctl-menu one, so every rule here carries a second
-   selector for it. Without it the picker fell through to the blanket button rule
-   and, worse, lost --open — the one mark that says which channel is live. */
-.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item,
-.devctl-body .devctl-channels .devctl-menu-items .devctl-menu-item {
+   Selected by the rail's ID, not by four classes. The blanket button rule is
+   NOT (0,3,1) as this comment used to claim — `:not(.x)` carries the
+   specificity of its argument and there are ten of them, so it is (0,10,1) and
+   out-weighed every class-only rule here. It sets `border`, `color`,
+   `font-weight` AND `box-shadow`, which is every property the two marks below
+   use: --open and --cursor were written onto the elements and then overridden,
+   so the bar rendered every entry identically and said nothing at all. An id is
+   (1,0,0) and settles it outright.
+
+   Both rails: the menu bar and the UV build's spectral-channel picker draw the
+   same chip, and the mark means the same thing on each — which entry the device
+   is on. */
+#devctl-menu-items .devctl-menu-item,
+#devctl-uvchannel-boxes .devctl-menu-item {
     display: inline-flex;
     align-items: center;
     justify-content: flex-start;
@@ -6329,8 +6335,8 @@ body.dark #run-script-btn:enabled {
     cursor: pointer;
 }
 
-.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item:enabled:hover,
-.devctl-body .devctl-channels .devctl-menu-items .devctl-menu-item:enabled:hover {
+#devctl-menu-items .devctl-menu-item:enabled:hover,
+#devctl-uvchannel-boxes .devctl-menu-item:enabled:hover {
     border-color: var(--accent);
     background: var(--accent-wash);
     color: var(--ink);
@@ -6338,14 +6344,14 @@ body.dark #run-script-btn:enabled {
 
 /* Two different facts, two different marks: the device is *on* the open entry,
    and its keypad cursor is *resting* on the highlighted one. */
-.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--open,
-.devctl-body .devctl-channels .devctl-menu-items .devctl-menu-item--open {
+#devctl-menu-items .devctl-menu-item--open,
+#devctl-uvchannel-boxes .devctl-menu-item--open {
     border-color: var(--accent);
     color: var(--accent);
     font-weight: 600;
 }
 
-.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--cursor {
+#devctl-menu-items .devctl-menu-item--cursor {
     box-shadow: inset 2px 0 0 var(--accent);
 }
 
@@ -6576,22 +6582,22 @@ body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):n
     border: 1px solid #e5e7eb;
 }
 
-/* The menu bar's two marks, restated for classic. The rule above is (0,4,1) and
-   re-declares border, background, colour and shadow — the very properties that
-   carry "the device has this entry open" and "its keypad cursor rests here", so
-   in classic every entry rendered identically and the bar said nothing. Five
-   classes deep to out-weigh it, in classic's own indigo rather than the
-   instrument accent. Which entry is selected is not decoration: it is the one
-   fact the bar exists to show, so it may not be lost to a style switch. */
-body.ui-classic .devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--open,
-body.ui-classic .devctl-body .devctl-channels .devctl-menu-items .devctl-menu-item--open {
+/* The two marks, restated for classic. The rule above re-declares border,
+   background, colour and shadow — the very properties that carry "the device has
+   this entry open" and "its keypad cursor rests here", so in classic every entry
+   rendered identically and the bar said nothing. `body.ui-classic` plus the
+   rail's id out-weighs it, in classic's own indigo rather than the instrument
+   accent. Which entry is selected is not decoration: it is the one fact the bar
+   exists to show, so it may not be lost to a style switch. */
+body.ui-classic #devctl-menu-items .devctl-menu-item--open,
+body.ui-classic #devctl-uvchannel-boxes .devctl-menu-item--open {
     border: 1px solid var(--accent);
     background: var(--accent-wash);
     color: var(--accent);
     font-weight: 700;
 }
 
-body.ui-classic .devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--cursor {
+body.ui-classic #devctl-menu-items .devctl-menu-item--cursor {
     box-shadow: inset 3px 0 0 var(--accent);
 }
 
