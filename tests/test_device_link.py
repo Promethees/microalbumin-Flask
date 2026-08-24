@@ -646,7 +646,9 @@ def test_controller_is_unavailable_during_a_session(client):
                  lambda: client.post('/device/timing',
                                      json={'interval_value': 1, 'interval_unit': 'min'}),
                  lambda: client.get('/device/calibration'),
-                 lambda: client.post('/device/calibration', json={'run': True})):
+                 lambda: client.post('/device/calibration', json={'run': True}),
+                 lambda: client.get('/device/uvchannel'),
+                 lambda: client.post('/device/uvchannel', json={'channel': 'UVB'})):
         rv = call()
         assert rv.status_code == 409
         assert rv.get_json()['status'] == 'busy'
@@ -1004,3 +1006,78 @@ def test_run_script_releases_the_port_first(client):
         popen.return_value.poll.return_value = None
         client.post('/run_script', json={'base_name': 'x'})
     close.assert_called_once()
+
+
+# ── the UV build's spectral channel ──────────────────────────────────────────
+# One sensor, three photodiodes: the host picks one (UVCHAN:) rather than
+# activating a set the way CHANNELS: does on the multiplexer build.
+
+def test_uv_channels_splits_the_list():
+    link = FakeLink(["UVCHANNELS UVA,UVB,UVC"])
+    assert link.uv_channels() == ['UVA', 'UVB', 'UVC']
+    assert link.sent == ['UVCHAN?']
+
+
+def test_uv_channels_on_firmware_without_the_command_are_none():
+    """Older UV firmware only cycles the channel with Right; the panel then
+    stays a readout instead of drawing a selector the device would refuse."""
+    link = FakeLink(["ERR_UNKNOWN"])
+    assert link.uv_channels() is None
+
+
+def test_set_uv_channel_sends_the_name(monkeypatch):
+    monkeypatch.setattr(device_link.time, 'sleep', lambda _seconds: None)
+    link = FakeLink(["ACK_UVCHAN"])
+    assert link.set_uv_channel('UVB') is True
+    assert link.sent == ['UVCHAN:UVB']
+
+
+def test_set_uv_channel_surfaces_the_device_reason():
+    link = FakeLink(["ERR_UVCHAN unknown channel"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.set_uv_channel('UVZ')
+    assert 'unknown channel' in str(excinfo.value)
+
+
+def test_set_uv_channel_on_firmware_without_the_command_says_so():
+    link = FakeLink(["ERR_UNKNOWN"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.set_uv_channel('UVB')
+    assert 'firmware' in str(excinfo.value)
+
+
+def test_uv_channel_route_lists_what_the_device_reports(client):
+    with patch.object(device_link.link, 'uv_channels', return_value=['UVA', 'UVB', 'UVC']):
+        rv = client.get('/device/uvchannel')
+    assert rv.status_code == 200
+    assert rv.get_json()['channels'] == ['UVA', 'UVB', 'UVC']
+
+
+def test_uv_channel_route_reports_firmware_without_the_command_as_null(client):
+    with patch.object(device_link.link, 'uv_channels', return_value=None):
+        rv = client.get('/device/uvchannel')
+    assert rv.status_code == 200
+    assert rv.get_json()['channels'] is None
+
+
+def test_uv_channel_route_sets_and_returns_the_new_state(client):
+    with patch.object(device_link.link, 'set_uv_channel', return_value=True) as setter, \
+         patch.object(device_link.link, 'state', return_value={'uvchan': 'UVB'}):
+        rv = client.post('/device/uvchannel', json={'channel': 'UVB'})
+    setter.assert_called_once_with('UVB')
+    assert rv.get_json()['state'] == {'uvchan': 'UVB'}
+
+
+def test_uv_channel_route_rejects_an_empty_choice(client):
+    with patch.object(device_link.link, 'set_uv_channel') as setter:
+        rv = client.post('/device/uvchannel', json={'channel': '   '})
+    assert rv.status_code == 400
+    setter.assert_not_called()
+
+
+def test_uv_channel_route_surfaces_the_device_refusal(client):
+    with patch.object(device_link.link, 'set_uv_channel',
+                      side_effect=device_link.DeviceLinkError('unknown channel')):
+        rv = client.post('/device/uvchannel', json={'channel': 'UVZ'})
+    assert rv.status_code == 502
+    assert 'unknown channel' in rv.get_json()['message']

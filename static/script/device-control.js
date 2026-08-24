@@ -258,6 +258,7 @@ function setDeviceControlStatus(kind, text) {
         deviceCalibSaved = null;
         deviceCalibDrive = null;
         deviceCalibRevision = null;
+        deviceUvChannels = null;
     }
 }
 
@@ -725,11 +726,26 @@ function saveDeviceChannels() {
 }
 
 // ── the UV build's spectral channel ─────────────────────────────────────────
-// No host command sets it — Right cycles it on the keypad, and the panel's
-// button strip presses that key — so this is a readout with a Save beside it.
+// One sensor with three photodiodes (UVA / UVB / UVC), not a multiplexer, so
+// this is a choice of one channel rather than a set of active ones — a row of
+// radio-style buttons, not checkboxes, and no "pending" state to protect: one
+// press is the whole edit, so it is sent on the press.
+//
+// Two capabilities, because two generations of firmware answer here. "uvchannel"
+// says only that Right cycles the channel, and on that build the panel stays the
+// readout it has always been. "uvchanset" says UVCHAN: will set it outright, and
+// that is what turns the readout into a selector — an operator after UVC should
+// not have to press Next until it comes round.
+
+let deviceUvChannels = null;     // null = not asked for on this connection
+let deviceUvChannelPending = false;
 
 function deviceSupportsUvChannel(state) {
     return (state.caps || []).indexOf('uvchannel') !== -1;
+}
+
+function deviceSupportsUvChannelSet(state) {
+    return (state.caps || []).indexOf('uvchanset') !== -1;
 }
 
 function renderDeviceUvChannel(state) {
@@ -745,11 +761,108 @@ function renderDeviceUvChannel(state) {
     const channel = state.uvchan || '';
     $text('devctl-uvchannel-current', channel || '—');
 
+    // The note says how the channel is changed, and that differs by build.
+    const note = document.getElementById('devctl-uvchannel-note');
+    if (note) {
+        note.textContent = deviceSupportsUvChannelSet(state)
+            ? t('devctl.uvchannel_note_set',
+                'Pick one, or cycle it on the device with Right. Runtime only until it is saved.')
+            : t('devctl.uvchannel_note',
+                'Cycled on the device with Right. Runtime only until it is saved.');
+    }
+
+    if (deviceSupportsUvChannelSet(state)) {
+        if (deviceUvChannels === null) {
+            loadDeviceUvChannels();
+        } else {
+            drawDeviceUvChannels(channel);
+        }
+    } else {
+        const strip = document.getElementById('devctl-uvchannel-boxes');
+        if (strip) {
+            strip.innerHTML = '';
+            strip.classList.add('hidden');
+        }
+    }
+
     const saved = deviceSavedConfig ? deviceSavedConfig.channel : undefined;
     const unsaved = !!channel && saved !== channel;
     drawSavedNote('devctl-uvchannel-saved', unsaved,
         t('devctl.uvchannel_saved', 'This is the channel the device starts on.'));
     $disabled('devctl-uvchannel-save', !deviceSavedDrive || !unsaved || !channel);
+}
+
+// The names come from the device (UVCHAN?), not from a UVA/UVB/UVC table here:
+// the panel already labels its calibration fields from CALIBTAGS? for the same
+// reason, and a build that grows a fourth photodiode should not need this file
+// edited to show it.
+async function loadDeviceUvChannels() {
+    if (deviceUvChannelPending) return;
+    deviceUvChannelPending = true;
+    try {
+        const res = await fetch('/device/uvchannel');
+        const data = await res.json();
+        if (data.status === 'success' && Array.isArray(data.channels)) {
+            deviceUvChannels = data.channels;
+            if (deviceState) drawDeviceUvChannels(deviceState.uvchan || '');
+        }
+        // A failure leaves the list null so the next poll asks again.
+    } catch (err) {
+        /* same: retried by the next poll */
+    } finally {
+        deviceUvChannelPending = false;
+    }
+}
+
+function drawDeviceUvChannels(current) {
+    const strip = document.getElementById('devctl-uvchannel-boxes');
+    if (!strip || !deviceUvChannels) return;
+    strip.classList.remove('hidden');
+    strip.innerHTML = '';
+    deviceUvChannels.forEach(name => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'devctl-menu-item';
+        // textContent, not innerHTML: this is device output, and the controller
+        // is the one place a garbled serial line reaches the DOM.
+        button.textContent = name;
+        button.classList.toggle('devctl-menu-item--open', name === current);
+        button.disabled = deviceUvChannelPending || name === current;
+        button.setAttribute('data-hint',
+            `${t('devctl.uvchannel_pick_hint', 'Measure on this spectral channel')} — ${name}`);
+        button.addEventListener('click', () => setDeviceUvChannel(name));
+        strip.appendChild(button);
+    });
+}
+
+async function setDeviceUvChannel(name) {
+    if (deviceUvChannelPending) return;
+    deviceUvChannelPending = true;
+    drawDeviceUvChannels(name);   // disables the row while the press is in flight
+    try {
+        const res = await fetch('/device/uvchannel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channel: name }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            deviceUvChannelPending = false;
+            if (data.state) applyDeviceState(data.state);
+            return;
+        }
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+        } else {
+            showDeviceControlError(data.message || t('devctl.uvchannel_failed',
+                'The device refused that spectral channel'));
+        }
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    }
+    deviceUvChannelPending = false;
+    if (deviceState) drawDeviceUvChannels(deviceState.uvchan || '');
 }
 
 function saveDeviceUvChannel() {

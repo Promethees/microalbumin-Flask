@@ -411,6 +411,54 @@ def device_channels_save():
     return _save_setting_response(device_config.write_active_channels, channels)
 
 
+@hardware_bp.route('/device/uvchannel', methods=['GET'])
+def device_uv_channels():
+    """The spectral channels the UV build offers, in device order (UVCHAN?).
+
+    Asked for rather than assumed: the panel draws one control per name the
+    device reports, the same way the calibration fields are labelled from
+    CALIBTAGS?. `channels: null` means firmware that predates the command — the
+    panel then stays a readout with a Save beside it, which is what it was
+    before the selector existed.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        channels = device_link.link.uv_channels()
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'device_not_found', 'message': str(e)}), 503
+    return jsonify({'status': 'success', 'channels': channels})
+
+
+@hardware_bp.route('/device/uvchannel', methods=['POST'])
+@validate_json({'channel': (str, None, True)})
+def device_uv_channel_set(validated_data):
+    """Point the device's sensor at one spectral channel (UVCHAN:).
+
+    Runtime only — CircuitPython mounts its own filesystem read-only while
+    code.py runs, so the device comes back on its configuration.json after a
+    power cycle. /device/uvchannel/save is the separate press that makes the
+    choice outlive one, and it is separate because writing that file reboots the
+    board.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    channel = validated_data['channel'].strip()
+    if not channel:
+        return jsonify({'status': 'failure', 'message': 'Choose a spectral channel'}), 400
+    try:
+        device_link.link.set_uv_channel(channel)
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    # The new channel with the ACK: the panel would otherwise show the old one
+    # until the next poll came round, on the one control whose whole point is
+    # which wavelength the device is reading.
+    try:
+        return jsonify({'status': 'success', 'state': device_link.link.state()})
+    except device_link.DeviceLinkError:
+        return jsonify({'status': 'success', 'state': None})
+
+
 @hardware_bp.route('/device/uvchannel/save', methods=['POST'])
 def device_uv_channel_save():
     """Write the spectral channel the UV build is measuring into its config.

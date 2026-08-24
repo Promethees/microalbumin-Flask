@@ -146,8 +146,10 @@ user_settings.json         ← user preferences (ui_language, ui_style, ai_feedb
   `state.process` is alive, and `/run_script` closes the link first. Branch on the
   firmware's `caps` list, never on a version. `BTN:left` in MEASURE is refused (it would
   start the HID fallback and type into the host). Screen-touching setters (`MENU:`,
-  `CONC:`, `TIMING:`) are queued and applied from the firmware's main loop. Channel
-  changes are runtime-only unless written to CIRCUITPY via `device_config.py`. **§2.35**
+  `CONC:`, `TIMING:`, `UVCHAN:`) are queued and applied from the firmware's main
+  loop. The UV build's spectral channel is picked, not cycled (`UVCHAN?` /
+  `UVCHAN:`, capability `uvchanset`). Channel changes are runtime-only unless
+  written to CIRCUITPY via `device_config.py`. **§2.35**
 
 **Design**
 - **Tokens first.** Every colour/font/radius/shadow comes from the token block at the

@@ -688,14 +688,23 @@
                                  running is also what the drive would restore. -->
                             <p id="devctl-channels-saved" class="devctl-caveat">—</p>
                         </div>
-                        <!-- The UV build's spectral channel. It has no host command —
-                             the keypad cycles it, and the panel presses that key — so
-                             this is a readout and a Save, not a form. -->
+                        <!-- The UV build's spectral channel: one sensor with three
+                             photodiodes, so one is chosen rather than a set made
+                             active. Firmware announcing "uvchanset" gets the picker
+                             below; older firmware that only cycles it with Right gets
+                             the readout and the Save, which is all this panel was. -->
                         <div id="devctl-uvchannel" class="devctl-channels hidden">
                             <div class="devctl-channels-head">
                                 <span class="devctl-label" data-i18n="devctl.uvchannel">Spectral channel</span>
-                                <span class="devctl-note" data-i18n="devctl.uvchannel_note">Cycled on the device with Right. Runtime only until it is saved.</span>
+                                <!-- No data-i18n: renderDeviceUvChannel() writes this,
+                                     because what it says depends on whether the
+                                     device can be set or only cycled. -->
+                                <span id="devctl-uvchannel-note" class="devctl-note">Cycled on the device with Right. Runtime only until it is saved.</span>
                             </div>
+                            <!-- Filled by drawDeviceUvChannels() from the names the
+                                 device reports (UVCHAN?), and hidden on firmware that
+                                 cannot be set. -->
+                            <div id="devctl-uvchannel-boxes" class="devctl-menu-items devctl-strip hidden"></div>
                             <div class="devctl-conc-row">
                                 <span class="devctl-conc-current">
                                     <span class="devctl-label" data-i18n="devctl.conc_on_device">On device</span>

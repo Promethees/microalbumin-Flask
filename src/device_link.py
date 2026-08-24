@@ -293,6 +293,48 @@ class DeviceLink:
             raise DeviceLinkError(detail or "The device refused the channel change")
         return True
 
+    # ── the UV build's spectral channel ─────────────────────────────────
+    # One sensor with three photodiodes (UVA / UVB / UVC), not a multiplexer, so
+    # this is a choice of one channel rather than a set of active ones — hence
+    # its own pair of commands rather than CHANNELS:. Runtime only, like every
+    # other device setting here; /device/uvchannel/save is what writes it into
+    # configuration.json on the CIRCUITPY drive.
+
+    def uv_channels(self):
+        """The spectral channels this build has, in device order (UVCHAN?).
+
+        None when the firmware predates the command, so the caller can fall back
+        to the readout-only panel instead of drawing a selector the device would
+        refuse.
+        """
+        reply = self.command(
+            "UVCHAN?",
+            lambda line: line.startswith("UVCHANNELS") or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            return None
+        body = reply[len("UVCHANNELS"):].strip()
+        names = [part.strip() for part in body.split(",") if part.strip()]
+        return names or None
+
+    def set_uv_channel(self, channel):
+        """Point the device's sensor at one spectral channel (UVCHAN:).
+
+        The device queues the change and applies it on its next main-loop pass —
+        the channel is on the measure screen's label, and repainting from inside
+        the serial handler is what garbled glyphs on the other queued setters —
+        so settle before the caller reads STATE back.
+        """
+        reply = self.command(
+            f"UVCHAN:{channel}",
+            lambda line: line == "ACK_UVCHAN" or line.startswith("ERR_UVCHAN") or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware cannot set the spectral channel")
+        if reply != "ACK_UVCHAN":
+            detail = reply[len("ERR_UVCHAN"):].strip()
+            raise DeviceLinkError(detail or "The device refused the channel change")
+        time.sleep(SETTLE_AFTER_QUEUED)
+        return True
+
     def menu_items(self):
         """The device's menu, in device order (MENU?).
 
