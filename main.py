@@ -121,7 +121,58 @@ import time as _time
 app = Flask(__name__,
             static_folder=_os.path.join(state.bundle_dir, 'static'),
             template_folder=_os.path.join(state.bundle_dir, 'templates'))
-app.jinja_env.globals['STATIC_VERSION'] = str(int(_time.time()))
+class _StaticVersion:
+    """Cache-busting stamp for static assets: the newest mtime under static/.
+
+    It was the process start time, which is wrong in both directions. Editing a
+    .js or the stylesheet while the app runs did NOT change the stamp, so the
+    browser kept serving its cached copy and the change simply did not appear.
+    "Did you reload?" does not help either: the URL being revalidated is
+    byte-identical, so the cache is allowed to answer. Meanwhile every restart
+    DID change it, throwing away a good cache of ~30 files for an install that
+    changed nothing.
+
+    Content-derived is the fix: the stamp moves when an asset moves, and not
+    otherwise. mtime rather than a hash of the bytes because a changed file
+    always has a changed mtime, which is the direction that matters, and hashing
+    the tree would not earn its cost on a page render.
+
+    A __str__ rather than a function because the template says
+    `{{ STATIC_VERSION }}` in 22 places: Jinja does not call a callable global,
+    so a function would render its repr into every asset URL. The 1-second memo
+    is what keeps those 22 lookups to one walk of the tree.
+    """
+
+    _TTL = 1.0
+
+    def __init__(self):
+        self._value = None
+        self._checked = 0.0
+
+    def __str__(self):
+        now = _time.monotonic()
+        if self._value is None or now - self._checked >= self._TTL:
+            self._value = self._compute()
+            self._checked = now
+        return self._value
+
+    def _compute(self):
+        newest = 0
+        try:
+            for root, _dirs, files in _os.walk(app.static_folder):
+                for name in files:
+                    try:
+                        newest = max(newest, _os.stat(_os.path.join(root, name)).st_mtime)
+                    except OSError:
+                        continue
+        except Exception:
+            # A frozen bundle with an unexpected layout: fall back to the old
+            # behaviour rather than serve every asset with no stamp at all.
+            return str(int(_time.time()))
+        return str(int(newest)) if newest else str(int(_time.time()))
+
+
+app.jinja_env.globals['STATIC_VERSION'] = _StaticVersion()
 app.register_blueprint(core_bp)
 app.register_blueprint(hardware_bp)
 app.register_blueprint(file_bp)
