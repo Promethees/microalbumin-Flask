@@ -284,6 +284,7 @@ function setDeviceControlStatus(kind, text) {
         deviceCalibDrive = null;
         deviceCalibRevision = null;
         deviceUvChannels = null;
+        deviceSensorCfg = null;
     }
 }
 
@@ -294,6 +295,7 @@ function applyDeviceState(state) {
     renderDeviceKeypad(state);
     renderDeviceChannels(state);
     renderDeviceUvChannel(state);
+    renderDeviceSensorConfig(state);
     renderDeviceMenu(state);
     renderDeviceConcentration(state);
     renderDeviceTiming(state);
@@ -578,6 +580,7 @@ async function loadDeviceSavedConfig() {
             if (deviceState) {
                 renderDeviceChannels(deviceState);
                 renderDeviceUvChannel(deviceState);
+                renderDeviceSensorConfig(deviceState);
             }
         }
     } catch (err) {
@@ -915,6 +918,102 @@ async function setDeviceUvChannel(name) {
 function saveDeviceUvChannel() {
     saveDeviceSetting('/device/uvchannel/save', 'devctl-uvchannel-save',
         t('devctl.uvchannel_save_failed', 'The channel could not be saved to the device'));
+}
+
+// ── the sensors' gain and integration time ──────────────────────────────────
+// Read-only here. Gain and integration time are dialled in on the device's Raw
+// Count screen — the panel's own keypad presses those keys — and what the host
+// adds is the one thing the device cannot do for itself: make the change outlive
+// a power cycle, by writing configuration.json on the CIRCUITPY drive.
+//
+// The KEYS differ per build (`gain`/`integration_time`, `gain_sensor_90`,
+// `gain_sensor_<channel>`), so they come from the device (SENSCFG?) and are
+// written back verbatim. Nothing here assembles a key name; a host that guessed
+// would write one the firmware never reads, and the setting would simply not
+// stick with nothing on screen to point at.
+
+let deviceSensorCfg = null;      // {settings, saved, drive} — null = not asked yet
+let deviceSensorCfgPending = false;
+
+function deviceSupportsSensorConfig(state) {
+    return (state.caps || []).indexOf('senscfg') !== -1;
+}
+
+function renderDeviceSensorConfig(state) {
+    const panel = document.getElementById('devctl-sensorcfg');
+    if (!panel) return;
+    if (!deviceSupportsSensorConfig(state)) {
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+    if (deviceSensorCfg === null) {
+        loadDeviceSensorConfig();
+        return;
+    }
+
+    const settings = deviceSensorCfg.settings || {};
+    const keys = Object.keys(settings);
+    $text('devctl-sensorcfg-current', keys.length ? describeSensorSettings(settings) : '\u2014');
+
+    // Unsaved when any key the device reported differs from what the drive
+    // holds — including a key the file has never had, which reads as undefined.
+    const saved = deviceSensorCfg.saved;
+    const unsaved = !!keys.length && (!saved || keys.some(key => saved[key] !== settings[key]));
+    drawSavedNote('devctl-sensorcfg-saved', unsaved,
+        t('devctl.sensorcfg_saved', 'These are the settings the device starts on.'));
+    $disabled('devctl-sensorcfg-save',
+        !deviceSensorCfg.drive || !unsaved || !keys.length || deviceSensorCfgPending);
+}
+
+// "med · 500ms" on a single-sensor build, "sensor_0 med · 500ms" where there is
+// more than one. Grouped by the suffix the device's own key carries, so a build
+// that names its positions something new needs no change here.
+function describeSensorSettings(settings) {
+    const groups = new Map();
+    for (const key of Object.keys(settings)) {
+        const match = /^(gain|itime|integration_time)(?:_(.+))?$/.exec(key);
+        if (!match) continue;
+        const name = match[2] || '';
+        if (!groups.has(name)) groups.set(name, {});
+        groups.get(name)[match[1] === 'gain' ? 'gain' : 'itime'] = settings[key];
+    }
+    const parts = [];
+    for (const [name, pair] of groups) {
+        const value = [pair.gain, pair.itime].filter(Boolean).join(' \u00b7 ');
+        parts.push(name ? `${name} ${value}` : value);
+    }
+    return parts.join('   ') || '\u2014';
+}
+
+async function loadDeviceSensorConfig() {
+    if (deviceSensorCfgPending) return;
+    deviceSensorCfgPending = true;
+    try {
+        const res = await fetch('/device/sensor-settings');
+        const data = await res.json();
+        if (data.status === 'success') {
+            deviceSensorCfg = data;
+            if (deviceState) renderDeviceSensorConfig(deviceState);
+        }
+        // A failure leaves it null so the next poll asks again.
+    } catch (err) {
+        /* same: retried by the next poll */
+    } finally {
+        deviceSensorCfgPending = false;
+    }
+}
+
+// Re-read rather than patch the cache: the write reboots the board, and what
+// matters afterwards is what the FILE holds, which is the thing being asserted.
+function forgetDeviceSensorConfig() {
+    deviceSensorCfg = null;
+}
+
+function saveDeviceSensorSettings() {
+    forgetDeviceSensorConfig();
+    saveDeviceSetting('/device/sensor-settings/save', 'devctl-sensorcfg-save',
+        t('devctl.sensorcfg_save_failed', 'The settings could not be saved to the device'));
 }
 
 function readDeviceChannelBoxes() {

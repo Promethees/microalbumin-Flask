@@ -434,6 +434,46 @@ class DeviceLink:
         return True
 
 
+    # ── the sensors' gain and integration time ──────────────────────────
+    # Read-only from here: gain and integration time are changed on the device
+    # (its Raw Count / Raw Sensor screen, or the panel pressing those keys), and
+    # the host's part is making the change outlive a power cycle.
+    #
+    # The device answers with the KEYS configuration.json holds them under,
+    # because they differ per build — `gain`/`integration_time` on the
+    # single-sensor builds, `gain_sensor_90`/`itime_sensor_90` on the two-sensor
+    # one, `gain_sensor_<channel>`/`itime_sensor_<channel>` per active mux
+    # channel on the multi-channel one. Four schemes for one setting, so they are
+    # asked for rather than guessed, the way CALIBTAGS? is.
+
+    def sensor_config(self):
+        """The gain/itime settings to persist, as {config key: value} (SENSCFG?).
+
+        None when the firmware predates the command, so the panel can hide the
+        Save rather than offer one the device would refuse.
+        """
+        reply = self.command(
+            "SENSCFG?",
+            lambda line: line.startswith("SENSCFG") or line.startswith("ERR_SENSCFG")
+            or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            return None
+        if reply.startswith("ERR_SENSCFG"):
+            detail = reply[len("ERR_SENSCFG"):].strip()
+            raise DeviceLinkError(detail or "The device could not report its sensor settings")
+        body = reply[len("SENSCFG"):].strip()
+        settings = {}
+        for pair in body.split(";"):
+            if not pair:
+                continue
+            key, _, value = pair.partition("=")
+            key, value = key.strip(), value.strip()
+            if key and value:
+                settings[key] = value
+        if not settings:
+            raise DeviceLinkError("The device sent no sensor settings")
+        return settings
+
     # ── raw count calibration ───────────────────────────────────────────
     # One multiplier per sensing element, in the order configuration.json holds
     # them — multiplexer channels on the multi-channel colorimeter (where the

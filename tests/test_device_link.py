@@ -1081,3 +1081,120 @@ def test_uv_channel_route_surfaces_the_device_refusal(client):
         rv = client.post('/device/uvchannel', json={'channel': 'UVZ'})
     assert rv.status_code == 502
     assert 'unknown channel' in rv.get_json()['message']
+
+
+# ── the sensors' gain and integration time ───────────────────────────────────
+# Four builds hold this one setting under four key schemes, so the device names
+# its own keys and the host writes them verbatim rather than assembling any.
+
+def test_sensor_config_parses_the_pairs():
+    link = FakeLink(["SENSCFG gain_sensor_0=med;itime_sensor_0=500ms"])
+    assert link.sensor_config() == {'gain_sensor_0': 'med', 'itime_sensor_0': '500ms'}
+    assert link.sent == ['SENSCFG?']
+
+
+def test_sensor_config_on_a_single_sensor_build():
+    link = FakeLink(["SENSCFG gain=1024x;integration_time=32ms"])
+    assert link.sensor_config() == {'gain': '1024x', 'integration_time': '32ms'}
+
+
+def test_sensor_config_on_firmware_without_the_command_is_none():
+    link = FakeLink(["ERR_UNKNOWN"])
+    assert link.sensor_config() is None
+
+
+def test_sensor_config_surfaces_the_device_reason():
+    link = FakeLink(["ERR_SENSCFG unknown setting"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.sensor_config()
+    assert 'unknown setting' in str(excinfo.value)
+
+
+def test_write_sensor_settings_replaces_every_key_in_one_write(drive):
+    device_config.write_sensor_settings(str(drive), {
+        'gain_sensor_0': 'high', 'itime_sensor_0': '600ms'})
+    data = device_config.read_configuration(str(drive))
+    assert data['gain_sensor_0'] == 'high'
+    assert data['itime_sensor_0'] == '600ms'
+
+
+def test_write_sensor_settings_refuses_a_key_that_is_not_a_sensor_setting(drive):
+    before = (drive / device_config.CONFIGURATION_FILE).read_text()
+    with pytest.raises(device_config.DeviceConfigError):
+        device_config.write_sensor_settings(str(drive), {'startup': 'Absorbance'})
+    assert (drive / device_config.CONFIGURATION_FILE).read_text() == before
+
+
+def test_write_sensor_settings_refuses_a_value_the_device_could_not_read(drive):
+    """It goes into a JSON string on a board that reloads on the write, and the
+    firmware matches it against a fixed table."""
+    before = (drive / device_config.CONFIGURATION_FILE).read_text()
+    with pytest.raises(device_config.DeviceConfigError):
+        device_config.write_sensor_settings(str(drive), {'gain': 'med"; DROP'})
+    assert (drive / device_config.CONFIGURATION_FILE).read_text() == before
+
+
+def test_write_sensor_settings_refuses_an_empty_set(drive):
+    with pytest.raises(device_config.DeviceConfigError):
+        device_config.write_sensor_settings(str(drive), {})
+
+
+def test_sensor_settings_route_reports_saved_alongside_running(client, drive):
+    with patch.object(device_config, 'find_device_root', return_value=str(drive)), \
+         patch.object(device_link.link, 'sensor_config',
+                      return_value={'gain_sensor_0': 'high', 'itime_sensor_0': '600ms'}):
+        rv = client.get('/device/sensor-settings')
+    body = rv.get_json()
+    assert body['settings'] == {'gain_sensor_0': 'high', 'itime_sensor_0': '600ms'}
+    # The file still holds what it held — that difference is what enables Save.
+    assert body['saved']['gain_sensor_0'] != 'high'
+    assert body['drive'] == str(drive)
+
+
+def test_sensor_settings_route_on_firmware_without_the_command(client, drive):
+    with patch.object(device_config, 'find_device_root', return_value=str(drive)), \
+         patch.object(device_link.link, 'sensor_config', return_value=None):
+        rv = client.get('/device/sensor-settings')
+    assert rv.status_code == 200
+    assert rv.get_json()['settings'] is None
+
+
+def test_sensor_settings_save_writes_what_the_device_reports(client, drive):
+    """Not what the browser cached: a gain dialled in on the keypad must be what
+    gets saved."""
+    with patch.object(device_config, 'find_device_root', return_value=str(drive)), \
+         patch.object(device_link.link, 'sensor_config',
+                      return_value={'gain_sensor_0': 'high', 'itime_sensor_0': '600ms'}), \
+         patch.object(device_link.link, 'close') as close:
+        rv = client.post('/device/sensor-settings/save')
+    assert rv.status_code == 200
+    assert device_config.read_configuration(str(drive))['gain_sensor_0'] == 'high'
+    # The write reboots the board, so the open handle is to a device that is
+    # about to disappear.
+    close.assert_called_once()
+
+
+def test_sensor_settings_save_404_when_no_drive(client):
+    with patch.object(device_config, 'find_device_root', return_value=None), \
+         patch.object(device_link.link, 'sensor_config', return_value={'gain': 'med'}):
+        rv = client.post('/device/sensor-settings/save')
+    assert rv.status_code == 404
+
+
+def test_write_sensor_settings_inserts_a_missing_itime_beside_its_gain(tmp_path):
+    """A file can hold a gain and no integration time — the firmware falls back
+    to its default for a missing key. The new key belongs under the gain it goes
+    with, not at the top of a file whose order the operator chose."""
+    (tmp_path / device_config.BOOT_OUT_FILE).write_text(BOOT_OUT)
+    (tmp_path / device_config.CONFIGURATION_FILE).write_text(
+        '{\n'
+        '  "active_channels" : [0, 2],\n'
+        '  "gain_sensor_2"     : "med",\n'
+        '  "startup" : "Absorbance"\n'
+        '}\n')
+    device_config.write_sensor_settings(str(tmp_path), {
+        'gain_sensor_2': 'max', 'itime_sensor_2': '100ms'})
+
+    text = (tmp_path / device_config.CONFIGURATION_FILE).read_text()
+    assert device_config.read_configuration(str(tmp_path))['itime_sensor_2'] == '100ms'
+    assert text.index('gain_sensor_2') < text.index('itime_sensor_2') < text.index('startup')

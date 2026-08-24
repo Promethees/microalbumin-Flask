@@ -37,6 +37,20 @@ FACTOR_KEY = "raw_count_factor"
 CHANNELS_KEY = "active_channels"          # multi-channel build: which mux channels carry a sensor
 UV_CHANNEL_KEY = "channel"                # UV build: which spectral channel is measured
 
+# The sensors' gain and integration time are the fourth, and the only one whose
+# key NAMES differ per build — `gain`/`integration_time`, `gain_sensor_90`,
+# `gain_sensor_<channel>`. They are not listed here for that reason: the device
+# reports its own keys (SENSCFG?) and this module writes what it is handed,
+# after checking each name looks like one of them.
+_SENSOR_KEY = re.compile(r'^(gain|itime|integration_time)(_[A-Za-z0-9_]+)?$')
+
+# A gain or integration time as the firmware's tables spell it: "med", "500ms",
+# "1024x", "32ms". Constrained because it goes into a JSON string on a device
+# that reloads on the write, and the firmware matches it against a fixed table —
+# a value outside this is one the board would come back from with a settings
+# error on screen.
+_SENSOR_VALUE = re.compile(r'^[A-Za-z0-9]+$')
+
 def _key_prefix(key):
     """Matches the `"key" :` in front of a value, keeping whatever spacing the
     file already uses around the colon so a hand-aligned file stays aligned.
@@ -359,6 +373,70 @@ def write_uv_channel(root, channel):
         # matches these names against ASCII identifiers of its own.
         raise DeviceConfigError(f"{channel} is not a channel name")
     return _write(root, lambda text: _replace_value(text, UV_CHANNEL_KEY, channel))
+
+
+def _sensor_anchor(key):
+    """The key this one should be inserted beside: the other half of its pair.
+
+    `gain` pairs with `integration_time` on the single-sensor builds and
+    `gain_sensor_0` with `itime_sensor_0` on the rest — the two halves of one
+    sensor's settings, which is where a reader expects to find them.
+
+    Both directions, not just gain to itime: a file can hold a gain and no
+    integration time (the firmware falls back to its default for a missing key),
+    and anchoring only one way sent the new `itime_sensor_2` to the top of the
+    file, above `active_channels`, instead of under the gain it belongs to. The
+    value was right and the JSON parsed — it just read like a different file.
+    """
+    if key == "gain":
+        return "integration_time"
+    if key == "integration_time":
+        return "gain"
+    if key.startswith("gain_"):
+        return "itime_" + key[len("gain_"):]
+    if key.startswith("itime_"):
+        return "gain_" + key[len("itime_"):]
+    return None
+
+
+def write_sensor_settings(root, settings):
+    """Save the sensors' gain and integration time, whatever this build calls them.
+
+    `settings` is {config key: value} exactly as the device reported it
+    (SENSCFG?), never a set of names assembled here: the four builds hold this
+    one setting under four different key schemes, and a host that guessed would
+    write a key the firmware never reads — which fails silently, because the
+    device simply falls back to its default and the operator sees the setting
+    "not stick" with nothing to point at.
+
+    Every key is checked before anything is written, and all of them go into one
+    edit, so a device is never left with sensor 0 saved and sensor 1 not.
+    Sensors the device did not report are left alone: a channel with no sensor on
+    it has no gain in force, and its configured value is the operator's.
+    """
+    if not settings:
+        raise DeviceConfigError("No sensor settings to save")
+
+    checked = []
+    for key, value in settings.items():
+        key = (key or "").strip()
+        value = ("" if value is None else str(value)).strip()
+        if not _SENSOR_KEY.match(key):
+            raise DeviceConfigError(f"{key} is not a gain or integration time setting")
+        if not _SENSOR_VALUE.match(value):
+            raise DeviceConfigError(f"{value} is not a setting this device could read back")
+        checked.append((key, value))
+
+    def edit(text):
+        # Each key beside the one it belongs with when the file has never held
+        # it: a gain's own integration time, and failing that the startup
+        # measurement, so an inserted pair does not land at the top of a file
+        # whose order the operator chose.
+        for key, value in checked:
+            text = _replace_value(text, key, value, anchor_key=_sensor_anchor(key))
+        return text
+
+    return _write(root, edit)
 
 
 def _atomic_write(path, text):

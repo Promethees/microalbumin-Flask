@@ -716,6 +716,28 @@
                             </div>
                             <p id="devctl-uvchannel-saved" class="devctl-caveat">—</p>
                         </div>
+                        <!-- Gain and integration time, and a Save. Read-only here:
+                             they are dialled in on the device's Raw Count screen
+                             (or by the panel pressing those keys), and the host's
+                             part is making the change outlive a power cycle. The
+                             key names differ per build, so the device reports its
+                             own (SENSCFG?) and the panel writes them verbatim. -->
+                        <div id="devctl-sensorcfg" class="devctl-channels hidden">
+                            <div class="devctl-channels-head">
+                                <span class="devctl-label" data-i18n="devctl.sensorcfg">Sensor settings</span>
+                                <span class="devctl-note" data-i18n="devctl.sensorcfg_note">Gain and integration time, set on the device. Runtime only until they are saved.</span>
+                            </div>
+                            <div class="devctl-conc-row">
+                                <span class="devctl-conc-current">
+                                    <span class="devctl-label" data-i18n="devctl.conc_on_device">On device</span>
+                                    <span id="devctl-sensorcfg-current" class="devctl-value">—</span>
+                                </span>
+                                <button type="button" id="devctl-sensorcfg-save" onclick="saveDeviceSensorSettings()" disabled
+                                    data-i18n="devctl.sensorcfg_save" data-i18n-hint="hint.devctl_sensorcfg_save"
+                                    data-hint="Write the gain and integration time the sensors are running on into configuration.json on the device's drive. The device restarts and comes back on them.">Save to device</button>
+                            </div>
+                            <p id="devctl-sensorcfg-saved" class="devctl-caveat">—</p>
+                        </div>
                         <!-- The device's own menu, as a bar. Only mounted when the
                              firmware reports the "menu" capability, because the item
                              list is built on the device and cannot be guessed. -->

@@ -481,6 +481,60 @@ def device_uv_channel_save():
     return _save_setting_response(device_config.write_uv_channel, channel)
 
 
+@hardware_bp.route('/device/sensor-settings', methods=['GET'])
+def device_sensor_settings():
+    """What the sensors are running on, and what the drive would restore.
+
+    Both halves in one request, because the panel needs them to answer one
+    question — "will this survive the next power cycle?" — and the drive is a USB
+    volume worth reading once. `settings: null` means firmware that predates
+    SENSCFG?, and the panel then offers no Save rather than one the device would
+    refuse.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        settings = device_link.link.sensor_config()
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'device_not_found', 'message': str(e)}), 503
+
+    root = device_config.find_device_root()
+    saved = None
+    if root is not None and settings:
+        try:
+            data = device_config.read_configuration(root)
+        except device_config.DeviceConfigError:
+            saved = None
+        else:
+            # Only the keys the device named. The rest of that file is the
+            # operator's and is none of this panel's business.
+            saved = {key: data.get(key) for key in settings}
+    return jsonify({'status': 'success', 'settings': settings,
+                    'saved': saved, 'drive': root})
+
+
+@hardware_bp.route('/device/sensor-settings/save', methods=['POST'])
+def device_sensor_settings_save():
+    """Write the sensors' gain and integration time into the device's config.
+
+    What the DEVICE reports, never what the browser cached — the same rule the
+    channel and calibration saves follow, so a gain dialled in on the keypad is
+    saveable from here without the two having exchanged anything first. The keys
+    are the device's too: this build's own names for the setting, which is the
+    only reason one route can serve four key schemes.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        settings = device_link.link.sensor_config()
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    if not settings:
+        return jsonify({'status': 'failure',
+                        'message': "This device's firmware cannot report its sensor settings"}), 502
+    return _save_setting_response(device_config.write_sensor_settings, settings)
+
+
 @hardware_bp.route('/device/config/saved', methods=['GET'])
 def device_config_saved():
     """What the drive's configuration.json holds for the settings the panel saves.
