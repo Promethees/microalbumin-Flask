@@ -82,10 +82,10 @@ def test_line_reader_emits_fragment_once_completed():
 
 
 def test_line_reader_handles_multiple_lines_in_one_chunk():
-    ser = FakeSerial([b"# Unit: None\n# Concentration: None\nTurn,Value:1\n"])
+    ser = FakeSerial([b"# Unit: NONE\n# Concentration: NONE\nTurn,Value:1\n"])
     reader = LineReader(ser)
     assert reader.read_lines() == [
-        "# Unit: None", "# Concentration: None", "Turn,Value:1"]
+        "# Unit: NONE", "# Concentration: NONE", "Turn,Value:1"]
 
 
 def test_line_reader_survives_undecodable_bytes():
