@@ -12,7 +12,7 @@ on:
 
 env:
   # Fallback version used on non-tag branch builds (CI smoke runs)
-  APP_VERSION_FALLBACK: "1.5.4"
+  APP_VERSION_FALLBACK: "1.5.5"
   AUTH_BASE_URL: ${{ secrets.AUTH_BASE_URL }}
   # No-source freeze toggle (P3). Set repository variable ENCODE_SOURCE=true to
   # additionally build + smoke-test the PyInstaller onedir bundle and publish the

@@ -34,7 +34,7 @@ def _search_dirs():
 
     Normally only the bundled copy exists. The extra locations are a recovery
     path for a frozen build shipped without the catalogs (they were absent from
-    ``easyokapi.spec`` up to v1.5.4): dropping a ``ui_translations/`` folder next
+    ``easyokapi.spec`` up to v1.5.5): dropping a ``ui_translations/`` folder next
     to ``EasyOKAPI.exe`` or into the data root restores localization without a
     reinstall. Duplicates are dropped so the common case reads one directory.
     """
