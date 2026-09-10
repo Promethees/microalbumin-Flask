@@ -40,9 +40,10 @@
 ### 2.3 Static Files & Build
 
 - **Development source** is in `static/script/` (JS) and `static/style.css` (CSS).
-- **Production serves from `static/dist/`**. The Flask app is set to `static_folder='static/dist'`.
+- **Production serves the minified copies out of `static/dist/`**, but the Flask static folder is plain `static/` (`main.py`: `Flask(__name__, static_folder='static')`) — `index.html` picks `dist/style.min.css` over `style.css` on `config.PRODUCTION_MODE`. So a URL **inside** a stylesheet resolves against `/static/dist/` in production and `/static/` in development: write it rooted (`url("/static/okapi-run.gif")`), never relative, or it 404s in exactly one of the two modes.
 - After modifying any JS or CSS, you **must** run `npm run build` before deploying.
 - **Never** edit files in `static/dist/` directly — they are generated artifacts.
+- **There is one loading animation, and it is the okapi running** (`static/okapi-run.gif`, transparent, self-looping) — `.okapi-loader` behind `#global-spinner`, matching the desktop branch. **Reduced motion swaps the asset, it does not stop the animation**: a GIF carries its own frames and no `animation-duration` override can pause them, so `prefers-reduced-motion: reduce` repoints the image at `okapi.png`. **Anti-pattern**: adding a fresh border-ring spinner for a new wait.
 - The `index.html` template references scripts via `{{ url_for('static', ...) }}` which resolves to `static/dist/`.
 
 ### 2.4 No HID / No Local Hardware

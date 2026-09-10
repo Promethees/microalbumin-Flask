@@ -2189,14 +2189,23 @@ body.dark .tooltip-finish-btn {
     gap: 20px;
 }
 
-.spinner {
-    border: 8px solid rgba(255, 255, 255, 0.3);
-    border-top: 8px solid #3498db;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    animation: global-spin 1s linear infinite;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+/* The running okapi IS the loader — the same mark the desktop app uses, so a
+   wait looks like the product rather than like a generic ring. The motion lives
+   in the GIF's own frames, which CSS cannot stop: the reduced-motion answer is
+   to swap in the still logo, not to kill an `animation` that was never there.
+   The URL is rooted at /static because production serves a minified copy of
+   this sheet from static/dist/, where a relative name resolves one directory
+   too deep (§2.3). */
+.okapi-loader {
+    width: 96px;
+    height: 96px;
+    background: url("/static/okapi-run.gif") center / contain no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .okapi-loader {
+        background-image: url("/static/okapi.png");
+    }
 }
 
 .spinner-message {
@@ -2206,11 +2215,6 @@ body.dark .tooltip-finish-btn {
     text-shadow: 0 2px 5px rgba(0,0,0,0.5);
     font-family: 'Segoe UI', Arial, sans-serif;
     animation: pulse-opac 2s infinite ease-in-out;
-}
-
-@keyframes global-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 @keyframes pulse-opac {
