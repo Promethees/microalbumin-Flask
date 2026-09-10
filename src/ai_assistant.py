@@ -1584,29 +1584,59 @@ _FULL_REPORT_STEPS_IN_REPORT = [
     },
 ]
 
-# Multilingual vocabulary for the report clarification flow. "report" itself is
-# recognised in all six UI languages so the quick-vs-full question is asked (and
-# its answer understood) regardless of the chat language — not English only.
+# Multilingual vocabulary for the report clarification flow, at parity across
+# ALL SEVEN `user_settings.SUPPORTED_LANGUAGES` (en/vi/zh/fr/ja/ru/ko) — the
+# quick-vs-full question is asked, and its answer understood, whatever the chat
+# language is. Two rules keep it honest:
+#
+#   1. Every entry belongs to a supported language. ("schnell" used to sit in
+#      _QUICK_KWS; German is not a UI language, so it was dead weight.)
+#   2. These sets are SUBSTRING-matched, so an inflecting language needs the
+#      STEM, not one surface form. Russian «быстрый отчёт» and French
+#      "rapport complète" — the natural adjectival answers — both resolved to
+#      None while «быстро» / "complet" worked, so the stems `быстр` / `полн` /
+#      `complèt` are what is listed. Korean was absent from all three sets, so
+#      «보고서 만들기» never even triggered the clarification and Korean users
+#      could not reach the flow at all.
+#
+# Test: tests/test_ai_report_flow.py::test_every_language_can_ask_and_answer.
 _REPORT_WORDS = frozenset({
-    "report", "báo cáo", "报告", "rapport", "レポート", "отчёт", "отчет",
+    "report", "báo cáo", "报告", "rapport", "レポート", "отчёт", "отчет", "보고서",
 })
 
 _QUICK_KWS = frozenset({
     "quick", "fast", "snapshot", "instant",
-    "nhanh", "rapide", "schnell", "быстро",
+    "nhanh", "rapide", "быстр",
     "快速", "即时", "迅速", "クイック", "速報",
+    "빠른", "빠르게", "간단",
 })
 
 _FULL_KWS = frozenset({
     "full", "final", "compile", "comprehensive", "excel", "pdf", "complete",
-    "đầy đủ", "toàn", "complet", "полный",
+    "đầy đủ", "toàn", "complet", "complèt", "полн",
     "完整", "完全", "全面", "フル",
+    "전체", "완전", "종합",
 })
 
 # Phrases that already pin the report kind, so the clarification is skipped.
 _REPORT_SPECIFIC_KEYWORDS = _QUICK_KWS | _FULL_KWS | frozenset({
     "export to report", "save to report", "export data to report",
 })
+
+# ── Pending-clarification state (explicit, not prose-matched) ────────────────
+# The quick/full clarification is a two-turn exchange, and the second turn has to
+# know the first one happened. That state is carried EXPLICITLY: the clarify turn
+# emits a machine-readable `{"type": "pending", "pending": "report_type"}` SSE
+# event alongside the localized question, the frontend stores it, and the next
+# /ai/chat request echoes it back as `ui_context["pending"]`.
+#
+# It rides in `ui_context` — NOT as an extra key on a message dict. `/ai/chat`
+# keeps the caller's original message dicts (it only filters the list), and those
+# dicts are handed verbatim to Groq in `_groq_chat_stream`; an unknown per-message
+# field is a hard 400 upstream (the same trap `finish_reason` already had to be
+# popped for). `ui_context` is a separate, already-validated top-level dict that
+# never reaches the model as a message.
+PENDING_REPORT_TYPE = "report_type"
 
 # The clarify prompt is emitted verbatim (one localized string per language), so
 # the previous assistant turn is recognised by exact match in any language —
@@ -1616,37 +1646,82 @@ _CLARIFY_PROMPT_SET = frozenset(v.strip() for v in _REPORT_CLARIFY_PROMPTS.value
 
 
 def _is_report_clarify_prompt(content: str) -> bool:
-    """True if `content` is the quick/full clarification prompt (any language)."""
+    """True if `content` is the quick/full clarification prompt (any language).
+
+    TRANSITIONAL: prose matching is the pre-`PENDING_REPORT_TYPE` fallback only.
+    It is fragile by construction — any edit to the user-facing copy (a fixed
+    typo, added markdown, trailing whitespace) silently breaks the recovery of
+    the pending state — so nothing new should depend on it. See
+    `_prose_fallback_applies` for when it is still consulted.
+    """
     return (content or "").strip() in _CLARIFY_PROMPT_SET
 
 
-def _needs_report_clarification(query: str, messages: list) -> bool:
+def _prose_fallback_applies(ui_context: dict) -> bool:
+    """The removal criterion for the transitional prose match.
+
+    The fallback exists for exactly one situation: a chat that was already open
+    in a browser tab when the build was upgraded, whose clarify turn came from
+    the pre-marker code and therefore carries no marker to echo back.
+
+    That situation is identified by DATA, not by a date: a marker-aware client
+    always sends the `pending` key in `ui_context` — empty string when nothing
+    is armed (`_getUiContext` in `ai-chat.js` sets it unconditionally). So the
+    absence of the key is the signature of an older client, and the fallback is
+    scoped to exactly that. For every current client the prose path is already
+    unreachable, whatever the assistant last said.
+
+    **Removal criterion**: delete `_is_report_clarify_prompt`,
+    `_CLARIFY_PROMPT_SET` and this function once no client older than the
+    marker (shipped in 1.5.7) can still be talking to this build — i.e. one
+    release after every supported install has taken an update. Nothing else may
+    depend on it in the meantime; `tests/test_ai_report_flow.py` pins both the
+    "old client still works" and the "current client never reaches it" halves.
+    """
+    return "pending" not in (ui_context or {})
+
+
+def _report_clarify_pending(messages: list, ui_context: dict = None) -> bool:
+    """True when the clarification question is outstanding for this turn.
+
+    Reads the explicit `ui_context["pending"]` marker the frontend echoes back.
+    The transitional prose match is reached ONLY for a client that predates the
+    marker — see `_prose_fallback_applies` for the bound.
+    """
+    ui_context = ui_context or {}
+    if (ui_context.get("pending") or "") == PENDING_REPORT_TYPE:
+        return True
+    if not _prose_fallback_applies(ui_context):
+        return False
+    for msg in reversed((messages or [])[:-1]):
+        if msg.get("role") == "assistant":
+            return _is_report_clarify_prompt(msg.get("content", ""))
+    return False
+
+
+def _needs_report_clarification(query: str, messages: list, ui_context: dict = None) -> bool:
     """True when the query is about reports but doesn't specify quick vs full."""
     q = query.lower()
     if not any(w in q for w in _REPORT_WORDS):
         return False
     if any(kw in q for kw in _REPORT_SPECIFIC_KEYWORDS):
         return False
-    # Don't re-ask if the last assistant turn already asked the clarification.
-    for msg in reversed(messages[:-1]):
-        if msg.get("role") == "assistant":
-            if _is_report_clarify_prompt(msg.get("content", "")):
-                return False
-            break
+    # Don't re-ask if the clarification is already outstanding.
+    if _report_clarify_pending(messages, ui_context):
+        return False
     return True
 
 
-def _get_pending_report_type(messages: list) -> str | None:
-    """If the previous assistant turn was the quick/full clarification question,
-    return 'quick' or 'full' based on the latest user answer, or None."""
-    if len(messages) < 2:
+def _get_pending_report_type(messages: list, ui_context: dict = None) -> str | None:
+    """Resolve the user's answer to an outstanding quick/full clarification.
+
+    Returns 'quick'/'full' when the clarification is pending (explicit marker
+    first, transitional prose match second) and the latest user turn picks one,
+    else None.
+    """
+    if not messages or messages[-1].get("role") != "user":
         return None
-    prev_assistant = None
-    for msg in reversed(messages[:-1]):
-        if msg.get("role") == "assistant":
-            prev_assistant = msg
-            break
-    if not prev_assistant or not _is_report_clarify_prompt(prev_assistant.get("content", "")):
+    if not _report_clarify_pending(messages, ui_context):
         return None
     user_answer = messages[-1].get("content", "").lower()
     if any(kw in user_answer for kw in _QUICK_KWS):
@@ -1837,8 +1912,22 @@ def resolve_guide(query: str, ui_context: dict = None, language: str = "en"):
     Returns (guide_id, steps) when a guide should launch, else (None, None).
     `steps` already includes the file-select / translation handling applied by
     _format_fewshot_hint.
+
+    An OUTSTANDING clarification wins over any local match. `/ai/match` runs
+    BEFORE `/ai/chat` on every turn, so without this a machine whose learned
+    👍 weights push a report guide over the launch gate would answer
+    "make a report" locally and `/ai/chat` — the only place the quick/full
+    clarification lives — would never be called: the whole pending mechanism
+    would be dead on that machine and identical on a fresh one. It also fixes a
+    live mis-variant: the French/Russian ANSWERS ("rapport complet", «полный
+    отчёт») resolve locally to `report_full_from_data`, opening the walkthrough
+    on export steps the user is already past, where `deterministic_events`
+    would have picked the in-report variant. English was unaffected, which is
+    why it went unnoticed.
     """
     ui_context = ui_context or {}
+    if ui_context.get("pending"):
+        return None, None
     if not query or _is_greeting(query) or _is_out_of_scope(query):
         return None, None
     matched, score = _match_guide_example(query, ui_context, language)
@@ -1873,7 +1962,7 @@ def deterministic_events(messages: list, language: str, ui_context: dict = None)
     if _is_out_of_scope(last_user_query):
         return [{"type": "chunk", "content": _OUT_OF_SCOPE.get(language, _OUT_OF_SCOPE["en"])}]
 
-    pending_report = _get_pending_report_type(messages)
+    pending_report = _get_pending_report_type(messages, ui_context)
     if pending_report == "quick":
         # Quick report fires the "Report Details" Swal dialog — and while that
         # modal is open the chat widget is unreachable, so the walkthrough must
@@ -1896,8 +1985,15 @@ def deterministic_events(messages: list, language: str, ui_context: dict = None)
             {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}},
         ]
 
-    if _needs_report_clarification(last_user_query, messages):
-        return [{"type": "chunk", "content": _REPORT_CLARIFY_PROMPTS.get(language, _REPORT_CLARIFY_PROMPTS["en"])}]
+    if _needs_report_clarification(last_user_query, messages, ui_context):
+        # The marker event travels with the question: the frontend stores it and
+        # echoes it back as ui_context["pending"] on the next turn, so the answer
+        # ("quick" / "full") is recognised from explicit state instead of a
+        # string comparison against this localized, editable prose.
+        return [
+            {"type": "chunk", "content": _REPORT_CLARIFY_PROMPTS.get(language, _REPORT_CLARIFY_PROMPTS["en"])},
+            {"type": "pending", "pending": PENDING_REPORT_TYPE},
+        ]
 
     return None
 

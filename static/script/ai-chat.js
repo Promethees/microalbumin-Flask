@@ -442,6 +442,20 @@
         activeLang: null,
         currentAbort: null,
         lastAction: null,
+        // Machine-readable conversation state echoed back to /ai/chat on the NEXT
+        // turn (currently only 'report_type', set by the quick/full clarification).
+        //
+        // LIFECYCLE — one armer, one consumer, one turn:
+        //   armed    by the `pending` SSE event (_sendToLLM's reader), nowhere else;
+        //   consumed by _consumePending(), called at the HEAD of every path that
+        //            handles a user turn (send / _cmdExecute / _saveEdit), which
+        //            takes the value as a local and leaves AI.pending empty;
+        //   re-armed by _rearmPending() only when the turn never reached the
+        //            server (rate-limited, request failed), so a retry still works.
+        // Because the consume is unconditional and happens before any branch, no
+        // early return can leak the marker into a later, unrelated turn — the
+        // bound is structural rather than a clear-call on each exit path.
+        pending: '',
         LANG_LABELS: {
             en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU', ko: '한'
         },
@@ -805,6 +819,13 @@
         // Drop this user turn and everything after it from the LLM history;
         // _sendToLLM re-adds the edited query and streams a fresh reply.
         AI.messages = AI.messages.slice(0, msgIndex);
+        // …and drop any outstanding clarification with it. An edit REPLACES the
+        // turn the marker was an answer to, so the marker is void: keeping it
+        // shipped ui_context.pending='report_type' alongside the new text, and
+        // rewriting "how do I make a report?" to "how do I export to Excel?"
+        // launched the full-report walkthrough ('excel' is a _FULL_KWS word)
+        // instead of answering the edited question.
+        _consumePending();
 
         // Remove this bubble and every node after it from the DOM.
         const container = document.getElementById('okapi-ai-messages');
@@ -916,8 +937,15 @@
     // so the guide uses THIS app's own UI rather than the cloud proxy's. Returns a
     // Promise<bool>: true when a local guide was launched (caller should stop),
     // false to fall through to the LLM. Any error falls through.
-    function _tryLocalGuide(text) {
+    function _tryLocalGuide(text, pending) {
         const lang = AI.activeLang || 'en';
+        // An outstanding clarification outranks any local guide match: this turn
+        // is an ANSWER, and only /ai/chat knows the question. Without this, a
+        // French/Russian "rapport complet" / «полный отчёт» matches
+        // report_full_from_data locally and opens the wrong variant, and on a
+        // machine whose learned 👍 weights push a report guide over the launch
+        // gate the clarification would never be reachable at all.
+        if (pending) return Promise.resolve(false);
         return fetch('/ai/match', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -939,7 +967,23 @@
             .catch(() => false);
     }
 
-    function _getUiContext() {
+    // Take the pending marker for this turn and disarm it. THE ONLY consumer:
+    // every user-turn entry point calls this first, so the marker can never
+    // outlive the single turn that follows the one which armed it.
+    function _consumePending() {
+        const pending = AI.pending || '';
+        AI.pending = '';
+        return pending;
+    }
+
+    // Put a consumed marker back when its turn never reached /ai/chat (client
+    // rate limit, network failure). Never overwrites a marker armed since — the
+    // server's answer always wins over a retry of a turn that was not processed.
+    function _rearmPending(pending) {
+        if (pending && !AI.pending) AI.pending = pending;
+    }
+
+    function _getUiContext(pending) {
         // AppState is a bare top-level `const` (index.js) — a classic-script const
         // is a global *lexical* binding, NOT a property of window, so `window.AppState`
         // is undefined. Reading it that way made mode/subfolder/script_running always
@@ -970,6 +1014,17 @@
             cal_mode: calMode ? (calMode.getAttribute('data-value') || '') : '',
             script_running: !!appState.scriptRunning,
             subfolder,
+            // Explicit pending-clarification state (see AI.pending). Carried in
+            // ui_context — NOT on a message — because /ai/chat forwards the message
+            // dicts verbatim to Groq, which rejects unknown message fields.
+            //
+            // Passed in by the caller rather than read from AI.pending: the marker
+            // is consumed at the head of the turn, so by the time the request is
+            // built AI.pending is already empty. The key is ALWAYS present (empty
+            // when unarmed) — the backend reads its absence as "client older than
+            // the marker" and only then falls back to prose matching
+            // (`_prose_fallback_applies` in ai_assistant.py).
+            pending: pending || '',
         };
     }
 
@@ -1028,6 +1083,11 @@
     function _cmdExecute(cmd) {
         const input = document.getElementById('okapi-ai-input');
         input.value = '';
+        // A slash command ends any outstanding clarification: the user answered
+        // with an action instead of quick/full. Consumed HERE and not only in
+        // send() because the command picker (Tab/Enter -> _pickerConfirm) reaches
+        // this function without going through send() at all.
+        _consumePending();
 
         if (cmd.action === 'clear') {
             OkapiAI.clearHistory();
@@ -1337,6 +1397,10 @@
             const text = (input.value || '').trim();
             if (!text) return;
 
+            // This is a user turn: take the pending marker now, before any branch.
+            // Every exit below therefore leaves AI.pending empty by construction.
+            const pending = _consumePending();
+
             // Route exact slash commands before the activation gate — guide commands
             // work without AI being activated.
             const _matchedCmd = SLASH_COMMANDS.find(c => c.cmd === text.toLowerCase());
@@ -1345,13 +1409,19 @@
             input.value = '';
             // Resolve UI-navigation guides LOCALLY first (typo/phrasing tolerant) so
             // they use THIS app's UI rather than the cloud proxy's. Works without AI
-            // activation. Falls through to the LLM when no guide fires.
-            _tryLocalGuide(text).then(handled => {
-                if (!handled) OkapiAI._sendToLLM(text);
+            // activation. Falls through to the LLM when no guide fires. Skipped
+            // outright while a clarification is outstanding (see _tryLocalGuide).
+            _tryLocalGuide(text, pending).then(handled => {
+                if (handled) return;
+                OkapiAI._sendToLLM(text, pending);
             });
         },
 
-        _sendToLLM(text) {
+        // `pending` is the marker already consumed by the caller for THIS turn
+        // (send passes it through; _saveEdit deliberately passes nothing). A
+        // direct call with no argument is a fresh turn with no marker.
+        _sendToLLM(text, pending) {
+            pending = pending || '';
             const input = document.getElementById('okapi-ai-input');
             if (AI.status && !AI.status.api_ready) {
                 const lang = AI.activeLang || 'en';
@@ -1371,6 +1441,9 @@
                 const lang = AI.activeLang || 'en';
                 const fn = _RATE_LIMITED_MSG[lang] || _RATE_LIMITED_MSG.en;
                 _addSystemMsg(fn(_waitSecs));
+                // The turn was never sent, so the clarification is still
+                // outstanding — put the marker back so the retry resolves.
+                _rearmPending(pending);
                 return;
             }
 
@@ -1400,16 +1473,21 @@
             (async () => {
                 let fullReply = '';
                 try {
+                    // The marker was consumed at the head of the turn; hand it to
+                    // the context builder explicitly (it applies to this one send).
+                    const uiContext = _getUiContext(pending);
                     const resp = await fetch('/ai/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ messages: historyToSend, language: lang, ui_context: _getUiContext() }),
+                        body: JSON.stringify({ messages: historyToSend, language: lang, ui_context: uiContext }),
                         signal: controller.signal,
                     });
 
                     if (!resp.ok || !resp.body) {
                         const err = await resp.json().catch(() => ({}));
                         _finalizeStreamingMsg(msgDiv, null, '⚠ ' + (err.message || 'Request failed'));
+                        // Nothing was processed — the clarification still stands.
+                        _rearmPending(pending);
                         return;
                     }
 
@@ -1434,6 +1512,12 @@
                             if (event.type === 'chunk') {
                                 fullReply += event.content;
                                 _updateStreamingMsg(msgDiv, fullReply);
+                            } else if (event.type === 'pending') {
+                                // The assistant is waiting on an answer (quick vs
+                                // full report). Store the marker; the next send
+                                // echoes it back in ui_context so the backend
+                                // recovers the state from data, not from prose.
+                                AI.pending = event.pending || '';
                             } else if (event.type === 'clear') {
                                 fullReply = '';
                                 _updateStreamingMsg(msgDiv, '');
@@ -1488,6 +1572,11 @@
                         }
                     } else {
                         _finalizeStreamingMsg(msgDiv, null, '⚠ Network error: ' + err.message);
+                        // The send failed before the server saw it — keep the
+                        // clarification outstanding so retrying "quick" works.
+                        // Without this the marker was burned by a flaky send and
+                        // only the transitional prose match rescued the retry.
+                        _rearmPending(pending);
                     }
                 } finally {
                     AI.currentAbort = null;
@@ -1506,6 +1595,7 @@
 
         clearHistory() {
             AI.messages = [];
+            AI.pending = '';
             const container = document.getElementById('okapi-ai-messages');
             if (container) container.innerHTML = '';
         },
@@ -1520,6 +1610,7 @@
                 if (AI.currentAbort) OkapiAI.stopGeneration();
                 AI.messages = [];
                 AI.lastAction = null;
+                AI.pending = '';
                 if (container) container.innerHTML = '';
                 const input = document.getElementById('okapi-ai-input');
                 if (input) input.value = '';

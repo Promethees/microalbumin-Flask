@@ -19,6 +19,25 @@ import pytest
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 import ai_assistant  # noqa: E402
+import ai_feedback  # noqa: E402
+
+
+# ── Learned-weight isolation ─────────────────────────────────────────────────
+# `_match_guide_example` folds `ai_feedback.learned_terms()` / `learned_bonus()`
+# into every score whenever the feedback toggle is on, reading
+# `ai_guide_weights.json` from the writable data root. That file is per-machine
+# user data and is .gitignore'd, so CI never has one — a developer who thumbed a
+# few answers up ran a DIFFERENT baseline from CI on the same commit.
+# Demonstrated: a `select_file` weight of 1.5 over the terms export/data re-routes
+# "how do i export my data" from `export_data` (1.8) to `select_file` (3.5).
+# The toggle is forced off here, which is exactly the branch
+# `_match_guide_example` uses to skip the learned layer. Mirrors the fixture in
+# test_ai_guide_routing.py — the two files exercise the same matcher.
+
+@pytest.fixture(autouse=True)
+def neutral_learned_weights(monkeypatch):
+    monkeypatch.setattr(ai_feedback, "is_enabled", lambda: False)
+
 
 # UI contexts the matcher receives from the frontend.
 KIN_NODATA = {"mode": "kinetics", "data_loaded": False, "app_started": True}
