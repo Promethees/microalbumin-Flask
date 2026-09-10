@@ -26,7 +26,7 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.45);
             backdrop-filter: blur(6px); text-align: center;
         }
-        .logo { display: block; width: 72px; height: 72px; margin: 0 auto 14px; object-fit: contain; }
+        .logo { display: block; width: 88px; height: 88px; margin: 0 auto 14px; object-fit: contain; }
         h1 { font-size: 1.4rem; margin: 0 0 6px; }
         p.sub { color: var(--muted); margin: 0 0 22px; font-size: 0.92rem; line-height: 1.5; }
         button {
@@ -52,24 +52,17 @@
             margin-top: 10px; font-size: 0.76rem; color: var(--muted);
             word-break: break-all; opacity: 0.8;
         }
-        .spinner {
-            width: 26px; height: 26px; margin: 6px auto 14px; border-radius: 50%;
-            border: 3px solid rgba(129,140,248,0.35); border-top-color: var(--accent-hi);
-            animation: spin .8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
     {% include "_a11y_head.html" %}
 </head>
 <body>
     <main class="card">
-        <img class="logo" src="{{ url_for('static', filename='okapi.png') }}" alt="EasyOKAPI"
-             onerror="this.style.display='none'">
+        <img class="logo" id="brandMark" src="{{ url_for('static', filename='okapi-run.gif') }}"
+             alt="EasyOKAPI" onerror="this.style.display='none'">
         <h1>Verify your license</h1>
         <p class="sub">EasyOKAPI needs to confirm your license online. We check
             automatically and continue the moment it is confirmed.</p>
 
-        <div id="spinner" class="spinner"></div>
         <button id="retryBtn" type="button" style="display:none">Check again</button>
         <div id="msg" class="msg" role="status" aria-live="polite">Checking…</div>
 
@@ -87,7 +80,7 @@
 
     <script>
         (function () {
-            var spinner = document.getElementById('spinner');
+            var brandMark = document.getElementById('brandMark');
             var btn = document.getElementById('retryBtn');
             var msg = document.getElementById('msg');
             var detail = document.getElementById('detail');
@@ -95,6 +88,15 @@
             var detailFix = document.getElementById('detailFix');
             var detailDiag = document.getElementById('detailDiag');
             var reportLink = document.getElementById('reportLink');
+
+            // The okapi is the loading indicator: running while a check is in
+            // flight, standing still once it stops. Reduced motion never gets the
+            // GIF — CSS cannot pause its frames, so the choice is made here.
+            var OKAPI_RUN = {{ url_for('static', filename='okapi-run.gif') | tojson }};
+            var OKAPI_STILL = {{ url_for('static', filename='okapi.png') | tojson }};
+            var STILL_ONLY = window.matchMedia
+                && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (STILL_ONLY) { brandMark.src = OKAPI_STILL; }
 
             var SUPPORT_EMAIL = {{ support_email | tojson }};
             var APP_VERSION = {{ app_version | tojson }};
@@ -129,7 +131,7 @@
 
             function setMsg(t, kind) { msg.textContent = t || ''; msg.className = 'msg' + (kind ? ' ' + kind : ''); }
             function busy(on) {
-                spinner.style.display = on ? 'block' : 'none';
+                brandMark.src = (on && !STILL_ONLY) ? OKAPI_RUN : OKAPI_STILL;
                 btn.style.display = on ? 'none' : 'block';
                 btn.disabled = on;
                 if (on) { detail.hidden = true; }

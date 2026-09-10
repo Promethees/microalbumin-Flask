@@ -29,10 +29,6 @@
             to   { opacity: 1; transform: scale(1); }
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
@@ -67,8 +63,6 @@
 
         body.light .card-title    { color: #1e293b; }
         body.light .card-subtitle { color: #64748b; }
-        body.light .spinner-track  { stroke: #e2e8f0; }
-        body.light .spinner-head   { stroke: #6366f1; }
         body.light .info-badge {
             background: #eef2ff;
             border: 1px solid #c7d2fe;
@@ -97,8 +91,6 @@
 
         body.dark .card-title    { color: #f1f5f9; }
         body.dark .card-subtitle { color: rgba(226, 232, 240, 0.6); }
-        body.dark .spinner-track  { stroke: rgba(255, 255, 255, 0.1); }
-        body.dark .spinner-head   { stroke: #818cf8; }
         body.dark .info-badge {
             background: rgba(99, 102, 241, 0.14);
             border: 1px solid rgba(129, 140, 248, 0.35);
@@ -132,22 +124,21 @@
             animation: fadeInUp 0.5s ease both;
         }
 
-        /* ── Spinner ─────────────────────────────────────── */
+        /* ── Loader ──────────────────────────────────────── */
+        /* Same running okapi as #global-spinner in the app itself, so a restart
+           does not hand the user a different-looking wait. This page is
+           standalone (no style.css), hence the duplicated rule. The frames are
+           the GIF's own, so reduced motion swaps the still logo in. */
         .spinner-wrap {
             animation: scaleIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
         }
-        .spinner-svg {
-            width: 72px;
-            height: 72px;
-            animation: spin 1s linear infinite;
+        .okapi-loader {
+            width: 104px;
+            height: 104px;
+            display: block;
         }
-        .spinner-track { fill: none; stroke-width: 5; }
-        .spinner-head  {
-            fill: none;
-            stroke-width: 5;
-            stroke-linecap: round;
-            stroke-dasharray: 150;
-            stroke-dashoffset: 112;
+        @media (prefers-reduced-motion: reduce) {
+            .okapi-loader { content: url("{{ url_for('static', filename='okapi.png') }}"); }
         }
 
         /* ── Text ────────────────────────────────────────── */
@@ -183,10 +174,8 @@
 
     <main class="card" id="main-content" tabindex="-1" role="status" aria-live="polite">
         <div class="spinner-wrap">
-            <svg class="spinner-svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
-                <circle class="spinner-track" cx="25" cy="25" r="22"/>
-                <circle class="spinner-head"  cx="25" cy="25" r="22"/>
-            </svg>
+            <img class="okapi-loader" src="{{ url_for('static', filename='okapi-run.gif') }}"
+                 alt="" aria-hidden="true">
         </div>
 
         <h1 class="card-title" id="card-title">Switching data folder…</h1>
