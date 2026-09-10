@@ -286,6 +286,7 @@ function copyFile(tableSelector = "#file-table") {
     formData.append('mode', AppState.currentMeasurementMode);
     formData.append('tabletype', tableSelector);
 
+    window.showSpinner?.();
     fetch('/copy_file', {
         method: 'POST',
         headers: {
@@ -337,7 +338,8 @@ function copyFile(tableSelector = "#file-table") {
                 icon: 'error',
                 confirmButtonText: window.t('dlg.ok', 'OK')
             });
-        });
+        })
+        .finally(() => window.hideSpinner?.());
 }
 
 function uploadFile(tableSelector = "#file-table") {
@@ -539,6 +541,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
             formData.append('filename', fileName);
             formData.append('tabletype', tableSelector);
 
+            window.showSpinner?.();
             fetch('/delete_file', {
                 method: 'POST',
                 headers: {
@@ -548,7 +551,8 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
             })
                 .then(response => response.json())
                 .then(handleResponse)
-                .catch(handleError);
+                .catch(handleError)
+                .finally(() => window.hideSpinner?.());
         } else if (tableSelector === "#json-table") {
             if (AppState.currentJSON === fileName) {
                 deselectFile(tableSelector);
@@ -562,6 +566,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
             formData.append('tabletype', tableSelector);
             formData.append('numSources', AppState.numSources);
 
+            window.showSpinner?.();
             fetch('/delete_file', {
                 method: 'POST',
                 headers: {
@@ -571,7 +576,8 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
             })
                 .then(response => response.json())
                 .then(handleResponse)
-                .catch(handleError);
+                .catch(handleError)
+                .finally(() => window.hideSpinner?.());
         }
     };
 
@@ -2204,6 +2210,7 @@ function showMergeModal() {
         selectedFiles.forEach(f => formData.append('file_names', f));
         formData.append('output_name', output_name);
 
+        window.showSpinner?.();
         fetch('/merge_csv', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2225,19 +2232,27 @@ function showMergeModal() {
             })
             .catch(error => {
                 Swal.fire({ title: window.t('dlg.error_bang', 'Error!'), text: error.message || 'Failed to merge files', icon: 'error' });
-            });
+            })
+            .finally(() => window.hideSpinner?.());
     });
 }
 
 // ── Report Subject CRUD ──────────────────────────────────────────────────────
 
 async function refreshReportSubjects() {
-    const res = await fetch('/get_report_subjects');
-    const data = await res.json();
-    if (data.status === 'success') {
-        updateReportTable(data.subjects || []);
-    } else {
-        console.warn("Failed to refresh report subjects:", data.message);
+    window.showSkeleton?.('file-table', { rows: 4, cols: 4 });
+    try {
+        const res = await fetch('/get_report_subjects');
+        const data = await res.json();
+        if (data.status === 'success') {
+            updateReportTable(data.subjects || []);
+        } else {
+            console.warn("Failed to refresh report subjects:", data.message);
+        }
+    } finally {
+        // updateReportTable rewrites the table on the happy path; this also
+        // clears the placeholder when the request failed and nothing rendered.
+        window.hideSkeleton?.('file-table');
     }
 }
 
@@ -2280,6 +2295,7 @@ async function editReportSubject(subjectName, button) {
     if (!result) return;
 
     const { newName, order } = result;
+    window.showSpinner?.();
     try {
         if (order.length > 0) {
             await fetch('/save_report_item_order', {
@@ -2307,10 +2323,15 @@ async function editReportSubject(subjectName, button) {
         }
     } catch (e) {
         Swal.fire('Error', e.message, 'error');
+    } finally {
+        window.hideSpinner?.();
     }
 }
 
 async function loadEditSwalItems(subjectName, container) {
+    // Cards arriving into the dialog's own region — the placeholder replaces the
+    // static "Loading items…" line, which never moved.
+    window.showSkeleton?.(container, { kind: 'cards', count: 3 });
     try {
         const res = await fetch(`/get_report_items?subject=${encodeURIComponent(subjectName)}`);
         const data = await res.json();
@@ -2387,6 +2408,11 @@ async function loadEditSwalItems(subjectName, container) {
         errP.textContent = `Error: ${e.message}`;
         container.innerHTML = '';
         container.appendChild(errP);
+    } finally {
+        // Every path above rewrites the container, but the placeholder is armed
+        // on a timer: without this a reply faster than the delay would paint a
+        // skeleton on top of the cards that already rendered.
+        window.hideSkeleton?.(container);
     }
 }
 
@@ -2416,6 +2442,11 @@ async function confirmSwalItemDelete(btn) {
     const filename = card.dataset.filename;
     const subject = card.dataset.subject;
 
+    // This runs inside the open Edit-subject dialog, so the feedback stays on the
+    // card: #global-spinner sits above SweetAlert and would scrim the very dialog
+    // the user is working in.
+    card.classList.add('is-busy');
+    card.querySelectorAll('button').forEach(b => { b.disabled = true; });
     try {
         const response = await fetch('/delete_report_item', {
             method: 'POST',
@@ -2441,6 +2472,9 @@ async function confirmSwalItemDelete(btn) {
             consoleContainer.innerHTML = '<p style="color:#666;">No items found in this subject folder.</p>';
         }
     } catch (e) {
+        // The card survived the failure, so hand it back in a usable state.
+        card.classList.remove('is-busy');
+        card.querySelectorAll('button').forEach(b => { b.disabled = false; });
         alert('Error: ' + e.message);
         cancelSwalItemDelete(btn);
     }
@@ -2456,6 +2490,7 @@ function deleteReportSubject(subjectName, button) {
         confirmButtonText: window.t('dlg.yes_delete', 'Yes, delete')
     }).then(async (result) => {
         if (!result.isConfirmed) return;
+        window.showSpinner?.();
         try {
             const resp = await fetch('/delete_report_subject', {
                 method: 'POST',
@@ -2472,11 +2507,14 @@ function deleteReportSubject(subjectName, button) {
             await refreshReportSubjects();
         } catch (e) {
             Swal.fire('Error', e.message, 'error');
+        } finally {
+            window.hideSpinner?.();
         }
     });
 }
 
 async function copyReportSubject(subjectName) {
+    window.showSpinner?.();
     try {
         const resp = await fetch('/copy_report_subject', {
             method: 'POST',
@@ -2488,6 +2526,8 @@ async function copyReportSubject(subjectName) {
         await refreshReportSubjects();
     } catch (e) {
         Swal.fire('Error', e.message, 'error');
+    } finally {
+        window.hideSpinner?.();
     }
 }
 
@@ -2542,6 +2582,7 @@ function showMergeSubjectsModal() {
     }).then(async (result) => {
         if (!result.isConfirmed) return;
         const { s1, s2, out } = result.value;
+        window.showSpinner?.();
         try {
             const resp = await fetch('/merge_report_subjects', {
                 method: 'POST',
@@ -2553,6 +2594,8 @@ function showMergeSubjectsModal() {
             await refreshReportSubjects();
         } catch (e) {
             Swal.fire('Error', e.message, 'error');
+        } finally {
+            window.hideSpinner?.();
         }
     });
 }
@@ -2581,6 +2624,7 @@ async function saveRangeCsv() {
 
     const multiplier = getTimeUnitMultiplier(unit);
 
+    window.showSpinner?.();
     try {
         const res = await fetch('/save_range_csv', {
             method: 'POST',
@@ -2600,6 +2644,8 @@ async function saveRangeCsv() {
         }
     } catch (e) {
         Swal.fire({ icon: 'error', title: window.t('dlg.error', 'Error'), text: window.t('dlg.request_failed', 'Request failed.') });
+    } finally {
+        window.hideSpinner?.();
     }
 }
 
@@ -2622,6 +2668,7 @@ async function saveNormalizedCsv() {
 
     if (!saveName) return;
 
+    window.showSpinner?.();
     try {
         const res = await fetch('/save_normalized_csv', {
             method: 'POST',
@@ -2640,6 +2687,8 @@ async function saveNormalizedCsv() {
         }
     } catch (e) {
         Swal.fire({ icon: 'error', title: window.t('dlg.error', 'Error'), text: window.t('dlg.request_failed', 'Request failed.') });
+    } finally {
+        window.hideSpinner?.();
     }
 }
 
@@ -2662,6 +2711,7 @@ async function saveNormalizedCsvForSource(sourceIndex) {
 
     if (!saveName) return;
 
+    window.showSpinner?.();
     try {
         const res = await fetch('/save_normalized_csv', {
             method: 'POST',
@@ -2680,6 +2730,8 @@ async function saveNormalizedCsvForSource(sourceIndex) {
         }
     } catch (e) {
         Swal.fire({ icon: 'error', title: window.t('dlg.error', 'Error'), text: window.t('dlg.request_failed', 'Request failed.') });
+    } finally {
+        window.hideSpinner?.();
     }
 }
 
@@ -2709,6 +2761,7 @@ async function saveLinearityRangeCsvForSource(sourceIndex, linearXMin, linearXMa
 
     if (!saveName) return;
 
+    window.showSpinner?.();
     try {
         const res = await fetch('/save_range_csv', {
             method: 'POST',
@@ -2728,5 +2781,7 @@ async function saveLinearityRangeCsvForSource(sourceIndex, linearXMin, linearXMa
         }
     } catch (e) {
         Swal.fire({ icon: 'error', title: window.t('dlg.error', 'Error'), text: window.t('dlg.request_failed', 'Request failed.') });
+    } finally {
+        window.hideSpinner?.();
     }
 }

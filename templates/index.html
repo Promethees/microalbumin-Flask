@@ -779,9 +779,11 @@
         alignTopWithReference();
 
         async function revealDownloadToken() {
+            window.showSpinner?.();
             try {
                 const res = await fetch('/api/account/token', { method: 'POST' });
                 const data = await res.json();
+                window.hideSpinner?.();
                 if (!res.ok) {
                     Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Could not generate token' });
                     return;
@@ -815,6 +817,8 @@
                 });
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'Network error', text: 'Could not reach the server.' });
+            } finally {
+                window.hideSpinner?.();
             }
         }
 
@@ -881,6 +885,7 @@
             if (!step2.isConfirmed) return;
 
             // Step 3 — call the API
+            window.showSpinner?.();
             try {
                 const res = await fetch('/api/account/delete', {
                     method: 'POST',
@@ -888,6 +893,7 @@
                     body: JSON.stringify({ password: step2.value })
                 });
                 const data = await res.json();
+                window.hideSpinner?.();
 
                 if (res.ok) {
                     await Swal.fire({
@@ -909,6 +915,8 @@
                 }
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'Network error', text: 'Could not reach the server.' });
+            } finally {
+                window.hideSpinner?.();
             }
         }
 

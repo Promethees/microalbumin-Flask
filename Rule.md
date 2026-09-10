@@ -78,7 +78,7 @@
 - Three measurement modes: `kinetics`, `point`, `calibrate`. Mode switching triggers `switchingModes()` and `switchingCalModes()`.
 - "Source" terminology is used (not "sensor") for data sources.
 - **Saturation (Sat) requires a confirmed plateau**: `math_ops.calculate_kinetics_quantities` reports `saturationValue`/`timeToSaturation` only when a real plateau is found — the segment after the linear region must hold `>= max(3, window_size // 2)` points **and** have its own linear slope `<= SAT_FLAT_FRACTION` (0.10) of `max_rate` (`_tail_is_flat`). If the trace was interrupted while still rising, the tail is too short, or no linear region exists, Sat is `"--"` — never a median of still-rising or arbitrary data. Max rate + linear region are still reported. The JS Sat display keys off `saturationValue === "--"` (`data-display.js`), not `timeToSaturation !== null`. Covered by `test_calc_kinetics_*` in `tests/test_math_ops.py`. Do not emit a Sat number without the flatness gate.
-- **Skeleton vs spinner — two different promises.** `showSkeleton(target, opts)` /
+- **Skeleton vs spinner vs busy — three different promises.** `showSkeleton(target, opts)` /
   `hideSkeleton(target)` (`static/script/skeleton.js`, loaded in `<head>`) mark a region
   whose **content is being fetched**: the file/JSON tables on a mode switch, the chart on
   a file load, the report item list. `window.showSpinner()`/`hideSpinner()` (the
@@ -90,6 +90,21 @@
   in `style.css` — do not hand-draw per-component skeletons. Clear one **at the line that
   paints the real content**, not when the fetch resolves (`updateFileTable` renders only
   after `filterFiles()` finishes its own round trips).
+  - **The third member is `.is-busy`, and it exists for work started inside an open
+    dialog.** `#global-spinner` is `z-index: 15000`, *deliberately* above SweetAlert, so
+    showing it for an action taken in a dialog scrims the dialog the user is working in —
+    `confirmSwalItemDelete` dims and disables the one card instead. For the same reason,
+    a handler that shows the spinner and then opens a `Swal` must **hide it before the
+    dialog opens**, not only in a trailing `finally` (`revealDownloadToken`,
+    `deleteAccount` in `index.html` drop it right after the response is parsed).
+  - **A fetch with no indicator is a decision, not an oversight — and some are correct.**
+    Leave silent: background polls (`/ai/status`), optimistic preference writes
+    (`/ai/settings`), `beforeunload` beacons (`/drive/sync`), decorative enrichment with a
+    graceful fallback (`/api/release-info`), memoised leaf helpers whose callers already
+    show something (`fetchCalibrationJsonContent`), and the generic `fetchJSON` wrapper.
+    Everything a user *starts by clicking* and then waits on gets one of the three.
+    **Anti-pattern**: adding an indicator to a leaf helper — its callers already own the
+    wait, and a memoised call would flash a placeholder for a cache hit.
 - **Point-mode reference unit**: the "Set reference point to export" input (`#exp-json-time-value`) is entered in the currently-selected `#time-unit`; its label and value rescale whenever `#time-unit` changes (`refreshExpTimeValueForUnit` in `init.js`). Estimates use the selected unit, but **exports always convert the reference point to minutes** (`generatePointData` in `data-handling.js`) so calibration files stay in minutes (`TimeUnit: minute`).
 
 ### 2.8 Security & Production

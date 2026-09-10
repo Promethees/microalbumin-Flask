@@ -3598,8 +3598,23 @@ body.dark .skel-card {
     margin-top: 9px;
 }
 
+/* Busy, for a single element whose own action is in flight — a card being
+   removed, a row being written. It is the third and smallest member of the
+   family: #global-spinner is the page, a skeleton is a region, `.is-busy` is
+   one thing. Use it when the work happens inside an open dialog, where the
+   spinner (z-index 15000, deliberately above SweetAlert) would scrim the very
+   dialog the user is working in. It reuses skel-pulse rather than introducing
+   a second cadence, and it takes pointer events away so the element cannot be
+   clicked twice while the server is still deciding. */
+.is-busy {
+    opacity: 0.55;
+    pointer-events: none;
+    animation: skel-pulse 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .skel {
+    .skel,
+    .is-busy {
         animation: none;
     }
 }

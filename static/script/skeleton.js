@@ -11,6 +11,11 @@
  *   2. Nothing shows before DELAY_MS. A warm dyno answers fast enough that an
  *      instant skeleton would only flash, which reads worse than a short wait.
  *
+ * There is a third, smaller member of the family for the case neither covers:
+ * the `.is-busy` class marks ONE element whose own action is in flight, for
+ * work started inside an open dialog — #global-spinner is z-index 15000,
+ * deliberately above SweetAlert, so it would scrim the dialog being used.
+ *
  * Shapes live in the "Skeleton placeholders" block of static/style.css.
  */
 (function () {
