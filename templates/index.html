@@ -69,6 +69,17 @@
         <div class="spinner-container">
             <div class="okapi-loader" aria-hidden="true"></div>
             <div class="spinner-message">{{ t('spinner.processing') }}</div>
+            {# Only raised for a wait long enough to have a shape — a big file
+               downloading. The bar is aria-hidden because #spinner-detail says
+               the same thing in words, into the live region above. #}
+            <div id="spinner-progress" class="spinner-progress" aria-hidden="true" hidden>
+                <div id="spinner-progress-bar" class="spinner-progress-bar"></div>
+            </div>
+            {# aria-live="off" overrides the overlay's polite region for this
+               subtree. The text changes once per percent, and announcing a
+               hundred of those would bury the one message that matters; the
+               status line above is what the screen reader hears. #}
+            <div id="spinner-detail" class="spinner-detail" aria-live="off" hidden></div>
         </div>
     </div>
     <!-- User Guide Button -->
@@ -320,13 +331,50 @@
             // Global Loader Controls explicitly manually triggered
             document.addEventListener("DOMContentLoaded", () => {
                 const spinner = document.getElementById('global-spinner');
+                const detail = document.getElementById('spinner-detail');
+                const progress = document.getElementById('spinner-progress');
+                const progressBar = document.getElementById('spinner-progress-bar');
+
+                // The detail line and the bar are per-wait, so hideSpinner clears
+                // them: a stale "3.2 MB of 9.1 MB" on the next operation would be
+                // a lie, and an overlay that lies is worse than a bare one.
+                const resetDetail = () => {
+                    if (detail) { detail.hidden = true; detail.textContent = ''; }
+                    if (progress) progress.hidden = true;
+                    if (progressBar) progressBar.style.width = '0%';
+                };
 
                 window.showSpinner = () => {
+                    resetDetail();
                     if (spinner) spinner.classList.remove('hidden');
                 };
 
                 window.hideSpinner = () => {
                     if (spinner) spinner.classList.add('hidden');
+                    resetDetail();
+                };
+
+                /** Sub-line under the message. Falsy text takes it back down. */
+                window.setSpinnerDetail = (text) => {
+                    if (!detail) return;
+                    detail.textContent = text || '';
+                    detail.hidden = !text;
+                };
+
+                /**
+                 * Determinate progress, 0..1. Pass null when the size is not
+                 * knowable — the bar comes down rather than inventing a
+                 * position, and the detail line carries the running total.
+                 */
+                window.setSpinnerProgress = (fraction) => {
+                    if (!progress || !progressBar) return;
+                    if (fraction === null || fraction === undefined || isNaN(fraction)) {
+                        progress.hidden = true;
+                        return;
+                    }
+                    const pct = Math.max(0, Math.min(1, fraction)) * 100;
+                    progress.hidden = false;
+                    progressBar.style.width = pct.toFixed(1) + '%';
                 };
             });
         </script>

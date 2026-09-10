@@ -84,6 +84,19 @@ const $showText = (id, text) => {
     if (text) announceAlert(text);
 };
 
+// Shared by fetchJSON and fetchJSONProgress so the session-expiry hook cannot
+// end up wired into one of them and not the other.
+async function _throwForResponse(response) {
+    const errorData = await response.json().catch(() => ({}));
+    // The server expires idle account sessions (see Config.ACCOUNT_IDLE_TIMEOUT);
+    // surface that to the inactivity handler so any API call can trigger logout.
+    if (response.status === 401 && errorData.code === 'session_expired'
+        && typeof window.__eokSessionExpired === 'function') {
+        window.__eokSessionExpired();
+    }
+    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+}
+
 async function fetchJSON(url, options = {}) {
     const defaultOptions = {
         headers: {
@@ -96,21 +109,87 @@ async function fetchJSON(url, options = {}) {
 
     try {
         const response = await fetch(url, mergedOptions);
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            // The server expires idle account sessions (see Config.ACCOUNT_IDLE_TIMEOUT);
-            // surface that to the inactivity handler so any API call can trigger logout.
-            if (response.status === 401 && errorData.code === 'session_expired'
-                && typeof window.__eokSessionExpired === 'function') {
-                window.__eokSessionExpired();
-            }
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) await _throwForResponse(response);
         return await response.json();
     } catch (error) {
         console.error(`Fetch error for ${url}:`, error);
         throw error;
     }
+}
+
+/**
+ * fetchJSON for a response worth watching arrive.
+ *
+ * Selecting a large data file is the case this exists for: `/get_data` expands
+ * the CSV into a JSON array of row objects, so a long measurement comes back as
+ * several megabytes over a dyno link. A plain `await response.json()` shows
+ * nothing at all until the last byte lands, which is what made opening a big
+ * file look like a dead click.
+ *
+ * `onProgress(receivedBytes, totalBytes)` is called as chunks arrive.
+ * `totalBytes` is **null** whenever a percentage would be a guess — no
+ * Content-Length, or an encoded body, where the header counts compressed bytes
+ * while the reader hands back decoded ones and the ratio would run past 100%.
+ * Callers show movement rather than a position in that case.
+ *
+ * Streaming is a progressive enhancement: anywhere `body.getReader` or
+ * TextDecoder is missing this is exactly fetchJSON.
+ */
+async function fetchJSONProgress(url, onProgress, options = {}) {
+    const mergedOptions = {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+    };
+
+    try {
+        const response = await fetch(url, mergedOptions);
+        if (!response.ok) await _throwForResponse(response);
+
+        const body = response.body;
+        if (!body || typeof body.getReader !== 'function' || typeof TextDecoder === 'undefined') {
+            return await response.json();
+        }
+
+        const declared = parseInt(response.headers.get('Content-Length') || '', 10);
+        const encoded = response.headers.get('Content-Encoding');
+        const total = (!encoded && isFinite(declared) && declared > 0) ? declared : null;
+
+        const reader = body.getReader();
+        // Decoded incrementally rather than buffering the raw bytes and
+        // concatenating at the end: for a multi-megabyte payload that would hold
+        // the whole body twice over.
+        const decoder = new TextDecoder('utf-8');
+        const parts = [];
+        let received = 0;
+
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            received += value.length;
+            parts.push(decoder.decode(value, { stream: true }));
+            if (typeof onProgress === 'function') onProgress(received, total);
+        }
+        parts.push(decoder.decode());
+
+        return JSON.parse(parts.join(''));
+    } catch (error) {
+        console.error(`Fetch error for ${url}:`, error);
+        throw error;
+    }
+}
+
+/** Bytes as something a person reads, for the spinner's detail line. */
+function formatBytes(bytes) {
+    if (!isFinite(bytes) || bytes < 0) return '';
+    if (bytes < 1024) return bytes + ' B';
+    const units = ['KB', 'MB', 'GB'];
+    let value = bytes / 1024;
+    let i = 0;
+    while (value >= 1024 && i < units.length - 1) {
+        value /= 1024;
+        i++;
+    }
+    return (value >= 10 ? value.toFixed(0) : value.toFixed(1)) + ' ' + units[i];
 }
 
 /* The controls that only happen to be <button> for keyboard/AT reasons and keep

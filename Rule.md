@@ -97,6 +97,27 @@
     a handler that shows the spinner and then opens a `Swal` must **hide it before the
     dialog opens**, not only in a trailing `finally` (`revealDownloadToken`,
     `deleteAccount` in `index.html` drop it right after the response is parsed).
+  - **A big download reports its size; `await` it or the overlay is a lie.** `/get_data`
+    expands a CSV into a JSON array of row objects, so a long measurement arrives as
+    several MB. `fetchJSONProgress()` (`short-hands.js`) streams the body through a
+    reader and calls back with bytes received, driving `setSpinnerProgress()` /
+    `setSpinnerDetail()`; below **512 KB** nothing is drawn, because a percentage that
+    flashes straight to 100 reads as a glitch (skeleton.js's `DELAY_MS`, measured in
+    bytes). `totalBytes` is **null** whenever a percentage would be a guess — no
+    `Content-Length`, or an encoded body, where the header counts compressed bytes and
+    the reader hands back decoded ones — and the caller then shows movement, not a
+    position. The readout updates once per whole percent, and `#spinner-detail` carries
+    `aria-live="off"` to opt out of the overlay's polite region: a hundred announcements
+    would bury the one status message that matters. **The bug this was built on top of:**
+    `processDataDisplay` called the async `fetchData` without `await` and without being
+    async itself, so `await processDataDisplay(...)` in `selectFile` resolved on
+    `undefined` and its `finally` dropped the spinner *while the file was still
+    downloading* — the larger the file, the longer the page sat with no overlay at all.
+    **Anti-pattern**: an async helper called bare from a function whose `finally` owns an
+    indicator; the indicator then measures the call, not the work. Because the chart build
+    that follows is synchronous and can freeze the page, `fetchData` also yields one frame
+    (`requestAnimationFrame` + `setTimeout`) after naming the step, or the last thing on
+    screen during the freeze is a stalled percentage.
   - **A fetch with no indicator is a decision, not an oversight — and some are correct.**
     Leave silent: background polls (`/ai/status`), optimistic preference writes
     (`/ai/settings`), `beforeunload` beacons (`/drive/sync`), decorative enrichment with a

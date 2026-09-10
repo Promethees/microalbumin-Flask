@@ -468,10 +468,16 @@ function downloadFile(tableSelector = "#file-table") {
         });
 }
 
-function processDataDisplay(fileName, jsonFileContent = null) {
-    // Proceed with fetching and displaying data
-    fetchData(fileName, jsonFileContent);
+async function processDataDisplay(fileName, jsonFileContent = null) {
+    // `fetchData` is async and this neither awaited it nor was async itself, so
+    // `await processDataDisplay(...)` in selectFile resolved on undefined and its
+    // `finally` took the spinner down immediately — while the file was still
+    // downloading. The bigger the file, the longer the page then sat with no
+    // overlay at all, which is exactly when one is wanted. Start the load, keep
+    // the original ordering by labelling the panel while it runs, then wait.
+    const loading = fetchData(fileName, jsonFileContent);
     updateFileDisplay(fileName);
+    await loading;
 }
 
 
@@ -681,12 +687,65 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     return entries.sort((a, b) => Number(b) - Number(a));
 }
 
+// A download small enough to land inside the spinner's own appearance earns no
+// readout: a percentage that flashes to 100 reads as a glitch, not as progress.
+// Same reasoning as skeleton.js's DELAY_MS, measured in bytes instead of time.
+const PROGRESS_MIN_BYTES = 512 * 1024;
+
+// Set while a download is big enough to have been reported, so the render step
+// knows whether it is worth naming. Reset at the top of every fetchData.
+let _dataDownloadWasLarge = false;
+// Last reported step, so a chunk that moves the readout nowhere costs nothing.
+let _lastProgressStep = -1;
+
+function reportDataProgress(received, total) {
+    if ((total === null ? received : total) < PROGRESS_MIN_BYTES) return;
+    _dataDownloadWasLarge = true;
+
+    // One update per whole percent, or per 256 KB when there is no percent to
+    // count: chunks land far more often than the readout can meaningfully change.
+    const step = total === null
+        ? Math.floor(received / (256 * 1024))
+        : Math.floor((received / total) * 100);
+    if (step === _lastProgressStep) return;
+    _lastProgressStep = step;
+
+    if (total === null) {
+        // No knowable size: say how much has arrived, and leave the bar down
+        // rather than animate a position that means nothing.
+        window.setSpinnerProgress?.(null);
+        window.setSpinnerDetail?.(window.tf
+            ? window.tf('spinner.downloaded', '{done} loaded', { done: formatBytes(received) })
+            : formatBytes(received) + ' loaded');
+        return;
+    }
+    window.setSpinnerProgress?.(received / total);
+    window.setSpinnerDetail?.(window.tf
+        ? window.tf('spinner.downloading', '{done} of {total}',
+            { done: formatBytes(received), total: formatBytes(total) })
+        : formatBytes(received) + ' / ' + formatBytes(total));
+}
+
 const fetchData = async (filename, jsonFile) => {
     // A cover, not a replacement: the chart on screen is a Chart.js canvas that
     // cannot be thrown away and rebuilt just to show a placeholder.
+    _dataDownloadWasLarge = false;
+    _lastProgressStep = -1;
     try {
         window.showSkeleton?.('chart-container', { kind: 'cover' });
         const response = await fetchDataFromServer(filename);
+
+        if (_dataDownloadWasLarge) {
+            // Building the chart is synchronous and, for a long trace, long
+            // enough to freeze the page — the loader's own animation included.
+            // Name the step and hand the browser one frame to paint it, or the
+            // last thing on screen during the freeze is a stalled percentage.
+            window.setSpinnerProgress?.(1);
+            window.setSpinnerDetail?.(window.t
+                ? window.t('spinner.preparing_chart', 'Preparing chart…')
+                : 'Preparing chart…');
+            await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+        }
         return processResponse(response, jsonFile);
     } catch (error) {
         handleFetchError(error, filename);
@@ -698,7 +757,8 @@ const fetchData = async (filename, jsonFile) => {
 
 const fetchDataFromServer = async (filename) => {
     try {
-        return await fetchJSON(`/get_data?file=${encodeURIComponent(filename)}`);
+        return await fetchJSONProgress(
+            `/get_data?file=${encodeURIComponent(filename)}`, reportDataProgress);
     } catch (error) {
         // Create a custom error object with all the details
         const enhancedError = new Error(`Fetch failed for ${filename}: ${error.message}`);

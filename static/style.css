@@ -2222,6 +2222,45 @@ body.dark .tooltip-finish-btn {
     50% { opacity: 0.6; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
 }
 
+/* Download progress, raised only for a wait with a knowable size (see
+   fetchJSONProgress in short-hands.js). The message above it keeps pulsing —
+   this bar is the part that says the wait is *finite*, which is the whole
+   difference between "still working" and "nearly there". */
+.spinner-progress {
+    width: 240px;
+    max-width: 60vw;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.spinner-progress-bar {
+    width: 0;
+    height: 100%;
+    border-radius: 3px;
+    background: #4facfe;
+    transition: width 0.18s ease-out;
+}
+
+/* The same number in words, for the live region and for anyone who cannot read
+   a 6px bar. Quieter than .spinner-message: it is the detail, not the headline. */
+.spinner-detail {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+/* The bar's own travel is the feedback; growing it in steps still reads without
+   the easing, so only the transition goes. */
+@media (prefers-reduced-motion: reduce) {
+    .spinner-progress-bar {
+        transition: none;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .user-guide-tooltip {
