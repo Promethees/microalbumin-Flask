@@ -1,0 +1,210 @@
+/* Developer performance monitor — page styling.
+ *
+ * Every value here resolves through a token declared at the top of
+ * static/style.css (Rule.md §2.33). There is no hex literal and no gradient in
+ * this file, and there must not be one: the page links the app's stylesheet
+ * precisely so the palette has a single definition. Dark mode comes for free
+ * from `body.dark`, which the inline script in monitor.js sets from the same
+ * localStorage key the app uses.
+ *
+ * The layout follows the app's own material split: chrome is flat and
+ * hairline-bounded (.section, inherited), and the only thing that gets any
+ * emphasis is the measured number.
+ */
+
+.devmon {
+    max-width: 1180px;
+}
+
+/* ── header ─────────────────────────────────────────────────────────── */
+.devmon-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+
+.devmon-title {
+    margin: 4px 0 0;
+    font-family: var(--font-ui);
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.devmon-sub,
+.devmon-note {
+    margin: 6px 0 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--ink-muted);
+}
+
+.devmon-note {
+    font-size: 0.74rem;
+    color: var(--ink-dim);
+}
+
+.devmon-head-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.devmon-kv {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.devmon-kv b {
+    font-size: 0.95rem;
+    color: var(--ink);
+}
+
+/* ── controls ───────────────────────────────────────────────────────── */
+.devmon-btn,
+.devmon-select {
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    padding: 6px 10px;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-press);
+    cursor: pointer;
+}
+
+.devmon-btn:hover,
+.devmon-select:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.devmon-btn:focus-visible,
+.devmon-select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* ── sections ───────────────────────────────────────────────────────── */
+.devmon-h2 {
+    margin: 0 0 12px;
+    font: 600 14px/1 var(--font-label);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+}
+
+.devmon-h2 .devmon-note {
+    display: inline;
+    margin-left: 8px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.devmon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1px;
+    margin-bottom: 12px;
+    background: var(--hairline-soft);
+    border: 1px solid var(--hairline-soft);
+}
+
+.devmon-grid:last-child {
+    margin-bottom: 0;
+}
+
+/* A readout is data, so it gets the well and the mono figures — the same
+   distinction the app draws between chrome and the numbers it measures. */
+.devmon-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    background: var(--well);
+}
+
+.devmon-stat b {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+
+.devmon-stat.is-warn b { color: var(--warn); }
+.devmon-stat.is-bad  b { color: var(--danger); }
+.devmon-stat.is-live b { color: var(--go); }
+
+/* ── tables ─────────────────────────────────────────────────────────── */
+.devmon-scroll {
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--hairline-soft);
+}
+
+.devmon-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+.devmon-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 7px 10px;
+    text-align: left;
+    font: 600 10.5px/1.3 var(--font-label);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    background: var(--panel);
+    border-bottom: 1px solid var(--hairline);
+}
+
+.devmon-table td {
+    padding: 6px 10px;
+    color: var(--ink);
+    background: var(--well);
+    border-bottom: 1px solid var(--hairline-soft);
+}
+
+.devmon-table td.devmon-r,
+.devmon-table th.devmon-r {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.devmon-table td.devmon-site {
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+}
+
+.devmon-table tr.is-bad td.devmon-r { color: var(--danger); }
+
+.devmon-empty {
+    color: var(--ink-dim);
+    font-style: italic;
+}
+
+/* ── error strip ────────────────────────────────────────────────────── */
+.devmon-error {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    font-size: 0.8rem;
+    color: var(--danger);
+    background: var(--danger-wash);
+    border: 1px solid var(--danger);
+    border-radius: var(--r-flat);
+}
+
+@media (max-width: 640px) {
+    .devmon-head { align-items: flex-start; }
+    .devmon-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+}

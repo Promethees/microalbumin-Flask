@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyOKAPI · Dev Monitor</title>
+    <!--
+      The app's own stylesheet is linked for ONE reason: it is where the design
+      tokens live (Rule.md §2.33). Every colour, font and radius below resolves
+      through var(--…) from that block, so this page cannot drift from the app's
+      palette and there is not a single hex value in devtools/static/monitor.css.
+      It also hands us .container / .section / .lbl / .mono for free.
+
+      This page is deliberately NOT translated (no data-i18n, no t()) and has no
+      user settings — it is a developer tool with one audience. See
+      devtools/README.md for that exemption.
+    -->
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="{{ url_for('devtools.static', filename='monitor.css') }}">
+</head>
+<body>
+<div class="container devmon">
+
+    <header class="devmon-head section">
+        <div>
+            <span class="lbl">EasyOKAPI</span>
+            <h1 class="devmon-title">Performance Monitor</h1>
+            <p class="devmon-sub">
+                Developer build only — this page does not exist in a shipped bundle.
+                It observes; it never opens the serial port.
+            </p>
+        </div>
+        <div class="devmon-head-stats">
+            <div class="devmon-kv"><span class="lbl">Uptime</span><b class="mono" id="m-uptime">—</b></div>
+            <div class="devmon-kv"><span class="lbl">Poll</span>
+                <select id="m-interval" class="devmon-select">
+                    <option value="1000" selected>1 s</option>
+                    <option value="2000">2 s</option>
+                    <option value="5000">5 s</option>
+                    <option value="0">paused</option>
+                </select>
+            </div>
+            <button type="button" id="m-reset" class="devmon-btn">Reset counters</button>
+            <button type="button" id="m-trace" class="devmon-btn">Tracing: —</button>
+        </div>
+    </header>
+
+    <p class="devmon-error" id="m-error" hidden></p>
+
+    <!-- ── Process ────────────────────────────────────────────────────── -->
+    <section class="section">
+        <h2 class="devmon-h2">Process <span class="devmon-note mono" id="m-proc-source"></span></h2>
+        <div class="devmon-grid">
+            <div class="devmon-stat"><span class="lbl">RSS</span><b class="mono" id="m-rss">—</b></div>
+            <div class="devmon-stat"><span class="lbl">VMS</span><b class="mono" id="m-vms">—</b></div>
+            <div class="devmon-stat"><span class="lbl">CPU</span><b class="mono" id="m-cpu">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Threads</span><b class="mono" id="m-threads">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Open FDs</span><b class="mono" id="m-fds">—</b></div>
+            <div class="devmon-stat"><span class="lbl">PID</span><b class="mono" id="m-pid">—</b></div>
+        </div>
+        <div class="devmon-grid">
+            <div class="devmon-stat"><span class="lbl">GC collections</span><b class="mono" id="m-gc-collections">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Uncollectable</span><b class="mono" id="m-gc-uncollectable">—</b></div>
+            <div class="devmon-stat"><span class="lbl">gc.garbage</span><b class="mono" id="m-gc-garbage">—</b></div>
+        </div>
+    </section>
+
+    <!-- ── Allocations ────────────────────────────────────────────────── -->
+    <section class="section">
+        <h2 class="devmon-h2">Allocations <span class="devmon-note mono" id="m-tm-summary"></span></h2>
+        <div class="devmon-scroll">
+            <table class="devmon-table">
+                <thead>
+                    <tr><th>Allocation site</th><th class="devmon-r">Size</th><th class="devmon-r">Blocks</th></tr>
+                </thead>
+                <tbody id="m-tm-rows"><tr><td colspan="3" class="devmon-empty">Tracing off.</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ── HTTP ───────────────────────────────────────────────────────── -->
+    <section class="section">
+        <h2 class="devmon-h2">HTTP</h2>
+        <div class="devmon-grid">
+            <div class="devmon-stat"><span class="lbl">Requests</span><b class="mono" id="m-http-total">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Errors</span><b class="mono" id="m-http-errors">—</b></div>
+            <div class="devmon-stat"><span class="lbl">In flight</span><b class="mono" id="m-http-inflight">—</b></div>
+        </div>
+        <div class="devmon-scroll">
+            <table class="devmon-table">
+                <thead>
+                    <tr>
+                        <th>Route</th>
+                        <th class="devmon-r">Count</th>
+                        <th class="devmon-r">Errors</th>
+                        <th class="devmon-r">Mean</th>
+                        <th class="devmon-r">p95</th>
+                        <th class="devmon-r">Max</th>
+                    </tr>
+                </thead>
+                <tbody id="m-http-rows"><tr><td colspan="6" class="devmon-empty">No requests yet.</td></tr></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ── Device link ────────────────────────────────────────────────── -->
+    <section class="section">
+        <h2 class="devmon-h2">Device link <span class="devmon-note" id="m-dev-owner"></span></h2>
+        <p class="devmon-note">
+            Counts the idle-time control link only. While a reading session runs, the logger
+            subprocess owns the port and its traffic is invisible from here — its PID, CPU and
+            RSS stand in for it below.
+        </p>
+        <div class="devmon-grid">
+            <div class="devmon-stat"><span class="lbl">Port</span><b class="mono" id="m-dev-port">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Bytes in</span><b class="mono" id="m-dev-in">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Bytes out</span><b class="mono" id="m-dev-out">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Lines</span><b class="mono" id="m-dev-lines">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Lines/sec</span><b class="mono" id="m-dev-rate">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Read timeouts</span><b class="mono" id="m-dev-timeouts">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Malformed</span><b class="mono" id="m-dev-malformed">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Unmatched</span><b class="mono" id="m-dev-unmatched">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Connects</span><b class="mono" id="m-dev-connects">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Failed opens</span><b class="mono" id="m-dev-openfail">—</b></div>
+            <div class="devmon-stat"><span class="lbl">PING probe</span><b class="mono" id="m-dev-ping">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Command RTT</span><b class="mono" id="m-dev-cmd">—</b></div>
+        </div>
+        <div class="devmon-grid">
+            <div class="devmon-stat"><span class="lbl">Logger PID</span><b class="mono" id="m-log-pid">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Logger CPU</span><b class="mono" id="m-log-cpu">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Logger RSS</span><b class="mono" id="m-log-rss">—</b></div>
+        </div>
+    </section>
+
+    <!-- ── Live stream ────────────────────────────────────────────────── -->
+    <section class="section">
+        <h2 class="devmon-h2">Live stream (SSE)</h2>
+        <div class="devmon-grid">
+            <div class="devmon-stat"><span class="lbl">Clients now</span><b class="mono" id="m-sse-active">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Clients total</span><b class="mono" id="m-sse-total">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Frames</span><b class="mono" id="m-sse-frames">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Bytes pushed</span><b class="mono" id="m-sse-bytes">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Log offset</span><b class="mono" id="m-sse-logoff">—</b></div>
+            <div class="devmon-stat"><span class="lbl">CSV offset</span><b class="mono" id="m-sse-csvoff">—</b></div>
+        </div>
+        <p class="devmon-note mono" id="m-sse-path"></p>
+    </section>
+
+</div>
+<script src="{{ url_for('devtools.static', filename='monitor.js') }}"></script>
+</body>
+</html>

@@ -318,6 +318,11 @@ if __name__ == '__main__':
     parser.add_argument('--alias', type=str, default='easyokapi.com', help='Optional domain alias (e.g., mydomain.com)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output (e.g. detailed HTTP logging).')
     parser.add_argument('--mem-monitor', action='store_true', help='Enable memory monitoring to guard against memory leaks.')
+    parser.add_argument('--monitor', action='store_true',
+                        help='DEVELOPER ONLY: attach the live performance monitor at '
+                             '/__dev/monitor (process, HTTP, device link, SSE). Needs the '
+                             'devtools/ package, which is excluded from the shipped build, '
+                             'and is refused in a frozen one. See devtools/README.md.')
     parser.add_argument('--no-browser', action='store_true',
                         help='Do not auto-open a browser tab on startup. Used by restart relaunches '
                              '(data-folder relocation / applied update) where the existing tab reloads '
@@ -385,6 +390,24 @@ if __name__ == '__main__':
                     print(f"{RED}[MemGuard] Monitor error: {e}{RESET}", file=original_stdout, flush=True)
                     break
         threading.Thread(target=_mem_monitor_thread, daemon=True).start()
+
+    # ── Developer performance monitor (--monitor) ────────────────────────────
+    # The whole feature lives in the top-level devtools/ package, which is
+    # excluded from the shipped build (easyokapi.spec `excludes`). This is the
+    # only place main.py mentions it, the import is inside the flag, and a
+    # missing or broken devtools/ is a warning rather than a failed launch — a
+    # user's install has no devtools/ at all and must start exactly as before.
+    # attach_monitor() itself refuses a frozen context. See devtools/README.md.
+    if getattr(state.args, 'monitor', False):
+        try:
+            from devtools import attach_monitor, monitor_url
+            if attach_monitor(app):
+                print(f"[devmon] Performance monitor: "
+                      f"{monitor_url(state.args.alias or '127.0.0.1', state.args.port)}",
+                      file=original_stdout, flush=True)
+        except Exception as _monitor_error:
+            print(f"[devmon] --monitor ignored: {_monitor_error}",
+                  file=original_stdout, flush=True)
 
     host = '127.0.0.1'
     port = state.args.port

@@ -89,7 +89,14 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['tkinter', 'pytest', '_pytest'],
+    # 'devtools' is the top-level developer-only package behind main.py's
+    # --monitor flag (devtools/README.md). main.py imports it inside the flag,
+    # so PyInstaller's analysis can still reach it; naming it here is what keeps
+    # the dev monitor — its blueprint, page and the wrappers it installs on
+    # send_command/device_link/live_stream — out of every shipped bundle.
+    # Anything new under devtools/ is covered automatically: this excludes the
+    # package, not a file list. Do not add a devtools name to hiddenimports.
+    excludes=['tkinter', 'pytest', '_pytest', 'devtools'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

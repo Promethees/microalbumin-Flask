@@ -5,3 +5,8 @@
 pytest==8.3.4
 # 1.2.0 imports flask._request_ctx_stack, removed in Flask 2.3 — needs >=1.3.0.
 pytest-flask==1.3.0
+# Process metrics for the developer performance monitor (devtools/, main.py
+# --monitor). Dev-only on purpose: the monitor degrades to a stdlib fallback
+# (resource.getrusage + /dev/fd) when it is absent, and no shipped build has
+# devtools/ at all — so this must never move to requirements.txt.
+psutil>=5.9

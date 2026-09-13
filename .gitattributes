@@ -1,0 +1,11 @@
+# Paths that stay in the repository but never leave it in a distributed artifact.
+#
+# `git archive` is what tools/package.py runs for the source-tarball build
+# (ENCODE_SOURCE=false), and export-ignore is the only way to drop a *tracked*
+# path from it. The frozen build has its own exclusion (`excludes` in
+# easyokapi.spec).
+#
+# devtools/ is the developer-only performance monitor behind main.py's
+# --monitor flag. It is not a secret — it is tracked on `main` on purpose — it
+# simply is not part of what a user receives. See devtools/README.md.
+/devtools export-ignore

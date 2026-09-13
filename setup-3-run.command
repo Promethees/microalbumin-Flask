@@ -1,4 +1,16 @@
 #!/bin/bash
+#
+# Launch EasyOKAPI from a source checkout (pyenv + venv + main.py).
+#
+# Every argument is forwarded verbatim to main.py, so the app's own flags work
+# here: --port, --alias, --verbose, --mem-monitor, --no-browser and
+#
+#   ./setup-3-run.command --monitor
+#       DEVELOPER ONLY. Attaches the live performance monitor at
+#       http://<alias>:<port>/__dev/monitor — process, HTTP, device-link and SSE
+#       counters. It lives in devtools/, is excluded from the shipped build and
+#       is refused in a frozen one, so it can only ever appear on a dev machine.
+#       See devtools/README.md.
 
 # Change to the script's directory
 cd "$(dirname "$0")"
@@ -41,6 +53,35 @@ echo -e "  ${BOLD}${CYAN}╔═════════════════�
 echo -e "  ${BOLD}${CYAN}║        EasyOKAPI  ·  Launching …         ║${RESET}"
 echo -e "  ${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}"
 echo ""
+
+# ── Developer performance monitor (--monitor) ────────────────────────────────
+# Purely cosmetic: the flag itself reaches main.py through "$@" like every other
+# argument. This only says where the page will be, reading --port/--alias out of
+# the same argument list so the URL matches what the app will actually serve.
+MONITOR_REQUESTED=0
+MONITOR_PORT=5099
+MONITOR_ALIAS="easyokapi.com"
+_next=""
+for arg in "$@"; do
+    case "$_next" in
+        port)  MONITOR_PORT="$arg";  _next="" ; continue ;;
+        alias) MONITOR_ALIAS="$arg"; _next="" ; continue ;;
+    esac
+    case "$arg" in
+        --monitor)   MONITOR_REQUESTED=1 ;;
+        --port)      _next="port" ;;
+        --alias)     _next="alias" ;;
+        --port=*)    MONITOR_PORT="${arg#*=}" ;;
+        --alias=*)   MONITOR_ALIAS="${arg#*=}" ;;
+    esac
+done
+
+if [ "$MONITOR_REQUESTED" -eq 1 ]; then
+    echo -e "  ${BOLD}${RED}DEVELOPER MODE${RESET} — performance monitor enabled at"
+    echo -e "  ${BOLD}${CYAN}http://${MONITOR_ALIAS}:${MONITOR_PORT}/__dev/monitor${RESET}"
+    echo -e "  ${CYAN}Dev tool only — absent from the shipped build. See devtools/README.md.${RESET}"
+    echo ""
+fi
 
 # ── Step 1 : initialise pyenv (0 → 20%) ─────────────────────────────────────
 fill_to 0 15 "Initialising pyenv …"

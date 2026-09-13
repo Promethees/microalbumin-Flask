@@ -28,6 +28,8 @@ python main.py --port 5099 --alias easyokapi.com
 python main.py --verbose        # HTTP logs + backend prints
 python main.py --mem-monitor    # tracemalloc growth tracking
 python main.py --no-browser     # no startup tab (restart relaunches pass this — §2.20)
+python main.py --monitor        # DEV ONLY: perf monitor at /__dev/monitor (§2.38)
+./setup-3-run.command --monitor # same, through the Mac launcher
 
 # Test
 pytest tests/ --ignore=venv
@@ -108,6 +110,7 @@ ui_translations/           ← en.json baseline + vi/zh/fr/ja/ru/ko
 guide_translations/        ← user-guide step text per language (en baseline = guide_training.json)
 report/                    ← saved HTML reports, by subject subdirectory
 user_settings.json         ← user preferences (ui_language, ui_style, ai_feedback_enabled, …)
+devtools/                  ← DEV ONLY: the --monitor performance monitor; never shipped (§2.38)
 ```
 
 ---
@@ -119,7 +122,12 @@ user_settings.json         ← user preferences (ui_language, ui_style, ai_feedb
 - All routes go in blueprints under `src/routes/`. Never add one to `main.py`.
 - `@validate_json` (from `validators.py`) is mandatory on every POST route that accepts
   JSON. Documented exemption: `/download_event_logs` (GET+POST, validates inline).
-- Tests live in `tests/` (42 files). CI runs the whole suite on 3.12 before any build.
+- Tests live in `tests/` (43 files). CI runs the whole suite on 3.12 before any build.
+- **The dev monitor is a package, not a feature.** `--monitor` attaches `devtools/` (its own
+  blueprint at `/__dev/monitor`, its own page, attach-time wrappers instead of production
+  hooks). It never opens the serial port, 404s when off, and never ships — excluded in
+  `easyokapi.spec` + `.gitattributes`. Exempt from i18n and from the settings rule, not from
+  the design tokens. **§2.38** / `devtools/README.md`
 
 **Math — three implementations, one behaviour**
 - Regression runs **server-side** in `math_ops.py`. The same 5 fit models are also

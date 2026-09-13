@@ -58,6 +58,7 @@ graph TD
 | `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/activate`, `/ai/guides`, `/ai/match`, `/ai/feedback` (POST), `/ai/feedback/stats` (GET), `/ai/feedback/reset` (POST), `/ai/feedback/export` (GET) | `ai-chat.js`, `init.js` |
 | `update_bp` | `update_routes.py` | `/update/check` (GET), `/update/apply` (POST — SSE stream), `/update/finalize` (POST — shutdown for relaunch) | `init.js` |
 | `music_bp` | `music_routes.py` | `/music/stations` (GET — catalogue + online verdict + saved queue/modes), `/music/resolve` (POST — parse+name a pasted YouTube link), `/music/queue` (GET, POST — replace wholesale), `/music/queue/add` (POST — resolve + append) | `music.js`, `init.js` |
+| `devtools_bp` **(dev only)** | `devtools/routes.py` — **not** under `src/routes/` | `/__dev/monitor` + `/__dev/monitor/` (GET — page), `/__dev/monitor/metrics` (GET — JSON snapshot), `/__dev/monitor/control` (POST — `reset` / `trace_on` / `trace_off`), `/__dev/monitor/assets/<file>` (GET). **All 404 unless `--monitor` attached the monitor**; never registered otherwise, and absent from every shipped build | `devtools/static/monitor.js` |
 
 **Cross-tab edit lock** (`file_routes.py` `_edit_locks` registry + `acquire`/`refresh`/`release_edit_lock`): a file opened in the editor of one browser tab is locked from being edited in any other tab. The registry is an in-memory `{abs_path → {token, ts}}` map guarded by a `threading.Lock` (all tabs share one Flask process). `edit-file.js` acquires the lock before loading a file's content (a 423 shows "being edited in another tab"), heartbeats every 30 s to keep it fresh, and releases it when the modal closes or on `beforeunload` (via `navigator.sendBeacon`). A tab that dies without releasing lets the lock go stale after `_EDIT_LOCK_TTL` (120 s). `edit_file` enforces the lock server-side too: a save carries the holder's `edit_token` and is refused (423) if another tab holds the lock. This is separate from the per-write `FileLock` in `edit_file`, which only guards the atomicity of a single save.
 
@@ -65,7 +66,7 @@ graph TD
 * **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init — suppressed by `--no-browser` (set on restart relaunches so a second tab doesn't steal the one-shot reset-display marker).
 * **Single-user process**: No isolation, no sessions, straight port serving.
 * **Startup progress reporter**: Writes `pct label\n` lines to `/tmp/easyokapi_progress.pipe` (Mac) or `%TEMP%\easyokapi_progress.txt` (Windows) for launch-script progress bars.
-* **CLI flags**: `--port` (default 5099), `--alias` (default `easyokapi.com`), `--verbose` / `-v`, `--mem-monitor`, `--no-browser` (skip the startup browser tab; auto-applied by restart relaunches).
+* **CLI flags**: `--port` (default 5099), `--alias` (default `easyokapi.com`), `--verbose` / `-v`, `--mem-monitor`, `--no-browser` (skip the startup browser tab; auto-applied by restart relaunches), `--monitor` (**developer only** — attach the live performance monitor from the top-level `devtools/` package at `/__dev/monitor`; the import sits inside the flag, a missing `devtools/` is a warning not a failure, and `attach_monitor()` refuses a frozen build. See Rule.md §2.38 and `devtools/README.md`).
 
 ### 2.2 Backend Modules (`src/`)
 
@@ -317,12 +318,13 @@ python main.py --mem-monitor      # enable tracemalloc memory growth tracking
 microalbumin-Flask/
 ├── CLAUDE.md                   # Claude Code entry point
 ├── Rule.md                     # AI coding rules
-├── main.py                     # Flask app entry point (417 lines, blueprint registration only)
+├── main.py                     # Flask app entry point (509 lines, blueprint registration only)
 ├── log_cdc_data.py             # CDC (USB serial) data collection — the only host logger
 ├── requirements.txt            # Python runtime dependencies (all platforms)
-├── requirements-dev.txt        # Test-only dependencies (pytest)
+├── requirements-dev.txt        # Test-only deps (pytest) + psutil for the --monitor dev tool
 ├── requirements-build.txt      # PyInstaller, for the frozen build only
 ├── easyokapi.spec              # PyInstaller onedir spec (see ENCODE_BUILD_PLAN.md)
+├── .gitattributes              # export-ignore: keeps devtools/ out of the source tarball
 ├── setup-*.command             # Mac utility startup scripts
 ├── startwindow-*.bat           # Windows utility startup scripts
 ├── installer-mac/              # Mac .dmg installer assets (+ SIGNING.md)
@@ -331,6 +333,14 @@ microalbumin-Flask/
 ├── docs/                       # publishing/ (Developer ID, Authenticode), accessibility/
 ├── legal/                      # EULA, PRIVACY, Terms — rendered into the installers
 ├── tools/                      # package.py (freeze), gen_classic_style.py, fetch_vendor.py
+├── devtools/                   # DEVELOPER ONLY — the --monitor performance monitor (Rule.md §2.38)
+│   ├── README.md               # every metric + its unit, the exclusions, the exemptions
+│   ├── monitor.py              # attach/detach, frozen refusal, per-request timing hooks
+│   ├── metrics.py              # bounded counter registry + process sampler (psutil optional)
+│   ├── hooks.py                # attach-time wrappers on send_command/device_link/live_stream
+│   ├── routes.py               # /__dev/monitor blueprint (404 unless attached)
+│   ├── templates/devtools_monitor.html
+│   └── static/monitor.css + monitor.js   # tokens from static/style.css; no i18n, no user settings
 ├── src/
 │   ├── state.py                # Global state singleton
 │   ├── sentinels.py            # Non-numeric value tokens (OVFL / NONE / INF) a channel can stream
@@ -421,7 +431,7 @@ microalbumin-Flask/
 ├── report/                     # Saved HTML reports (by subject subdirectory)
 ├── ui_translations/            # UI catalogs: en.json (baseline) + vi/zh/fr/ja/ru/ko
 ├── guide_translations/         # User-guide step text per language (en baseline is guide_training.json)
-├── tests/                      # 42 pytest files — `pytest tests/ --ignore=venv`
+├── tests/                      # 43 pytest files — `pytest tests/ --ignore=venv`
 ├── user_settings.json          # User UI + AI preferences (auto-created, gitignored)
 └── sample_data/
 ```

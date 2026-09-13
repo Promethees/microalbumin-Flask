@@ -80,6 +80,12 @@ def _bundle_extra_files(bundle_root):
     These ship beside EasyOKAPI.exe so they are laid down by the installer AND
     carried by every in-app update bundle (the binary swap moves the whole onedir):
       - launcher-frozen.ps1: the splash-screen launcher the shortcuts run.
+
+    This is an allow-list, one named file at a time — nothing here walks the
+    project tree — so a developer-only directory such as ``devtools/`` cannot
+    reach a bundle through it. Keep it that way: add files by name, never by
+    glob. (``devtools`` is additionally named in easyokapi.spec's ``excludes``
+    for the frozen build and in .gitattributes for the source tarball.)
     """
     import shutil
     extras = [os.path.join(ROOT, 'installer-win', 'launcher-frozen.ps1')]
@@ -112,7 +118,10 @@ def build_source():
     os.makedirs(DIST, exist_ok=True)
     out = os.path.join(DIST, 'easyokapi-src.tar.gz')
     print("==> Building source tarball (ENCODE_SOURCE=false)…")
-    # git archive captures exactly the tracked files, mirroring the server tarball.
+    # git archive captures exactly the tracked files, mirroring the server
+    # tarball — minus anything marked `export-ignore` in .gitattributes, which
+    # is how devtools/ (the --monitor developer tool) stays out of it while
+    # staying tracked on `main`.
     subprocess.run(
         ['git', 'archive', '--format=tar.gz', '-o', out, 'HEAD'],
         cwd=ROOT, check=True,
