@@ -65,6 +65,63 @@
         </div>
     </section>
 
+    <!-- ── Memory over time ──────────────────────────────────────────── -->
+    <!--
+      The escalation chart. The series is sampled server-side on its own thread,
+      so it covers the whole run rather than only the minutes this tab has been
+      open, and it survives a "Reset counters".
+
+      The band is the min/max of each bucket and the line is the bucket average:
+      a busy app makes a wide band whose BOTTOM stays put, while a leak drags the
+      bottom up with it. That is the difference the verdict is reading.
+    -->
+    <section class="section">
+        <h2 class="devmon-h2">Memory over time
+            <span class="devmon-note mono" id="m-mem-note"></span>
+        </h2>
+
+        <div class="devmon-memhead">
+            <span class="devmon-verdict" id="m-mem-verdict">—</span>
+            <p class="devmon-note" id="m-mem-reason">Collecting samples…</p>
+            <div class="devmon-memctl">
+                <label class="lbl" for="m-mem-window">Window</label>
+                <select id="m-mem-window" class="devmon-select">
+                    <option value="300">5 min</option>
+                    <option value="1800" selected>30 min</option>
+                    <option value="3600">1 h</option>
+                    <option value="0">all (4 h)</option>
+                </select>
+                <button type="button" id="m-mem-clear" class="devmon-btn">Clear history</button>
+            </div>
+        </div>
+
+        <div class="devmon-chart">
+            <canvas id="m-mem-chart" role="img"
+                    aria-label="Resident memory over time"></canvas>
+            <p class="devmon-chart-empty" id="m-mem-empty">Waiting for the first samples…</p>
+        </div>
+
+        <div class="devmon-grid">
+            <div class="devmon-stat"><span class="lbl">Now</span><b class="mono" id="m-mem-now">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Low</span><b class="mono" id="m-mem-min">—</b></div>
+            <div class="devmon-stat"><span class="lbl">High</span><b class="mono" id="m-mem-max">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Trend</span><b class="mono" id="m-mem-slope">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Floor trend</span><b class="mono" id="m-mem-floorslope">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Floor shift</span><b class="mono" id="m-mem-floor">—</b></div>
+            <div class="devmon-stat"><span class="lbl">Window</span><b class="mono" id="m-mem-span">—</b></div>
+        </div>
+        <p class="devmon-note">
+            <b>Trend</b> fits every sample and is shown for reference only — on a
+            sawtooth it mostly reports which phase the window ended in.
+            <b>Floor shift</b> (lowest RSS in the last quarter minus the lowest in the
+            first) is what the verdict is gated on, because two minima cannot be fooled
+            by phase; <b>Floor trend</b> grades how fast. A leak slower than
+            2&nbsp;MB per window reads steady — widen the window to see it. The
+            thresholds are heuristics, not a specification: calibrate them against your
+            own baseline (devtools/README.md).
+        </p>
+    </section>
+
     <!-- ── Allocations ────────────────────────────────────────────────── -->
     <section class="section">
         <h2 class="devmon-h2">Allocations <span class="devmon-note mono" id="m-tm-summary"></span></h2>

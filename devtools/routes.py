@@ -14,10 +14,11 @@ this is a developer tool with one audience and one machine. See
 ``devtools/README.md``.
 """
 
-from flask import Blueprint, abort, jsonify, render_template
+from flask import Blueprint, abort, jsonify, render_template, request
 
 from validators import validate_json
 
+from . import metrics as metrics_mod
 from . import monitor
 from .metrics import registry
 
@@ -58,6 +59,34 @@ def monitor_metrics():
     return jsonify(payload)
 
 
+@devtools_bp.route('/memory', methods=['GET'])
+def monitor_memory():
+    """The memory-escalation series and its trend.
+
+    Separate from ``/metrics`` on purpose. The series is up to four hours of
+    samples; folding it into a readout the page fetches once a second would send
+    the whole history sixty times a minute to redraw a line that moves once every
+    five seconds. The page polls this one on its own, slower, cadence.
+
+    ``?window=<seconds>`` narrows the series to the most recent slice (the page's
+    zoom control); ``?points=<n>`` caps how many buckets come back.
+    """
+    try:
+        window = float(request.args.get('window') or 0) or None
+    except (TypeError, ValueError):
+        window = None
+    try:
+        points = int(request.args.get('points') or metrics_mod.MEMORY_MAX_POINTS)
+    except (TypeError, ValueError):
+        points = metrics_mod.MEMORY_MAX_POINTS
+    points = max(10, min(points, metrics_mod.MEMORY_MAX_POINTS))
+
+    payload = registry.memory_history(window_sec=window, max_points=points)
+    payload['sampler_running'] = monitor.sampler_running()
+    payload['status'] = 'success'
+    return jsonify(payload)
+
+
 @devtools_bp.route('/control', methods=['POST'])
 @validate_json({'action': (str, None, True)})
 def monitor_control(validated_data):
@@ -76,6 +105,11 @@ def monitor_control(validated_data):
         registry.start_tracemalloc()
     elif action == 'trace_off':
         registry.stop_tracemalloc()
+    elif action == 'memory_clear':
+        # Deliberately its own action rather than part of 'reset': the counters
+        # and the memory history answer different questions, and clearing the
+        # history is how you lose the climb you were trying to see.
+        registry.clear_memory_history()
     else:
         return jsonify({'status': 'error', 'message': f'Unknown action: {action}'}), 400
     return jsonify({'status': 'success', 'action': action})

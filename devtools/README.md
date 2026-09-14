@@ -40,7 +40,8 @@ Endpoints:
 |---|---|---|
 | `/__dev/monitor` and `/__dev/monitor/` | GET | The page |
 | `/__dev/monitor/metrics` | GET | The whole readout as JSON — the page polls this once a second; `curl` it for a scriptable snapshot |
-| `/__dev/monitor/control` | POST | `{"action": "reset" \| "trace_on" \| "trace_off"}` |
+| `/__dev/monitor/memory` | GET | The memory-escalation series and its trend. `?window=<sec>` narrows it, `?points=<n>` caps the buckets |
+| `/__dev/monitor/control` | POST | `{"action": "reset" \| "trace_on" \| "trace_off" \| "memory_clear"}` |
 | `/__dev/monitor/assets/<file>` | GET | The page's own CSS/JS |
 
 **Every one of them answers 404 unless the monitor is attached** — not 403. A
@@ -71,6 +72,105 @@ of transient list for 300k tracked objects. Once a second that is a real slice o
 a core spent inside the request handler — and the 2.5 MB lands in tracemalloc's
 peak, so the monitor would be the biggest allocator on its own allocation table.
 RSS and the traced-memory figures already answer "is this process growing".
+
+### Memory over time (the escalation chart)
+
+A chart of resident memory for the whole run, with a verdict attached. This is
+the panel to look at when the question is "is this thing leaking".
+
+**It is sampled server-side, on its own thread** (`devmon-memory-sampler`, one
+`memory_info()` every `MEMORY_SAMPLE_SEC` = 5 s, kept for four hours in a
+bounded ring). That costs a thread the page-driven alternative would not, and it
+buys the only thing that makes the panel worth having: the series covers the
+hours nobody had the tab open. A chart that starts when you open it cannot tell
+you what happened overnight.
+
+The history **survives "Reset counters"** — the counters answer "what has
+happened since I pressed reset", the history answers "has this process been
+growing", and throwing the second away to ask the first is how you lose the
+climb you were hunting. `Clear history` is a separate button.
+
+**Reading the chart.** Each plotted point is a bucket, drawn as a band from the
+bucket's minimum to its maximum with the average as a line through it. The band
+is the whole point:
+
+* **Wide band, flat bottom** — a busy app. Peaks move with whatever it is doing;
+  the memory is being reused.
+* **Bottom rising with the top** — a leak. Something is being kept.
+
+The dashed second line is the traced Python heap, drawn only while allocation
+tracing is on. It is normally far below RSS; when the two rise together the
+growth is Python objects and the allocation table above will name the line.
+
+**The two numbers.**
+
+| Field | Unit | How to read it |
+|---|---|---|
+| `slope_mb_per_hour` | MB/h | Least-squares fit over every sample. Shown because it is what you would compute by eye — but **not** what the verdict reads. |
+| `floor_rise_mb` | MB | Lowest RSS in the last quarter minus the lowest in the first. **The gate.** |
+| `floor_slope_mb_per_hour` | MB/h | The fit over the low-water mark of each of eight slices. Grades how fast. |
+| `recent_floor_slope_mb_per_hour` | MB/h | The same fit over the most recent half. Answers "is it *still* going". |
+
+The raw slope is not the verdict's basis, because on an oscillating series it
+mostly measures which phase the window happened to end in: a sawtooth between
+80 and 90 MB reports +6 MB/h or −9 MB/h depending on where you cut it, with the
+floor sitting still the whole time.
+
+So the gate is `floor_rise_mb` — a comparison of two minima, immune to phase —
+and the slopes only grade what it caught. A fitted floor slope cannot be the
+gate either: a triangle wave whose period does not divide the window aliases
+against the slice boundaries and produces a confident +12 MB/h out of nothing.
+
+A one-time step (opening a large CSV) raises the floor permanently, so
+`climbing` additionally requires the floor to be **still** rising over the most
+recent half. A step that has finished reads `rising` and settles to `steady` as
+the window rolls past it.
+
+**The verdict is a heuristic and says so.** The thresholds live in one block at
+the top of `metrics.py` (`MEMORY_RISE_WARN_MB_H` 5, `MEMORY_RISE_BAD_MB_H` 20,
+`MEMORY_FLOOR_RISE_MB` 2) and are shipped in the JSON so the page can show what
+it applied:
+
+| Verdict | Rule | Painted |
+|---|---|---|
+| `warming_up` | fewer than `MEMORY_MIN_SAMPLES` (24 ≈ 2 min) | plain |
+| `steady` | floor rise under `MEMORY_FLOOR_RISE_MB` | `--go` |
+| `rising` | floor rise over it | `--warn` |
+| `climbing` | floor rise over it, floor slope over `MEMORY_RISE_BAD_MB_H`, **and** still rising over the last half | `--danger` |
+
+Validated against ten synthetic series — flat, sawtooth, two triangle waves, a
+single tall spike, a fast leak, a slow leak, a step with and without noise, and
+a falling series — in `tests/test_devtools_monitor.py`.
+
+**The first two minutes are charted but not judged.** A fresh interpreter is not
+in steady state — it compiles templates, loads the i18n catalogs and fills its
+file-metadata caches on first use — and that ramp is memory genuinely being
+kept, so no measurement of it can come back clean. Caught on a live run: RSS
+climbed 66.9 → 73.3 MB over the first 190 s of a freshly started app and the
+verdict read `climbing`. Samples inside `MEMORY_WARMUP_SEC` (120 s) are excluded
+from the verdict and still drawn on the chart, so the ramp stays visible and
+stops being an accusation. A leak that outlives the warm-up is caught normally.
+`verdict_samples` and `verdict_span_sec` report what the verdict actually used.
+
+The same caveat applies later in a run, and cannot be automated away: the first
+time you open a feature, its caches fill and the floor steps up. That is a
+`rising`, and it is correct. Widen the window, or exercise the feature twice and
+watch whether the floor moves again.
+
+**The gate sets a sensitivity floor**: a leak slower than `MEMORY_FLOOR_RISE_MB`
+(2 MB) *per window* reads `steady`. That is the intended trade — it is what
+stops normal jitter crying wolf — and it is why the window selector goes out to
+four hours. A 0.5 MB/h leak is invisible at 30 minutes and obvious at four.
+
+Calibrate them against your own baseline before trusting them. On this machine
+an idle app under a 1 Hz poll sat flat at ~76 MB for the whole run, so anything
+above a couple of MB/h is worth a longer window; a machine that runs long
+sessions with large CSVs will have a different normal.
+
+**Without psutil there is no chart.** The stdlib fallback can only give
+`ru_maxrss`, a high-water mark that never comes down — charting it would draw a
+monotonic climb on a perfectly healthy process and the verdict would read
+`climbing` for ever. The series stays empty and the panel says why.
 
 ### Allocations (tracemalloc)
 

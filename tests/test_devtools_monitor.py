@@ -939,3 +939,283 @@ def test_allocation_tracing_is_off_until_the_page_asks(dev_client):
 
     assert dev_client.get('/__dev/monitor/metrics') \
         .get_json()['process']['tracemalloc']['enabled'] is False
+
+
+# --- memory history / escalation chart ---------------------------------------
+
+def _fill_history(reg, values, step=5.0, traced=None, start=None):
+    """Seed a registry's history with a known RSS series (bytes).
+
+    ``start`` offsets the timestamps: the verdict ignores samples inside the
+    first MEMORY_WARMUP_SEC, so a series about steady-state behaviour has to be
+    seeded past it.
+    """
+    if start is None:
+        start = _metrics.MEMORY_WARMUP_SEC
+    reg._mem_history.clear()
+    for i, value in enumerate(values):
+        reg._mem_history.append((start + i * step, value, traced))
+
+
+def test_memory_route_404s_when_the_monitor_is_off(client):
+    assert monitor.is_enabled() is False
+    assert client.get('/__dev/monitor/memory').status_code == 404
+
+
+def test_memory_route_shape(dev_client):
+    body = dev_client.get('/__dev/monitor/memory').get_json()
+    assert body['status'] == 'success'
+    for key in ('points', 'samples', 'verdict', 'verdict_reason', 'thresholds',
+                'sample_interval_sec', 'retention_sec', 'sampler_running',
+                'current_bytes', 'min_bytes', 'max_bytes', 'rss_available',
+                'slope_mb_per_hour', 'floor_slope_mb_per_hour',
+                'recent_floor_slope_mb_per_hour', 'floor_rise_mb',
+                'verdict_samples', 'verdict_span_sec', 'warmup_sec'):
+        assert key in body, key
+
+
+def test_sampler_thread_runs_while_attached_and_stops_on_detach(dev_app):
+    assert monitor.sampler_running() is True
+    monitor.detach_monitor()
+    assert monitor.sampler_running() is False
+    # Re-attach so the fixture's own detach is a no-op rather than an error.
+    monitor.attach_monitor(dev_app)
+
+
+def test_attach_takes_a_sample_immediately(dev_client):
+    """The chart must not be empty for a whole interval after attach."""
+    body = dev_client.get('/__dev/monitor/memory').get_json()
+    # psutil present -> a real sample; absent -> an honest empty series.
+    assert body['samples'] >= 1 or body['rss_available'] is False
+
+
+MB = 1024 * 1024
+
+
+@pytest.mark.parametrize('name, values, expected', [
+    ('flat',       [80 * MB] * 60, 'steady'),
+    # A busy app: peaks swing, floor does not. The raw slope reads +6 MB/h here,
+    # which is exactly why the verdict does not read the raw slope.
+    ('sawtooth',   [80 * MB + (10 * MB if i % 2 else 0) for i in range(60)], 'steady'),
+    # Triangle waves whose period does not divide the window alias against the
+    # floor slices and manufacture a trend; the floor-rise gate ignores them.
+    ('triangle10', [80 * MB + abs((i % 10) - 5) * 3 * MB for i in range(60)], 'steady'),
+    ('triangle7',  [80 * MB + abs((i % 7) - 3) * 4 * MB for i in range(60)], 'steady'),
+    ('one spike',  [80 * MB] * 29 + [300 * MB] + [80 * MB] * 30, 'steady'),
+    ('falling',    [120 * MB - i * MB for i in range(60)], 'steady'),
+    ('fast leak',  [80 * MB + i * MB for i in range(60)], 'climbing'),
+    ('slow leak',  [80 * MB + int(i * 0.05 * MB) for i in range(60)], 'climbing'),
+    # A finished step raises the floor for good but has stopped: 'rising', not
+    # 'climbing'. It decays to 'steady' as the window rolls past it.
+    ('step',       [80 * MB] * 30 + [100 * MB] * 30, 'rising'),
+    ('step+noise', [80 * MB + (i % 3) * MB for i in range(30)] +
+                   [100 * MB + (i % 3) * MB for i in range(30)], 'rising'),
+])
+def test_verdict_classifies_known_shapes(name, values, expected):
+    reg = Registry()
+    # _fill_history seeds past the warm-up window by default: these shapes are
+    # statements about steady state, and the first two minutes are excluded by
+    # design.
+    _fill_history(reg, values)
+    assert reg.memory_history()['verdict'] == expected, name
+
+
+def test_warmup_is_charted_but_excluded_from_the_verdict():
+    """A fresh interpreter fills caches; that ramp is not a leak.
+
+    Caught on a live run: RSS climbed 66.9 -> 73.3 MB over the first 190 s of a
+    freshly started app and the verdict read 'climbing'. Memory really was being
+    kept — templates, i18n catalogs, file-metadata caches — so no measurement of
+    the ramp can clear it. Excluding the warm-up window is the only honest fix.
+    """
+    reg = Registry()
+    warmup = [66 * MB + int(i * 0.25 * MB) for i in range(26)]     # 0-125 s
+    settled = [73 * MB + (i % 3) * MB // 4 for i in range(40)]     # then flat
+    _fill_history(reg, warmup + settled, start=0.0)
+    stats = reg.memory_history()
+    assert stats['verdict'] == 'steady'
+    # Charted in full; judged from MEMORY_WARMUP_SEC onward. That boundary is
+    # inclusive and falls inside the ramp array here, so the 40 settled samples
+    # plus the two ramp samples at t=120 and t=125 are what gets judged.
+    assert stats['samples'] == 66
+    assert stats['verdict_samples'] == 42
+    assert stats['warmup_sec'] == _metrics.MEMORY_WARMUP_SEC
+    assert len(stats['points']) == 66
+
+
+def test_a_leak_that_outlives_the_warmup_is_still_caught():
+    reg = Registry()
+    warmup = [66 * MB + int(i * 0.25 * MB) for i in range(26)]
+    _fill_history(reg, warmup + [73 * MB + i * MB for i in range(40)], start=0.0)
+    assert reg.memory_history()['verdict'] == 'climbing'
+
+
+def test_no_verdict_during_the_warmup_window():
+    reg = Registry()
+    _fill_history(reg, [66 * MB + int(i * 0.25 * MB) for i in range(20)], start=0.0)
+    stats = reg.memory_history()
+    assert stats['verdict'] == 'warming_up'
+    assert 'warming up' in stats['verdict_reason'].lower()
+
+
+def test_the_reason_quotes_the_window_the_verdict_used():
+    """Not the charted span — they differ whenever warm-up was trimmed."""
+    reg = Registry()
+    warmup = [66 * MB + int(i * 0.25 * MB) for i in range(26)]
+    settled = [73 * MB] * 40
+    _fill_history(reg, warmup + settled, start=0.0)
+    stats = reg.memory_history()
+    assert stats['verdict_span_sec'] < stats['span_sec']
+
+
+def test_the_raw_slope_is_reported_but_is_not_the_gate():
+    """A sawtooth's raw slope is non-zero; its floor is flat and it reads steady."""
+    reg = Registry()
+    _fill_history(reg, [80 * MB + (10 * MB if i % 2 else 0) for i in range(60)])
+    stats = reg.memory_history()
+    assert stats['slope_mb_per_hour'] > _metrics.MEMORY_RISE_WARN_MB_H
+    assert stats['floor_rise_mb'] == 0.0
+    assert stats['verdict'] == 'steady'
+
+
+def test_a_leak_slower_than_the_gate_reads_steady():
+    """The documented sensitivity floor, asserted rather than left implicit."""
+    reg = Registry()
+    creep = _metrics.MEMORY_FLOOR_RISE_MB * 0.4 * MB / 60.0
+    _fill_history(reg, [int(80 * MB + i * creep) for i in range(60)])
+    stats = reg.memory_history()
+    assert stats['floor_rise_mb'] < _metrics.MEMORY_FLOOR_RISE_MB
+    assert stats['verdict'] == 'steady'
+
+
+def test_a_flat_series_reads_steady():
+    reg = Registry()
+    _fill_history(reg, [80 * 1024 * 1024] * 60)
+    stats = reg.memory_history()
+    assert stats['verdict'] == 'steady'
+    assert abs(stats['slope_mb_per_hour']) < 0.01
+    assert stats['floor_rise_mb'] == 0.0
+
+
+def test_a_rising_floor_is_reported_as_climbing():
+    reg = Registry()
+    base = 80 * 1024 * 1024
+    # +1 MB per sample over 60 samples at 5 s = 720 MB/h, floor rising with it.
+    _fill_history(reg, [base + i * 1024 * 1024 for i in range(60)])
+    stats = reg.memory_history()
+    assert stats['verdict'] == 'climbing'
+    assert stats['floor_slope_mb_per_hour'] > _metrics.MEMORY_RISE_BAD_MB_H
+    assert stats['recent_floor_slope_mb_per_hour'] > _metrics.MEMORY_RISE_WARN_MB_H
+    assert stats['floor_rise_mb'] > _metrics.MEMORY_FLOOR_RISE_MB
+
+
+def test_a_finished_step_is_not_still_going():
+    reg = Registry()
+    _fill_history(reg, [80 * MB] * 30 + [100 * MB] * 30)
+    stats = reg.memory_history()
+    assert stats['floor_rise_mb'] == 20.0
+    assert stats['recent_floor_slope_mb_per_hour'] == 0.0
+    assert stats['verdict'] == 'rising'
+
+
+def test_no_verdict_before_enough_samples():
+    reg = Registry()
+    _fill_history(reg, [80 * 1024 * 1024] * 5)
+    stats = reg.memory_history()
+    assert stats['verdict'] == 'warming_up'
+    assert stats['slope_mb_per_hour'] is None
+
+
+def test_history_is_bounded():
+    reg = Registry()
+    for i in range(_metrics.MEMORY_HISTORY_MAX + 500):
+        reg._mem_history.append((float(i), 1024, None))
+    assert len(reg._mem_history) == _metrics.MEMORY_HISTORY_MAX
+
+
+def test_series_is_bucketed_down_to_the_requested_points():
+    reg = Registry()
+    _fill_history(reg, [80 * 1024 * 1024 + i for i in range(2000)])
+    stats = reg.memory_history(max_points=100)
+    assert 0 < len(stats['points']) <= 100
+    # Each bucket carries [t, avg, min, max, traced]; min <= avg <= max.
+    for _t, avg, low, high, _traced in stats['points']:
+        assert low <= avg <= high
+
+
+def test_bucketing_keeps_the_extremes_a_stride_would_drop():
+    """A spike between two strided samples must still reach the band."""
+    reg = Registry()
+    series = [80 * 1024 * 1024] * 200
+    series[97] = 300 * 1024 * 1024               # one tall spike
+    _fill_history(reg, series)
+    stats = reg.memory_history(max_points=10)
+    assert max(point[3] for point in stats['points']) == 300 * 1024 * 1024
+
+
+def test_window_narrows_the_series(dev_client):
+    reg = Registry()
+    _fill_history(reg, [80 * 1024 * 1024] * 120, step=5.0)   # 600 s of history
+    everything = reg.memory_history()
+    recent = reg.memory_history(window_sec=100)
+    assert recent['samples'] < everything['samples']
+
+
+def test_a_peak_only_platform_never_charts_a_fake_climb():
+    """getrusage gives a high-water mark; charting it would climb for ever."""
+    reg = Registry()
+    with patch.object(_metrics, 'psutil', None):
+        assert reg._rss_bytes_only() is None
+    stats = reg.memory_history()
+    assert stats['rss_available'] is False
+    assert stats['points'] == []
+    assert stats['verdict'] == 'warming_up'
+    assert 'psutil' in stats['verdict_reason']
+
+
+def test_sampler_never_touches_cpu_percent_on_the_shared_handle():
+    """cpu_percent() is a delta against the handle's previous call.
+
+    A second caller on a different cadence would silently halve the figure the
+    page shows, so the sampler must read memory_info() and nothing else.
+    """
+    reg = Registry()
+    handle = type('H', (), {
+        'memory_info': lambda self: type('M', (), {'rss': 123456})(),
+        'cpu_percent': lambda self, interval=None: pytest.fail(
+            'sampler called cpu_percent on the shared handle'),
+    })()
+    with patch.object(reg, '_psutil_self', return_value=handle), \
+            patch.object(_metrics, 'psutil', object()):
+        assert reg._rss_bytes_only() == 123456
+
+
+def test_counter_reset_keeps_the_memory_history(dev_client):
+    """Reset answers 'since when'; the history answers 'has it been growing'."""
+    _fill_history(registry, [80 * 1024 * 1024] * 40)
+    before = registry.memory_history()['samples']
+    dev_client.post('/__dev/monitor/control', json={'action': 'reset'})
+    assert registry.memory_history()['samples'] == before
+    registry._mem_history.clear()
+
+
+def test_memory_clear_is_its_own_action(dev_client):
+    _fill_history(registry, [80 * 1024 * 1024] * 40)
+    assert registry.memory_history()['samples'] == 40
+    response = dev_client.post('/__dev/monitor/control', json={'action': 'memory_clear'})
+    assert response.status_code == 200
+    assert registry.memory_history()['samples'] == 0
+
+
+def test_memory_route_clamps_a_silly_points_request(dev_client):
+    body = dev_client.get('/__dev/monitor/memory?points=999999').get_json()
+    assert len(body['points']) <= _metrics.MEMORY_MAX_POINTS
+    assert dev_client.get('/__dev/monitor/memory?points=nonsense').status_code == 200
+    assert dev_client.get('/__dev/monitor/memory?window=nonsense').status_code == 200
+
+
+def test_page_has_the_chart_and_its_controls(dev_client):
+    html = dev_client.get('/__dev/monitor/').get_data(as_text=True)
+    for marker in ('m-mem-chart', 'm-mem-verdict', 'm-mem-window', 'm-mem-clear',
+                   'm-mem-slope', 'm-mem-floorslope', 'm-mem-floor'):
+        assert marker in html, marker

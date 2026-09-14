@@ -48,6 +48,40 @@ TRACEMALLOC_FRAMES = 1
 # Rows in the tracemalloc top-N table.
 TRACEMALLOC_TOP = 12
 
+# ── Memory history ──────────────────────────────────────────────────────────
+# The escalation chart. Sampled by a background thread rather than by the page's
+# poll, because the question it answers — "did this process climb overnight" —
+# is about the hours when nobody had the tab open.
+MEMORY_SAMPLE_SEC = 5.0
+MEMORY_HISTORY_SPAN_SEC = 4 * 3600
+MEMORY_HISTORY_MAX = int(MEMORY_HISTORY_SPAN_SEC / MEMORY_SAMPLE_SEC)   # 2880
+# Points sent to the page. The series is bucketed down to this, never strided:
+# a stride drops whichever samples it lands between, and the two features worth
+# seeing here — a spike and a rising floor — are exactly what a stride hides.
+MEMORY_MAX_POINTS = 240
+# No verdict before this many samples (2 minutes at the default cadence). A
+# slope fitted to four points of startup noise is not a leak report.
+MEMORY_MIN_SAMPLES = 24
+# Heuristics, and labelled as such on the page. They are a starting point for
+# "look at this", not a specification — calibrate them against your own baseline
+# before trusting them (devtools/README.md).
+MEMORY_RISE_WARN_MB_H = 5.0
+MEMORY_RISE_BAD_MB_H = 20.0
+# Samples from the first ``MEMORY_WARMUP_SEC`` of the process are charted but
+# excluded from the verdict. A fresh interpreter is not in steady state: it
+# compiles templates, loads the i18n catalogs and fills its file-metadata caches
+# on first use, and that ramp is memory deliberately kept — indistinguishable,
+# by any of the numbers below, from a leak. Measured on this app, RSS climbs
+# ~6 MB over the first three minutes and then sits flat.
+MEMORY_WARMUP_SEC = 120.0
+
+# A rising *floor* is what separates a leak from a sawtooth: peaks move with
+# whatever the app is doing, but the low-water mark between them only climbs if
+# something is being kept.
+MEMORY_FLOOR_RISE_MB = 2.0
+
+_MB = 1024.0 * 1024.0
+
 
 def _pct(samples, fraction):
     """Nearest-rank percentile over an unsorted sample sequence (ms)."""
@@ -60,6 +94,170 @@ def _pct(samples, fraction):
 
 def _mean(samples):
     return round(sum(samples) / len(samples), 3) if samples else None
+
+
+def _bucket_memory(points, max_points):
+    """Reduce a (t, rss, traced) series to at most ``max_points`` buckets.
+
+    Each bucket becomes ``[t, avg, min, max, traced_avg]`` so the page can draw
+    a min/max band under the average line. That band is the whole point: a
+    sawtooth and a staircase have the same average slope over a short window and
+    are told apart by whether the *bottom* of the band moves.
+
+    Samples whose RSS is ``None`` (the psutil-free fallback) are dropped rather
+    than plotted as zero.
+    """
+    usable = [pt for pt in points if pt[1] is not None]
+    if not usable:
+        return []
+    size = max(1, -(-len(usable) // max_points))        # ceil division
+    out = []
+    for start in range(0, len(usable), size):
+        chunk = usable[start:start + size]
+        values = [pt[1] for pt in chunk]
+        traced = [pt[2] for pt in chunk if pt[2] is not None]
+        out.append([
+            round(chunk[-1][0], 1),
+            int(sum(values) / len(values)),
+            min(values),
+            max(values),
+            int(sum(traced) / len(traced)) if traced else None,
+        ])
+    return out
+
+
+def _slope_mb_per_hour(points):
+    """Least-squares slope of (t seconds, rss bytes), in MB/hour."""
+    n = len(points)
+    if n < 2:
+        return 0.0
+    mean_t = sum(pt[0] for pt in points) / n
+    mean_y = sum(pt[1] for pt in points) / n
+    numerator = sum((pt[0] - mean_t) * (pt[1] - mean_y) for pt in points)
+    denominator = sum((pt[0] - mean_t) ** 2 for pt in points)
+    if not denominator:
+        return 0.0
+    return (numerator / denominator) * 3600.0 / _MB
+
+
+def _floor_series(points, segments=8):
+    """The low-water mark of each of ``segments`` slices, as (t, rss).
+
+    The verdict is fitted to this rather than to the raw samples. A sawtooth —
+    a busy app allocating and releasing — has peaks that swing the raw slope
+    around depending on which phase the window happens to end in, while its
+    floor sits still. Only memory that is *kept* moves the floor.
+    """
+    if len(points) < segments:
+        return [(pt[0], pt[1]) for pt in points]
+    size = max(1, -(-len(points) // segments))
+    out = []
+    for start in range(0, len(points), size):
+        chunk = points[start:start + size]
+        low = min(pt[1] for pt in chunk)
+        out.append((chunk[len(chunk) // 2][0], low))
+    return out
+
+
+def _memory_stats(points):
+    """Trend of an (t, rss, traced) series: slope, floor rise, and a verdict.
+
+    Three numbers, because one is not enough to tell a leak from a busy app:
+
+      * **slope** — least squares over every sample, in MB/hour. Reported
+        because it is what you would compute by eye, but NOT what the verdict
+        reads: on an oscillating series it mostly measures which phase the
+        window ended in.
+      * **floor slope** — the same fit over the low-water mark of each of eight
+        slices. This is the verdict's basis. A sawtooth's floor is flat; only
+        memory that is kept lifts it.
+      * **floor rise** — lowest RSS in the last quarter minus the lowest in the
+        first, in MB. The blunt version of the same question, and what separates
+        a real step from noise.
+
+    A one-time step (opening a large CSV) raises the floor permanently and would
+    otherwise be indistinguishable from a leak, so ``climbing`` also requires the
+    floor to be *still* rising over the most recent half. A step that has
+    finished reads ``rising`` and settles to ``steady`` as the window rolls past.
+
+    The thresholds are heuristics (see the constants above) and the verdict says
+    which rule fired so it can be argued with.
+    """
+    charted = [pt for pt in points if pt[1] is not None]
+    # The verdict ignores the warm-up ramp; the chart still draws it.
+    usable = [pt for pt in charted if pt[0] >= MEMORY_WARMUP_SEC]
+    stats = {
+        'samples': len(charted),
+        'verdict_samples': len(usable),
+        'verdict_span_sec': 0.0,
+        'warmup_sec': MEMORY_WARMUP_SEC,
+        'rss_available': bool(charted),
+        'current_bytes': charted[-1][1] if charted else None,
+        'min_bytes': min(pt[1] for pt in charted) if charted else None,
+        'max_bytes': max(pt[1] for pt in charted) if charted else None,
+        'span_sec': round(charted[-1][0] - charted[0][0], 1) if len(charted) > 1 else 0.0,
+        'slope_mb_per_hour': None,
+        'floor_slope_mb_per_hour': None,
+        'recent_floor_slope_mb_per_hour': None,
+        'floor_rise_mb': None,
+        'verdict': 'warming_up',
+        'verdict_reason': f'Fewer than {MEMORY_MIN_SAMPLES} samples so far.',
+    }
+    if len(usable) < MEMORY_MIN_SAMPLES:
+        if not charted:
+            stats['verdict_reason'] = ('No RSS readings — psutil is not installed, '
+                                       'and the fallback can only report a peak.')
+        elif charted[-1][0] < MEMORY_WARMUP_SEC:
+            stats['verdict_reason'] = (
+                f'Still warming up — the first {MEMORY_WARMUP_SEC:.0f} s of a process '
+                f'fills caches, which no leak test can tell from a leak.')
+        return stats
+
+    n = len(usable)
+    verdict_span = usable[-1][0] - usable[0][0]
+    stats['verdict_span_sec'] = round(verdict_span, 1)
+    floor = _floor_series(usable)
+    slope_mb_h = _slope_mb_per_hour([(pt[0], pt[1]) for pt in usable])
+    floor_slope_mb_h = _slope_mb_per_hour(floor)
+    recent_floor_mb_h = _slope_mb_per_hour(floor[len(floor) // 2:])
+
+    quarter = max(1, n // 4)
+    floor_first = min(pt[1] for pt in usable[:quarter])
+    floor_last = min(pt[1] for pt in usable[-quarter:])
+    floor_rise_mb = (floor_last - floor_first) / _MB
+
+    stats['slope_mb_per_hour'] = round(slope_mb_h, 2)
+    stats['floor_slope_mb_per_hour'] = round(floor_slope_mb_h, 2)
+    stats['recent_floor_slope_mb_per_hour'] = round(recent_floor_mb_h, 2)
+    stats['floor_rise_mb'] = round(floor_rise_mb, 2)
+
+    # A risen floor is the NECESSARY condition for any non-steady verdict, and
+    # the slopes only grade it. Comparing the minimum of the last quarter with
+    # the minimum of the first is immune to where in its cycle an oscillating
+    # app happened to be when the window closed; a fitted slope is not — a
+    # triangle wave whose period does not divide the window aliases against the
+    # segment boundaries and produces a confident trend out of nothing.
+    floor_rising = floor_rise_mb >= MEMORY_FLOOR_RISE_MB
+    still_going = recent_floor_mb_h >= MEMORY_RISE_WARN_MB_H
+    if floor_rising and floor_slope_mb_h >= MEMORY_RISE_BAD_MB_H and still_going:
+        stats['verdict'] = 'climbing'
+        stats['verdict_reason'] = (
+            f'Floor up {floor_slope_mb_h:.1f} MB/h and {floor_rise_mb:.1f} MB higher '
+            f'than it started, still rising over the last half — memory is being kept, '
+            f'not reused.')
+    elif floor_rising:
+        stats['verdict'] = 'rising'
+        stats['verdict_reason'] = (
+            f'Floor {floor_rise_mb:+.1f} MB over {verdict_span / 60:.0f} min '
+            f'({floor_slope_mb_h:+.1f} MB/h, last half {recent_floor_mb_h:+.1f} MB/h). '
+            f'A one-time step looks like this — widen the window before calling it a leak.')
+    else:
+        stats['verdict'] = 'steady'
+        stats['verdict_reason'] = (
+            f'Floor {floor_rise_mb:+.1f} MB over {verdict_span / 60:.0f} min '
+            f'(under the {MEMORY_FLOOR_RISE_MB:.0f} MB this window can resolve); '
+            f'samples {slope_mb_h:+.1f} MB/h. Memory is being reused.')
+    return stats
 
 
 class _Series:
@@ -112,6 +310,11 @@ class Registry:
         # process, and the one logger subprocess — so nothing accumulates.
         self._proc_handle = None
         self._child_handle = (None, None)     # (pid, psutil.Process)
+        # Memory history is NOT cleared by reset_counters(): the counters answer
+        # "what has happened since I pressed reset", the history answers "has
+        # this process been growing", and throwing the second away to ask the
+        # first is how you lose the overnight climb you were hunting.
+        self._mem_history = deque(maxlen=MEMORY_HISTORY_MAX)
         self.reset_counters()
 
     # ── lifecycle ───────────────────────────────────────────────────────
@@ -178,6 +381,68 @@ class Registry:
                 tracemalloc.stop()
             self._tracemalloc_owner = None
             return True
+
+    # ── memory history ──────────────────────────────────────────────────
+    def sample_memory(self):
+        """Append one RSS/traced-heap sample. Called by the sampler thread only.
+
+        Reads ``memory_info()`` and nothing else. In particular it must never
+        call ``cpu_percent()`` on the shared handle: that reading is a delta
+        against the handle's *previous* call, so a second caller on a different
+        cadence would silently halve the CPU figure the page shows.
+        """
+        rss = self._rss_bytes_only()
+        traced = None
+        try:
+            import tracemalloc
+            if tracemalloc.is_tracing():
+                traced = tracemalloc.get_traced_memory()[0]
+        except Exception:
+            traced = None
+        point = (time.monotonic() - self._started_monotonic, rss, traced)
+        with self._lock:
+            self._mem_history.append(point)
+        return point
+
+    def _rss_bytes_only(self):
+        """Current RSS, or None when only a peak is available.
+
+        The stdlib fallback deliberately returns nothing rather than
+        ``ru_maxrss``: a peak never comes down, so charting it would draw a
+        monotonic climb on a perfectly healthy process and the escalation
+        verdict would read 'climbing' for ever.
+        """
+        if psutil is not None:
+            try:
+                return self._psutil_self().memory_info().rss
+            except Exception:
+                pass
+        return None
+
+    def memory_history(self, window_sec=None, max_points=MEMORY_MAX_POINTS):
+        """The escalation series plus its trend, bucketed for the page."""
+        with self._lock:
+            points = list(self._mem_history)
+        if window_sec:
+            cutoff = (points[-1][0] - window_sec) if points else 0
+            points = [pt for pt in points if pt[0] >= cutoff]
+        stats = _memory_stats(points)
+        stats.update({
+            'sample_interval_sec': MEMORY_SAMPLE_SEC,
+            'retention_sec': MEMORY_HISTORY_SPAN_SEC,
+            'window_sec': window_sec,
+            'thresholds': {
+                'warn_mb_per_hour': MEMORY_RISE_WARN_MB_H,
+                'bad_mb_per_hour': MEMORY_RISE_BAD_MB_H,
+                'floor_rise_mb': MEMORY_FLOOR_RISE_MB,
+            },
+            'points': _bucket_memory(points, max_points),
+        })
+        return stats
+
+    def clear_memory_history(self):
+        with self._lock:
+            self._mem_history.clear()
 
     # ── HTTP recorders ──────────────────────────────────────────────────
     def http_begin(self):

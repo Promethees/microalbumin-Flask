@@ -12,9 +12,10 @@ testable function rather than a condition in a script's ``__main__``.
 """
 
 import sys
+import threading
 import time
 
-from .metrics import registry
+from .metrics import MEMORY_SAMPLE_SEC, registry
 
 # Dev routes live under one obviously non-production prefix. Everything below it
 # 404s unless the monitor is attached, so a normal run looks like a build that
@@ -23,6 +24,8 @@ MONITOR_PREFIX = '/__dev/monitor'
 
 _enabled = False
 _attached_app = None
+_sampler_thread = None
+_sampler_stop = None
 
 
 def is_enabled():
@@ -81,6 +84,8 @@ def attach_monitor(app, install_hooks=True, trace_allocations=False):
         from . import hooks
         hooks.install()
 
+    _start_memory_sampler()
+
     _enabled = True
     _attached_app = app
     return True
@@ -97,9 +102,71 @@ def detach_monitor():
     global _enabled, _attached_app
     from . import hooks
     hooks.uninstall()
+    _stop_memory_sampler()
     registry.stop_tracemalloc()
     _enabled = False
     _attached_app = None
+
+
+def _start_memory_sampler():
+    """Run the RSS sampler behind the monitor, on its own thread.
+
+    Sampling from the page's poll instead would have been free, and wrong: the
+    escalation chart exists to answer "did this process grow while I was not
+    looking", and a poll-driven series only ever covers the minutes a tab
+    happened to be open. One ``memory_info()`` every five seconds is the price.
+
+    Daemon, so it can never hold up an interpreter exit, and driven by an Event
+    rather than ``sleep()`` so ``detach_monitor()`` returns promptly instead of
+    waiting out the current interval.
+    """
+    global _sampler_thread, _sampler_stop
+
+    if _sampler_thread is not None and _sampler_thread.is_alive():
+        return _sampler_thread
+
+    _sampler_stop = threading.Event()
+    stop = _sampler_stop
+
+    def _loop():
+        while not stop.is_set():
+            try:
+                registry.sample_memory()
+            except Exception:
+                # A sampler that can kill its own thread stops answering the
+                # question silently, which is the one failure mode worse than a
+                # gap in the chart.
+                pass
+            stop.wait(MEMORY_SAMPLE_SEC)
+
+    # One sample up front so the chart has a point before the first interval.
+    try:
+        registry.sample_memory()
+    except Exception:
+        pass
+
+    _sampler_thread = threading.Thread(
+        target=_loop, name='devmon-memory-sampler', daemon=True)
+    _sampler_thread.start()
+    return _sampler_thread
+
+
+def _stop_memory_sampler(timeout=2.0):
+    """Stop the sampler and wait for it, so tests do not leak threads."""
+    global _sampler_thread, _sampler_stop
+
+    if _sampler_stop is not None:
+        _sampler_stop.set()
+    thread = _sampler_thread
+    if thread is not None and thread.is_alive():
+        thread.join(timeout=timeout)
+    _sampler_thread = None
+    _sampler_stop = None
+
+
+def sampler_running():
+    """True while the memory sampler thread is alive (tests and the readout)."""
+    return _sampler_thread is not None and _sampler_thread.is_alive()
 
 
 def _install_http_timers(app):

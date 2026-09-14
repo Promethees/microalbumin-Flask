@@ -208,3 +208,76 @@
     .devmon-head { align-items: flex-start; }
     .devmon-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 }
+
+/* ── Memory over time ────────────────────────────────────────────────────
+   The chart itself is drawn on a canvas, which cannot read a CSS variable.
+   monitor.js resolves these tokens with getComputedStyle() at paint time and
+   passes the resolved strings to the 2D context, so the chart still has no
+   colour of its own and still follows the app's palette and theme (§2.33). */
+.devmon-memhead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.devmon-memhead .devmon-note {
+    flex: 1 1 260px;
+    margin: 0;
+}
+
+.devmon-memctl {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.devmon-verdict {
+    font-family: var(--font-label);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: var(--r-press);
+    border: 1px solid var(--hairline);
+    color: var(--ink-dim);
+    background: var(--well);
+    white-space: nowrap;
+}
+
+.devmon-verdict.is-steady { color: var(--go); border-color: var(--go); }
+.devmon-verdict.is-warn   { color: var(--warn); border-color: var(--warn); }
+.devmon-verdict.is-bad {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: var(--danger-wash);
+}
+
+.devmon-chart {
+    position: relative;
+    background: var(--well);
+    border: 1px solid var(--hairline-soft);
+    border-radius: var(--r-flat);
+    padding: 8px;
+}
+
+/* Height is set here rather than on the element so the canvas cannot stretch
+   its own box: monitor.js sizes the backing store from clientWidth/Height. */
+.devmon-chart canvas {
+    display: block;
+    width: 100%;
+    height: 200px;
+}
+
+.devmon-chart-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    color: var(--ink-muted);
+    font-family: var(--font-label);
+    font-size: 0.78rem;
+}
