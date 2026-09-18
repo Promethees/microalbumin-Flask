@@ -14,7 +14,7 @@ environment and exit if it is unset.
 ```bash
 cd /path/to/microalbumin-Flask
 python tools/package.py --encode          # produces dist/EasyOKAPI/
-APP_VERSION=1.5.6 ./installer-mac/build-dmg-frozen.sh
+APP_VERSION=1.5.7 ./installer-mac/build-dmg-frozen.sh
 ```
 
 The `.app` embeds the frozen binary at `Contents/Resources/EasyOKAPI/` and launches
@@ -32,7 +32,7 @@ full signing recipe are in [`installer-mac/SIGNING.md`](installer-mac/SIGNING.md
 ## Source DMG
 
 ```bash
-APP_VERSION=1.5.6 ./installer-mac/build-dmg.sh
+APP_VERSION=1.5.7 ./installer-mac/build-dmg.sh
 ```
 
 The drag target is the `EasyOKAPI` **folder**, not the bare `.app` — `setup.sh`
@@ -49,5 +49,5 @@ installs the source tree into `code/` beside the app, mirroring
 ## Troubleshooting
 
 - Script not executable: `chmod +x ./installer-mac/build-dmg-frozen.sh`
-- `❌ APP_VERSION is not set` — export it: `APP_VERSION=1.5.6 ./installer-mac/…`
+- `❌ APP_VERSION is not set` — export it: `APP_VERSION=1.5.7 ./installer-mac/…`
 - `❌ Frozen bundle not found at dist/EasyOKAPI` — run `python tools/package.py --encode` first.

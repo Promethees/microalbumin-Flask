@@ -59,7 +59,7 @@ most common cause of a rejected identity check.
 |---|---|
 | Product name | Easy OKAPI |
 | Full name | Easy OKAPI — Open-colorimeter Kinetics Analysis Platform |
-| Current version | 1.5.6 (`CLAUDE.md`, `installer-*/`, injected as `APP_VERSION`) |
+| Current version | 1.5.7 (`CLAUDE.md`, `installer-*/`, injected as `APP_VERSION`) |
 | Category | Developer tools / Science & research (not Medical) |
 | macOS bundle identifier | `vn.cbbiotec.easyokapi` — see §Open items, not yet set in the build |
 | Windows product name in the version resource | Easy OKAPI (`installer-win/setup*.nsi`, `VIAddVersionKey`) |
