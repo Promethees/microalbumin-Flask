@@ -963,6 +963,53 @@ failure that never touched the software.
 - **A `<canvas>` is not content.** `generateChart` calls `buildChartDataTable`
   (`a11y.js`), which names the canvas and publishes the same numbers as a real
   table, built only when the reader opens it. Do not add a chart without one.
+  **The table is `sr-only-focusable`, not visible chrome** (since `2026-09-18`):
+  for a single-source file it only repeated what the file editor already shows,
+  so it costs no visible space and returns to flow on `:focus-within`. It is
+  hidden, never deleted — it is still the canvas's 1.1.1 alternative, and it is
+  *not* a duplicate once `processData` averages replicates, nor in calibrate
+  mode, where the plotted metric exists in no CSV. The visible slot below the
+  canvas now belongs to the legend's **bulk visibility toggle**
+  (`.legend-bulk-toggle`, `renderHtmlLegend`), which flips every dataset at once
+  instead of making the user click six swatches and six again; it appears only
+  when there is more than one line, and announces the result.
+  Three things that table depends on, all silently broken until `2026-09-18`:
+  - **A dataset that is not measured data must say so.** `_fillChartTable`
+    drops any dataset carrying `_isRegression`, and `createRegressionDataset`
+    sets it. The flag existed only in the filter for a while, so the fitted
+    line came through as a column of `[object Object]` — its points are
+    `{x, y}` objects on their own 100-step grid, which neither stringify nor
+    line up with the measured rows. Any future overlay (a threshold band, a
+    smoothed trace) flags itself the same way.
+  - **Read `AppState` as a bare global, never off `window`.** It is a top-level
+    `const` in `index.js`, i.e. a global *lexical* binding, so `window.AppState`
+    is `undefined` and any `window.AppState && …` guard silently fails shut.
+    `_fillChartTable` was written that way and bailed on every single call: the
+    toggle opened, relabelled itself and showed an empty table, which is exactly
+    what a user reports as "the button does nothing". Use
+    `(typeof AppState !== 'undefined' && AppState) ? AppState : (window.AppState || {})`,
+    the same shape as `ai-chat.js` `_getUiContext()` and `user-guide.js`. That
+    file's comment records the identical trap breaking AI mode routing — this is
+    the second time it has cost real behaviour.
+  - **The toggle is pinned, not merely present.** Measured on a real kinetics
+    file at 1440x900, the button landed **44px below** `#chart-container`'s
+    bottom edge — present in the DOM, unreachable with a mouse.
+    `.chart-alt { position: sticky; bottom: 0 }` fixes it, and it must sit on
+    the **wrapper**: a sticky box is confined to its parent, and the button's
+    parent is the 38px strip that is itself out of view. Its own parent,
+    `#plot-chart-section`, spans the scroll height, so there the pin has
+    somewhere to travel.
+  - **A pinned surface needs an opaque token, and `--panel` is not one.** The
+    classic layer defines it as `rgba(31, 41, 55, .8)`, so a pinned strip let
+    the trace and the controls read straight through it. `--bg` is opaque in all
+    four theme/style combinations.
+  - **Opening the table must move the scroller.** The toggle lives inside
+    `#chart-container`, a `height: 40%` / `max-height: 600px` pane with its own
+    `overflow-y: auto`, so the canvas alone can push the button past that pane's
+    fold and the opened table unfolds entirely below it — nothing moves and the
+    click reads as a no-op. `_revealInScroller()` scrolls **that pane only**;
+    `scrollIntoView()` is the anti-pattern here, because it walks every
+    scrollable ancestor and yanks the page as well.
 - **Table renderers rebuild their own semantics.** `renderFileRows`,
   `renderJsonRows` and `renderReportRows` replace the whole `<table>` with
   `innerHTML`, discarding the caption, `<thead>` and `scope` the template

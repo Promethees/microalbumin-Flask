@@ -52,7 +52,15 @@
         if (!wrap) {
             wrap = document.createElement('div');
             wrap.id = wrapId;
-            wrap.className = 'chart-alt';
+            // `sr-only-focusable` (style.css): clipped to 1px for everyone, back
+            // in flow on `:focus-within`. The visible slot below the canvas now
+            // belongs to the legend's bulk toggle, and for a single-source file
+            // this table only repeated what the file editor already shows — but
+            // it is still the canvas's 1.1.1 text alternative for a screen
+            // reader, and it is *not* a duplicate once replicates are averaged
+            // (`processData`) or in calibrate mode, where the plotted metric
+            // exists in no CSV. So it is hidden, not deleted.
+            wrap.className = 'chart-alt sr-only-focusable';
             canvas.parentNode.insertBefore(wrap, canvas.nextSibling);
         }
         wrap.innerHTML = '';
@@ -81,21 +89,52 @@
         if (!table) return;
 
         var opening = table.hidden;
+        // Mark the table filled only when it actually was: a chart missing from
+        // `AppState.chartInstances` makes `_fillChartTable` bail, and claiming
+        // success there would leave the table empty for good, with no retry on
+        // the next open.
         if (opening && !table.dataset.filled) {
-            _fillChartTable(table, canvasId);
-            table.dataset.filled = '1';
+            if (_fillChartTable(table, canvasId)) table.dataset.filled = '1';
         }
         table.hidden = !opening;
         btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
         btn.textContent = opening
             ? t('a11y.hide_data_table', 'Hide data table')
             : t('a11y.show_data_table', 'Show data table');
+        if (opening) _revealInScroller(btn);
+    }
+
+    // The toggle sits inside `#chart-container`, a 40%-height pane with its own
+    // scrollbar, so the canvas alone can already push the button past that
+    // pane's fold — and an opened table unfolds entirely below it. Nothing moves
+    // on screen and the click reads as a no-op. Bring the button to the top of
+    // its own scroller, never the page's: `scrollIntoView()` walks every
+    // scrollable ancestor and would yank the whole layout.
+    function _revealInScroller(el) {
+        var scroller = el.parentElement;
+        while (scroller && scroller !== document.body) {
+            var oy = getComputedStyle(scroller).overflowY;
+            if ((oy === 'auto' || oy === 'scroll') &&
+                scroller.scrollHeight > scroller.clientHeight + 2) break;
+            scroller = scroller.parentElement;
+        }
+        if (!scroller || scroller === document.body) return;
+        var delta = el.getBoundingClientRect().top -
+            scroller.getBoundingClientRect().top;
+        scroller.scrollTop += delta - 4;
     }
 
     function _fillChartTable(table, canvasId) {
-        var chart = (window.AppState && AppState.chartInstances)
-            ? AppState.chartInstances[canvasId] : null;
-        if (!chart) return;
+        // `AppState` is a bare top-level `const` (index.js) — a classic-script
+        // const is a global *lexical* binding, NOT a property of window, so
+        // `window.AppState` is undefined and a `window.AppState && …` guard
+        // never passes. Reading it that way made this bail every single time:
+        // the toggle opened a table that was always empty. Same trap, same fix
+        // as `ai-chat.js` `_getUiContext()` and `user-guide.js`.
+        var app = (typeof AppState !== 'undefined' && AppState)
+            ? AppState : (window.AppState || {});
+        var chart = app.chartInstances ? app.chartInstances[canvasId] : null;
+        if (!chart) return false;
 
         var xs = (chart.data && chart.data.labels) || [];
         var sets = ((chart.data && chart.data.datasets) || []).filter(function (d) {
@@ -117,7 +156,7 @@
             th.scope = 'col';
             // The first column is the X axis; name it after the axis in use.
             th.textContent = i === 0
-                ? ((window.AppState && AppState.xAxis === 'turn') ? 'Turn' : 'Timestamp')
+                ? (app.xAxis === 'turn' ? 'Turn' : 'Timestamp')
                 : text;
             hrow.appendChild(th);
         });
@@ -140,6 +179,7 @@
             tbody.appendChild(tr);
         });
         table.appendChild(tbody);
+        return true;
     }
 
     // ── 1.3.1 / 2.1.1 — the server-rendered sortable table headers ─────────

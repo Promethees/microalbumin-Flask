@@ -2177,6 +2177,31 @@ body.dark .der-con-value.blinking {
     width: 100%;
 }
 
+/* Bulk visibility control at the head of the legend strip. Sized to the legend
+   labels beside it, not to the page's buttons, so it reads as part of the strip
+   rather than as page chrome. The 2.5.8 floor still applies — hence min-height. */
+.legend-bulk-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-press);
+    cursor: pointer;
+}
+
+.legend-bulk-toggle:hover {
+    border-color: var(--accent);
+}
+
+.legend-bulk-toggle[aria-pressed="true"] {
+    border-style: dashed;
+}
+
 .legend-item {
     display: inline-flex;
     align-items: center;
@@ -9134,12 +9159,20 @@ button,
     white-space: nowrap;
 }
 
-/* 1.1.1 — the text alternative built beside every chart canvas (a11y.js). */
+/* 1.1.1 — the text alternative built beside every chart canvas (a11y.js).
+   The wrapper carries `sr-only-focusable`, so it costs no visible space and
+   needs no pinning; these rules style it for the keyboard user who focuses it
+   back into flow. */
+
 .chart-data-table[hidden] {
     display: none;
 }
 
 .chart-data-table {
+    /* Opaque: focused back into flow, it is painted over the canvas. `--panel`
+       is translucent in the classic layer, `--bg` is opaque in all four
+       theme/style combinations. */
+    background: var(--bg);
     width: 100%;
     margin-top: 10px;
     border-collapse: collapse;

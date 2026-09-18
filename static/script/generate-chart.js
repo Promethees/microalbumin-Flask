@@ -134,6 +134,11 @@ function createRegressionDataset(xMax, xMin, analysis, label) {
     return {
         label: `Regression (${label})`,
         data: regressionData,
+        // Flags the fitted line as not-measured-data. The chart's text
+        // alternative (a11y.js `_fillChartTable`) drops it: its points are
+        // `{x, y}` objects on their own 100-step grid, so a column of them
+        // neither stringifies nor lines up with the measured rows.
+        _isRegression: true,
         borderColor: 'rgba(0, 128, 0, 0.7)',
         tension: 0.1,
         fill: false,
@@ -440,6 +445,33 @@ function renderHtmlLegend(chart, canvasId, sourceIndex) {
     legendEl.innerHTML = '';
 
     const items = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+
+    // Toggling six sources one swatch at a time is six clicks to clear the plot
+    // and six more to bring it back. One control does the lot. It leads the
+    // strip because it acts on every item after it, and it only appears when
+    // there is more than one line to act on.
+    if (items.length > 1) {
+        const anyVisible = items.some((it) => !it.hidden);
+        const bulk = document.createElement('button');
+        bulk.type = 'button';
+        bulk.className = 'legend-bulk-toggle';
+        bulk.textContent = anyVisible
+            ? t('chart.hide_all_lines', 'Hide all lines')
+            : t('chart.show_all_lines', 'Show all lines');
+        bulk.setAttribute('aria-pressed', anyVisible ? 'false' : 'true');
+        bulk.addEventListener('click', () => {
+            items.forEach((it) => chart.setDatasetVisibility(it.datasetIndex, !anyVisible));
+            chart.update('none');
+            renderHtmlLegend(chart, canvasId, sourceIndex);
+            if (typeof announce === 'function') {
+                announce(anyVisible
+                    ? t('chart.all_lines_hidden', 'All lines hidden')
+                    : t('chart.all_lines_shown', 'All lines shown'));
+            }
+        });
+        legendEl.appendChild(bulk);
+    }
+
     items.forEach((item) => {
         const isRegression = item.text.startsWith('Regression (');
         const storageIndex = sourceIndex !== null ? sourceIndex : item.datasetIndex;
