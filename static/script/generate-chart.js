@@ -104,7 +104,18 @@ function createDataset(yData, label, analysis, selectColor, i, isSinglePoint) {
     // A marker per reading turns a 120-point kinetics trace into a bead chain and
     // hides its shape. Points earn a marker only when there are few enough to read
     // individually; a long series is a line, with the tooltip for exact values.
-    const pointRadius = isSinglePoint || thisYAllEqual ? 5 : (yColumn.length > 40 ? 0 : 3);
+    const autoRadius = isSinglePoint || thisYAllEqual ? 5 : (yColumn.length > 40 ? 0 : 3);
+    // `chart_marker_mode` ("Line styles" panel): `auto` is the rule above,
+    // `always`/`never` override it for everyone at once. A single point still
+    // gets a marker under `never` — with no line to draw, hiding it would plot
+    // nothing at all.
+    const markerMode = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS)
+        ? USER_SETTINGS.chart_marker_mode : 'auto';
+    const pointRadius = markerMode === 'always' ? 3
+        : markerMode === 'never' ? (isSinglePoint ? 5 : 0)
+        : autoRadius;
+
+    const seriesIndex = selectColor !== null ? selectColor : i;
 
     const dataset = {
         label,
@@ -112,8 +123,10 @@ function createDataset(yData, label, analysis, selectColor, i, isSinglePoint) {
         minData: yData.min, // Store min for distribution bars
         maxData: yData.max, // Store max for distribution bars
         stdData: yData.std, // Store std for tooltips
-        borderColor: getSourceColor(selectColor !== null ? selectColor : i),
-        backgroundColor: getSourceColor(selectColor !== null ? selectColor : i),
+        borderColor: getSourceColor(seriesIndex),
+        backgroundColor: getSourceColor(seriesIndex),
+        borderWidth: seriesLineWidth(),
+        borderDash: seriesDash(seriesIndex),
         tension: isSinglePoint ? 0 : 0.1,
         fill: false,
         pointRadius,
@@ -470,6 +483,18 @@ function renderHtmlLegend(chart, canvasId, sourceIndex) {
             }
         });
         legendEl.appendChild(bulk);
+
+        const styles = document.createElement('button');
+        styles.type = 'button';
+        styles.className = 'legend-bulk-toggle';
+        styles.textContent = t('chart.line_styles', 'Line styles');
+        styles.setAttribute('aria-haspopup', 'dialog');
+        styles.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const r = styles.getBoundingClientRect();
+            showBulkStyleEditor(r.left, r.bottom, canvasId);
+        });
+        legendEl.appendChild(styles);
     }
 
     items.forEach((item) => {
@@ -528,6 +553,203 @@ function updateAnalysisColor(storageIndex, color) {
     if (innerDiv?.parentElement?.tagName === 'SPAN') {
         innerDiv.parentElement.style.color = color;
     }
+}
+
+/* ---------------------------------------------------------------------------
+   "Line styles" — the bulk counterpart to the per-series pencil.
+
+   Editing twelve series one pencil at a time is twelve popovers; this sets the
+   four properties that apply to all of them at once. Every control writes
+   straight to `user_settings.json` (a per-machine preference, not per-file
+   state, so it does not belong in localStorage beside the custom labels) and
+   redraws from `ChartDataStore`, so the effect is visible while the panel is
+   still open.
+--------------------------------------------------------------------------- */
+/* One redraw for every surface the bulk style settings touch, so the "Line
+   styles" panel and App Settings → Data Display cannot drift apart: both write
+   the same `user_settings.json` keys, both update the live `USER_SETTINGS`, and
+   both end here. Rebuilds each live chart from `ChartDataStore` (split-source
+   mode has one per source) and repaints the analysis headings, which read the
+   same palette but sit outside the chart. */
+function refreshChartStyles() {
+    const store = window.ChartDataStore || {};
+    Object.keys(store).forEach((canvasId) => {
+        if (!document.getElementById(canvasId)) return;
+        if (typeof handleCkboxChange === 'function') handleCkboxChange(canvasId);
+    });
+    if (typeof updateAnalysisColor === 'function' && typeof AppState !== 'undefined') {
+        const n = AppState.numSources || 0;
+        for (let i = 0; i < n; i++) updateAnalysisColor(i, getSourceColor(i));
+    }
+}
+
+// The keys the panel and the settings modal share. Exported so init.js can ask
+// "did any of these change?" without restating the list and letting it rot.
+const CHART_STYLE_KEYS = [
+    'chart_line_width', 'chart_dash_mode', 'chart_marker_mode',
+    'chart_palette', 'chart_ramp_color'
+];
+
+// The theme's middle ramp stop — what the swatch shows when nothing is
+// overridden, so opening the picker starts from the colour actually on screen.
+function _currentRampMid() {
+    const v = getComputedStyle(document.body).getPropertyValue('--ramp-5').trim();
+    return /^#[0-9a-fA-F]{6}$/.test(v) ? v : '#b85207';
+}
+
+function showBulkStyleEditor(clientX, clientY, canvasId) {
+    const existing = document.getElementById('bulk-style-editor');
+    if (existing) { existing.remove(); return; }
+
+    const settings = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS) ? USER_SETTINGS : {};
+    const panel = document.createElement('div');
+    panel.id = 'bulk-style-editor';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', t('chart.line_styles', 'Line styles'));
+    panel.style.left = `${clientX}px`;
+    panel.style.top = `${clientY + 4}px`;
+
+    const apply = (key, value) => {
+        settings[key] = value;
+        if (typeof saveUserSetting === 'function') saveUserSetting(key, value);
+        redrawFromStore();
+    };
+
+    const row = (labelText) => {
+        const r = document.createElement('div');
+        r.className = 'bulk-style-row';
+        const l = document.createElement('span');
+        l.className = 'bulk-style-label';
+        l.textContent = labelText;
+        r.appendChild(l);
+        return r;
+    };
+
+    // A segmented control: one button per choice, the current one pressed.
+    const segmented = (key, choices, current) => {
+        const group = document.createElement('div');
+        group.className = 'bulk-style-seg';
+        group.setAttribute('role', 'group');
+        choices.forEach(([value, label]) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = label;
+            b.setAttribute('aria-pressed', String(value === current));
+            b.addEventListener('click', () => {
+                group.querySelectorAll('button').forEach((o) => o.setAttribute('aria-pressed', 'false'));
+                b.setAttribute('aria-pressed', 'true');
+                apply(key, value);
+            });
+            group.appendChild(b);
+        });
+        return group;
+    };
+
+    const widthRow = row(t('chart.line_width', 'Width'));
+    widthRow.appendChild(segmented('chart_line_width',
+        [[1, '1'], [2, '2'], [3, '3'], [4, '4']],
+        Number(settings.chart_line_width ?? 2)));
+    panel.appendChild(widthRow);
+
+    const dashRow = row(t('chart.line_dash', 'Dash'));
+    dashRow.appendChild(segmented('chart_dash_mode', [
+        ['none', t('chart.dash_none', 'None')],
+        ['cycle', t('chart.dash_cycle', 'Cycle')]
+    ], settings.chart_dash_mode || 'none'));
+    panel.appendChild(dashRow);
+
+    const markerRow = row(t('chart.line_markers', 'Markers'));
+    markerRow.appendChild(segmented('chart_marker_mode', [
+        ['auto', t('chart.markers_auto', 'Auto')],
+        ['always', t('chart.markers_always', 'Always')],
+        ['never', t('chart.markers_never', 'Never')]
+    ], settings.chart_marker_mode || 'auto'));
+    panel.appendChild(markerRow);
+
+    const paletteRow = row(t('chart.line_palette', 'Palette'));
+    paletteRow.appendChild(segmented('chart_palette', [
+        ['ramp', t('chart.palette_ramp', 'Ramp')],
+        ['distinct', t('chart.palette_distinct', 'Distinct')]
+    ], settings.chart_palette || 'ramp'));
+    panel.appendChild(paletteRow);
+
+    // The ramp's own colour. Picking re-hues all ten stops; they keep the
+    // lightness ladder, so the series stay separable whatever hue is chosen.
+    // "Default" clears the override and hands the ramp back to the theme.
+    const rampRow = row(t('chart.ramp_color', 'Ramp colour'));
+    const rampControls = document.createElement('span');
+    rampControls.className = 'bulk-style-seg';
+
+    const swatch = document.createElement('input');
+    swatch.type = 'color';
+    swatch.className = 'bulk-style-swatch';
+    swatch.setAttribute('aria-label', t('chart.ramp_color', 'Ramp colour'));
+    swatch.value = settings.chart_ramp_color || _currentRampMid();
+    // `input` fires continuously while dragging; redraw live but only persist
+    // on `change`, so one pick is one write rather than a hundred.
+    swatch.addEventListener('input', () => {
+        settings.chart_ramp_color = swatch.value;
+        redrawFromStore();
+    });
+    swatch.addEventListener('change', () => apply('chart_ramp_color', swatch.value));
+
+    const rampDefault = document.createElement('button');
+    rampDefault.type = 'button';
+    rampDefault.textContent = t('chart.ramp_color_default', 'Default');
+    rampDefault.addEventListener('click', () => {
+        swatch.value = _currentRampMid();
+        apply('chart_ramp_color', null);
+        swatch.value = _currentRampMid();
+    });
+
+    rampControls.appendChild(swatch);
+    rampControls.appendChild(rampDefault);
+    rampRow.appendChild(rampControls);
+    panel.appendChild(rampRow);
+
+    // Per-series colours are localStorage overrides and outrank everything the
+    // palette does, so a palette that "did nothing" is usually a stale override.
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'bulk-style-reset';
+    reset.textContent = t('chart.reset_styles', 'Reset custom colours');
+    reset.addEventListener('click', () => {
+        if (typeof clearCustomColors === 'function') clearCustomColors();
+        redrawFromStore();
+        if (typeof announce === 'function') {
+            announce(t('chart.styles_reset', 'Custom colours cleared'));
+        }
+    });
+    panel.appendChild(reset);
+
+    // The same re-render entry point the per-series editor uses on close: it
+    // reads `ChartDataStore` and rebuilds the analyses, so the styles land
+    // without this panel having to reconstruct an argument list it would get
+    // subtly wrong for split-source or calibrate charts.
+    const redrawFromStore = () => refreshChartStyles();
+
+    const onOutsideClick = (e) => {
+        if (!panel.contains(e.target)) {
+            document.removeEventListener('mousedown', onOutsideClick);
+            document.removeEventListener('keydown', onEsc);
+            panel.remove();
+        }
+    };
+    const onEsc = (e) => {
+        if (e.key === 'Escape') {
+            document.removeEventListener('mousedown', onOutsideClick);
+            document.removeEventListener('keydown', onEsc);
+            panel.remove();
+        }
+    };
+
+    document.body.appendChild(panel);
+    setTimeout(() => {
+        document.addEventListener('mousedown', onOutsideClick);
+        document.addEventListener('keydown', onEsc);
+        const first = panel.querySelector('button');
+        if (first) first.focus();
+    }, 0);
 }
 
 function showLegendStyleEditor(clientX, clientY, legendItem, canvasId, storageIndex) {

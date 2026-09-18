@@ -26,6 +26,29 @@ function isClassicUI() {
     return document.body.classList.contains('ui-classic');
 }
 
+function _rgbToHsl([r, g, b]) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+    return [h, s, l];
+}
+
+/* The ramp's base colour (`chart_ramp_color`), or null for the theme tokens. */
+function rampBaseColor() {
+    const v = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS)
+        ? USER_SETTINGS.chart_ramp_color : null;
+    return (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v.trim()))
+        ? v.trim() : null;
+}
+
 function rampStops() {
     const css = getComputedStyle(document.body);
     const stops = [];
@@ -34,7 +57,37 @@ function rampStops() {
         if (v) stops.push(v);
     }
     // A stylesheet that failed to load must not take the chart down with it.
-    return stops.length ? stops : ['#b85207', '#d98558', '#ffc3a4'];
+    const base = stops.length ? stops : ['#b85207', '#d98558', '#ffc3a4'];
+
+    // A user-chosen base re-hues the ramp rather than replacing it. Each stop
+    // keeps the *lightness* the tokens were validated on (monotonic, >= 3:1
+    // against the well, Rule.md 2.33) and takes the pick's hue; its saturation
+    // is scaled by how saturated the pick is relative to the ramp's own middle,
+    // so a muted choice mutes the whole ramp and a grey one greys it out — which
+    // is why there is no separate greyscale palette.
+    const picked = rampBaseColor();
+    if (!picked) return base;
+
+    const hsl = base.map((c) => _rgbToHsl(_hexToRgb(c)));
+    const [ph, ps] = _rgbToHsl(_hexToRgb(picked));
+    const mid = hsl[Math.floor(hsl.length / 2)][1] || 1;
+    const satScale = Math.max(0, Math.min(2, ps / mid));
+    // Hex out, not `hsl(...)`: sourceRamp() interpolates between adjacent stops
+    // with _hexToRgb() when there are more series than stops, and an hsl string
+    // would parse to NaN there — exactly the 12-source case this exists for.
+    return hsl.map(([, s, l]) =>
+        _hslToHex(ph, Math.max(0, Math.min(1, s * satScale)), l));
+}
+
+function _hslToHex(h, s, l) {
+    const f = (n) => {
+        const k = (n + h * 12) % 12;
+        const a = s * Math.min(l, 1 - l);
+        const v = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+        return Math.round(255 * v);
+    };
+    return '#' + [f(0), f(8), f(4)]
+        .map((v) => v.toString(16).padStart(2, '0')).join('');
 }
 
 function _hexToRgb(hex) {
@@ -64,6 +117,41 @@ function sourceRamp(count) {
         out.push(`rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`);
     }
     return out;
+}
+
+/* ---------------------------------------------------------------------------
+   Bulk palette choice ("Line styles" panel, `chart_palette`).
+
+   `ramp` is the default and what Rule.md 2.33 argues for: sources are ordered,
+   so their colours are ordered. The two alternatives exist for the case that
+   argument does not cover — a file with more sources than the ten-stop ramp can
+   keep apart, where neighbouring series become one indistinguishable band. They
+   are a user's explicit choice, never the default, and neither introduces a new
+   hardcoded series colour: `distinct` reuses the classic categorical palette
+   already defined above, `grey` is generated.
+--------------------------------------------------------------------------- */
+function seriesPalette(count) {
+    const mode = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS)
+        ? USER_SETTINGS.chart_palette : 'ramp';
+    if (mode === 'distinct') return CLASSIC_PLOT_COLORS;
+    return sourceRamp(count);
+}
+
+/* Dash patterns for `chart_dash_mode: "cycle"`. Solid first, so a single-source
+   file looks exactly as it always did. */
+const SERIES_DASHES = [[], [6, 4], [2, 3], [8, 3, 2, 3], [12, 4], [1, 3]];
+
+function seriesDash(index) {
+    const mode = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS)
+        ? USER_SETTINGS.chart_dash_mode : 'none';
+    if (mode !== 'cycle') return [];
+    return SERIES_DASHES[index % SERIES_DASHES.length];
+}
+
+function seriesLineWidth() {
+    const w = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS)
+        ? Number(USER_SETTINGS.chart_line_width) : 2;
+    return Number.isFinite(w) ? Math.max(1, Math.min(6, w)) : 2;
 }
 
 function initDefaultState() {
@@ -133,7 +221,7 @@ const AppState = {
         // Sized to the file's own source count so the series span the whole ramp:
         // three sources are dark / middle / light, not the first three steps. Every
         // consumer indexes with `% length`, so a short array stays safe.
-        return sourceRamp(Math.max(2, this.numSources || 1));
+        return seriesPalette(Math.max(2, this.numSources || 1));
     },
     quantity_input: temp_quantity_input,
     report_root_path: REPORT_ROOT,

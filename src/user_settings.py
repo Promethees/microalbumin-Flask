@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import music
 import state
 
@@ -24,6 +25,10 @@ _VALID_TIME_TAG_FORMATS = {"iso", "iso_sec", "us", "eu", "date_only"}
 _VALID_CONCEN_UNITS = {"ng/µL", "nM", "%", "CFU", "OD600"}
 _VALID_Y_AXIS_MODES = {"auto", "custom"}
 _VALID_MUSIC_SOURCES = {"radio", "youtube"}
+_VALID_CHART_DASH_MODES = {"none", "cycle"}
+_VALID_CHART_MARKER_MODES = {"auto", "always", "never"}
+_VALID_CHART_PALETTES = {"ramp", "distinct"}
+_HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
 _VALID_LOOP_MODES = {"off", "one", "all"}
 
 DEFAULTS = {
@@ -99,6 +104,26 @@ DEFAULTS = {
     "disable_popups": False,
     "default_concentration_unit": "ng/µL",
     "ai_feedback_enabled": True,
+    # Bulk line styling, applied to every series at once from the legend strip's
+    # "Line styles" panel — the alternative to editing a dozen series one pencil
+    # at a time. Width and markers are plain rendering preferences; the other two
+    # exist because a 12-source file overruns the ten-stop ramp and adjacent
+    # series stop being separable.
+    "chart_line_width": 2,
+    # "cycle" walks solid/dashed/dotted/dash-dot across the series. A dash
+    # pattern is an *ordered-safe* channel: it separates neighbours without
+    # discarding the hue ordering the ramp carries (Rule.md 2.33).
+    "chart_dash_mode": "none",
+    "chart_marker_mode": "auto",
+    # "ramp" is the documented default and the one 2.33 argues for. "distinct"
+    # is a deliberate user-chosen departure for files with more sources than the
+    # ramp can separate; see 2.33's exception note.
+    "chart_palette": "ramp",
+    # The ramp's base colour. None means "use the theme's own --ramp-* tokens".
+    # A hex value re-hues the ramp: the ten stops keep their validated lightness
+    # ladder and only their hue and saturation follow this pick, so a muted
+    # choice yields a muted ramp and a grey one yields a greyscale ramp.
+    "chart_ramp_color": None,
     "y_axis_scale_mode": "auto",
     "y_axis_custom_min": 0.0,
     "y_axis_custom_max": 0.6,
@@ -271,6 +296,24 @@ def save(updates: dict) -> bool:
             current["music_volume"] = max(0, min(100, v))
         except (ValueError, TypeError):
             pass
+    if "chart_line_width" in updates:
+        try:
+            w = int(updates["chart_line_width"])
+            current["chart_line_width"] = max(1, min(6, w))
+        except (ValueError, TypeError):
+            pass
+    if "chart_dash_mode" in updates and updates["chart_dash_mode"] in _VALID_CHART_DASH_MODES:
+        current["chart_dash_mode"] = updates["chart_dash_mode"]
+    if "chart_marker_mode" in updates and updates["chart_marker_mode"] in _VALID_CHART_MARKER_MODES:
+        current["chart_marker_mode"] = updates["chart_marker_mode"]
+    if "chart_palette" in updates and updates["chart_palette"] in _VALID_CHART_PALETTES:
+        current["chart_palette"] = updates["chart_palette"]
+    if "chart_ramp_color" in updates:
+        raw = updates["chart_ramp_color"]
+        if raw in (None, "", "default"):
+            current["chart_ramp_color"] = None
+        elif isinstance(raw, str) and _HEX_COLOR_RE.fullmatch(raw.strip()):
+            current["chart_ramp_color"] = raw.strip().lower()
     if "y_axis_scale_mode" in updates and updates["y_axis_scale_mode"] in _VALID_Y_AXIS_MODES:
         current["y_axis_scale_mode"] = updates["y_axis_scale_mode"]
     for axis_key in ("y_axis_custom_min", "y_axis_custom_max"):

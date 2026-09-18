@@ -835,6 +835,34 @@ failure that never touched the software.
 - **Two material classes, and the difference is the layout.** *Chrome* (`.section`, the rail, fields, buttons) is flat, hairline-bounded, square-cornered, and does **not** lift or blur; *data* (the plot well, readouts, tables) gets the space and the only real elevation. Radius carries the distinction: `--r-flat` (0) for a data surface or a field, `--r-press` (4px) for something pressable — there is no third radius. `backdrop-filter` survives **only** on things that genuinely float over content (the spinner scrim, the AI and music panels, the reading transport); glass on a static panel is what made a checkbox group look as important as the chart.
 - **Type: IBM Plex, self-hosted in `static/fonts/`** (`plex.css`, one face per weight per subset with the original `unicode-range`, imported by `style.css`). The app vendors every other dependency (`static/vendor/*`, §2.4) and must render the same offline, so there is **no Google Fonts `@import`** — regenerate from the css2 API and rewrite the `src` URLs. Three roles: `--font-ui` (Plex Sans) for prose and controls, `--font-mono` (Plex Mono, tabular figures) for **every measured value, field and axis tick** so digits stop shifting as a run streams, `--font-label` (Plex Sans Condensed, uppercase, tracked) for the panel-label voice. A `.section`'s `h2`/`h3` wears the label voice: it names a control group, so the only large type on the page belongs to the data.
 - **Multi-source series are ORDERED, so they get a sequential ramp — never a cycled categorical palette.** The sources of one file are standards read through consecutive channels, so `--ramp-1..10` is a single hue stepped on lightness (validated: monotonic OKLab L, every step ≥ 3:1 against `--well`, end-to-end ΔE ≈ 30), and `sourceRamp(n)` in `index.js` spreads *n* series across those stops. `AppState.plotColors` is a **getter** over it (sized to `numSources`) so a theme switch repaints from the live tokens; `report.js` calls `sourceRamp(numSources)` for its own item counts. **Anti-pattern**: restoring the 16-entry rainbow, or hardcoding series hex anywhere — it discards the ordering that carries the concentration series.
+- **The ramp has a documented exception, and it is the user's to take.** Ten
+  stops cannot separate twelve series: a 12-source file plots as one orange
+  band, which is what prompted the bulk **Line styles** panel
+  (`showBulkStyleEditor`, `generate-chart.js`). `chart_palette` offers `ramp`
+  (the default, and what the bullet above argues for) and `distinct` (the
+  existing `CLASSIC_PLOT_COLORS`, reused rather than a new table of hex).
+  Departing from the ramp stays an explicit choice that a user makes for a file
+  the ramp cannot serve — never a new default, and never a reason to hardcode
+  another series palette.
+- **The ramp's hue is the user's, its lightness ladder is not.**
+  `chart_ramp_color` re-hues all ten stops: each keeps the lightness the tokens
+  were validated on and takes the pick's hue, with saturation scaled by how
+  saturated the pick is against the ramp's own middle stop. So the ordering and
+  the contrast survive any colour, and a desaturated pick greys the whole ramp —
+  which is why there is no separate greyscale palette to maintain. `null` hands
+  the ramp back to the theme tokens. `rampStops()` returns **hex**, never
+  `hsl(...)`: `sourceRamp()` interpolates adjacent stops with `_hexToRgb()` when
+  a file has more sources than stops, and that is exactly the many-source case
+  the re-hue exists for.
+- **Prefer the ordered-safe channels first.** `chart_dash_mode: "cycle"` walks
+  solid/dashed/dotted/dash-dot across the series and `chart_line_width` thickens
+  them; both separate neighbours *without* touching hue, so the ordering the ramp
+  encodes survives. Reach for a different palette only when those are not enough.
+- **A segmented control must show which segment is chosen.** The panel's buttons
+  carry `aria-pressed`, and their fill is qualified by `#bulk-style-editor`: the
+  global `body.dark button` rule ties an unqualified `.class button[attr]` on
+  specificity and comes later in the sheet, so the selected choice rendered
+  identically to the rest until the id was added.
 - **Chart chrome states the data.** The main chart's title is `Measurement — filename` (metadata, so never translated — §2.22); a unitless y-axis falls back to the measurement name (`isNoneUnit()` compares case-insensitively, because the firmware writes `# Unit: None` and older files carry `NONE` — a blank or literal "None" axis label was the bug); ticks are mono, horizontal and thinned (`maxTicksLimit`); a series longer than 40 points drops its per-point markers so the trace reads as a shape.
 - **The session strip (`#session-strip`) is the app's one ornament, and it is made of data.** A fixed 64px bar across the top draws the run in progress as a chart-recorder trace — one thin polyline per source in the same ramp steps as the chart — redrawn by `drawSessionStrip()` from `AppState.responseData`, which the SSE push and the fallback poll already keep current (§2.31). **It adds no fetching of its own**; do not give it a timer or a request. The pen advances left to right across the whole session rather than scrolling a window, so a flat trace means a flat reaction and not a rescaled view.
   - **The trace is the recording indicator.** `showSessionStrip()` reveals it on the first landed row (`onNewDataPoint`), `hideSessionStrip()` tears it down with the session timer, and `applyStripPausedState()` greys every line and freezes the advance when the run is held — so the state of a run is readable at **any** scroll position, which neither the timer widget (scrolls away) nor the floating transport (only appears once the control line has left the viewport) can promise. The floating transport keeps its own state readout regardless (§2.29): it owns the *actions*, and the two are painted from the same `readingPaused` flag so they cannot disagree.

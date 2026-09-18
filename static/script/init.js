@@ -666,6 +666,11 @@ const SETTINGS_DEFAULTS = {
     disable_popups: false,
     default_concentration_unit: 'ng/µL',
     ai_feedback_enabled: true,
+    chart_line_width: 2,
+    chart_dash_mode: 'none',
+    chart_marker_mode: 'auto',
+    chart_palette: 'ramp',
+    chart_ramp_color: null,
     y_axis_scale_mode: 'auto',
     y_axis_custom_min: 0.0,
     y_axis_custom_max: 0.6,
@@ -806,6 +811,26 @@ function _buildSettingsHTML(s, folders, aiStats) {
                 ${rowCheck('Split by sources by default', 'swal-split-sources', s.default_split_sources)}
                 ${rowCheck('Expand time range panel by default', 'swal-range-expanded', s.range_expanded_default)}
                 ${rowCheck('Expand export panel by default', 'swal-export-expanded', s.export_expanded_default)}
+                ${row('Line width', 'px, applied to every plotted series',
+                    num('swal-chart-line-width', 1, s.chart_line_width || 2))}
+                ${row('Line dash pattern', 'Cycle walks solid/dashed/dotted across series',
+                    `<select id="swal-chart-dash" class="swal2-input">
+                        <option value="none"  ${(s.chart_dash_mode||'none')==='none'?'selected':''}>None</option>
+                        <option value="cycle" ${s.chart_dash_mode==='cycle'?'selected':''}>Cycle</option>
+                     </select>`)}
+                ${row('Point markers', 'Auto shows them only on short series',
+                    `<select id="swal-chart-markers" class="swal2-input">
+                        <option value="auto"   ${(s.chart_marker_mode||'auto')==='auto'?'selected':''}>Auto</option>
+                        <option value="always" ${s.chart_marker_mode==='always'?'selected':''}>Always</option>
+                        <option value="never"  ${s.chart_marker_mode==='never'?'selected':''}>Never</option>
+                     </select>`)}
+                ${row('Series palette', 'Ramp keeps source order; Distinct separates many sources',
+                    `<select id="swal-chart-palette" class="swal2-input">
+                        <option value="ramp"     ${(s.chart_palette||'ramp')==='ramp'?'selected':''}>Ramp</option>
+                        <option value="distinct" ${s.chart_palette==='distinct'?'selected':''}>Distinct</option>
+                     </select>`)}
+                ${row('Ramp colour', 'Re-hues the ramp; blank uses the theme\'s own colour',
+                    `<input id="swal-chart-ramp-color" type="text" class="swal2-input" placeholder="#b85207" value="${s.chart_ramp_color || ''}">`)}
                 ${row('Vertical axis scale', 'Auto fits to data; Custom pins a fixed range',
                     `<select id="swal-yaxis-mode" class="swal2-input" onchange="const c=this.value==='custom';document.getElementById('swal-yaxis-min').disabled=!c;document.getElementById('swal-yaxis-max').disabled=!c;">
                         <option value="auto"   ${(s.y_axis_scale_mode||'auto')==='auto'?'selected':''}>Auto</option>
@@ -927,6 +952,11 @@ function _readSettingsForm() {
         disable_popups: document.getElementById('swal-disable-popups').checked,
         ai_feedback_enabled: document.getElementById('swal-ai-feedback-enabled').checked,
         music_enabled: document.getElementById('swal-music-enabled').checked,
+        chart_line_width: parseInt(document.getElementById('swal-chart-line-width').value, 10) || 2,
+        chart_dash_mode: document.getElementById('swal-chart-dash').value,
+        chart_marker_mode: document.getElementById('swal-chart-markers').value,
+        chart_palette: document.getElementById('swal-chart-palette').value,
+        chart_ramp_color: document.getElementById('swal-chart-ramp-color').value.trim() || null,
         y_axis_scale_mode: document.getElementById('swal-yaxis-mode').value,
         y_axis_custom_min: parseFloat(document.getElementById('swal-yaxis-min').value) || 0,
         y_axis_custom_max: parseFloat(document.getElementById('swal-yaxis-max').value) || 0.6,
@@ -981,6 +1011,11 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
     document.getElementById('swal-ai-feedback-enabled').checked = s.ai_feedback_enabled !== false;
     document.getElementById('swal-music-enabled').checked = s.music_enabled === true;
+    document.getElementById('swal-chart-line-width').value = s.chart_line_width ?? 2;
+    document.getElementById('swal-chart-dash').value = s.chart_dash_mode || 'none';
+    document.getElementById('swal-chart-markers').value = s.chart_marker_mode || 'auto';
+    document.getElementById('swal-chart-palette').value = s.chart_palette || 'ramp';
+    document.getElementById('swal-chart-ramp-color').value = s.chart_ramp_color || '';
     const yMode = s.y_axis_scale_mode || 'auto';
     document.getElementById('swal-yaxis-mode').value = yMode;
     const yMinEl = document.getElementById('swal-yaxis-min');
@@ -999,10 +1034,21 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     ]);
 
     const s = (settingsRes && settingsRes.settings) ? settingsRes.settings : (typeof USER_SETTINGS !== 'undefined' ? { ...USER_SETTINGS } : {});
+    // The "Line styles" panel saves fire-and-forget, so a pick made a moment ago
+    // may not be in the response above yet. `USER_SETTINGS` always holds it —
+    // let the live object win for the keys the two surfaces share, or opening
+    // App Settings would show (and then re-save) the pre-pick values.
+    if (typeof USER_SETTINGS !== 'undefined' && typeof CHART_STYLE_KEYS !== 'undefined') {
+        CHART_STYLE_KEYS.forEach((k) => {
+            if (k in USER_SETTINGS) s[k] = USER_SETTINGS[k];
+        });
+    }
     const folders = (foldersRes && Array.isArray(foldersRes.folders)) ? foldersRes.folders : [];
 
     const prevUiLang = s.ui_language || 'en';
     const prevUiStyle = s.ui_style || 'instrument';
+    const prevChartStyles = (typeof CHART_STYLE_KEYS !== 'undefined')
+        ? JSON.stringify(CHART_STYLE_KEYS.map((k) => s[k])) : null;
     const { value: formValues, isConfirmed } = await Swal.fire({
         title: t('settings.title', 'App Settings'),
         width: 'min(92vw, 680px)',
@@ -1098,6 +1144,14 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     // Apply notify default
     const notifyEl = document.getElementById('notify-me');
     if (notifyEl) notifyEl.checked = formValues.default_notify !== false;
+
+    // Apply the bulk line styles. Same keys, same redraw as the "Line styles"
+    // panel in the legend — the two surfaces are one setting with two doors, so
+    // a change made here must land on the plot without a reload.
+    if (typeof CHART_STYLE_KEYS !== 'undefined' && typeof refreshChartStyles === 'function') {
+        const nowChartStyles = JSON.stringify(CHART_STYLE_KEYS.map((k) => USER_SETTINGS[k]));
+        if (nowChartStyles !== prevChartStyles) refreshChartStyles();
+    }
 
     // Apply the background-music toggle: mount or tear down the widget now
     // rather than waiting for the next page load.

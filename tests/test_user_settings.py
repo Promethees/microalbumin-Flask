@@ -534,3 +534,65 @@ class TestSessionStripSetting:
         monkeypatch.setattr(state, "script_dir", str(tmp_path))
         user_settings.save({"session_strip_enabled": value})
         assert user_settings.load()["session_strip_enabled"] is expected
+
+
+class TestBulkLineStyleSettings:
+    """The "Line styles" panel writes these four; they apply to every series."""
+
+    def test_defaults(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        s = user_settings.load()
+        assert s["chart_line_width"] == 2
+        assert s["chart_dash_mode"] == "none"
+        assert s["chart_marker_mode"] == "auto"
+        # The sequential ramp stays the default: Rule.md 2.33 argues for it, and
+        # the alternatives are a deliberate user choice for many-source files.
+        assert s["chart_palette"] == "ramp"
+
+    @pytest.mark.parametrize("value,expected", [(1, 1), (4, 4), (6, 6), (0, 1), (99, 6), ("3", 3)])
+    def test_line_width_is_clamped(self, tmp_path, monkeypatch, value, expected):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"chart_line_width": value})
+        assert user_settings.load()["chart_line_width"] == expected
+
+    def test_line_width_rejects_nonsense(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"chart_line_width": "thick"})
+        assert user_settings.load()["chart_line_width"] == 2
+
+    @pytest.mark.parametrize("key,good,bad", [
+        ("chart_dash_mode", "cycle", "zigzag"),
+        ("chart_marker_mode", "never", "sometimes"),
+        ("chart_palette", "distinct", "grey"),
+    ])
+    def test_enums_accept_known_and_reject_unknown(self, tmp_path, monkeypatch, key, good, bad):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({key: good}) is True
+        assert user_settings.load()[key] == good
+        user_settings.save({key: bad})
+        assert user_settings.load()[key] == good
+
+    def test_ramp_colour_defaults_to_the_theme(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.load()["chart_ramp_color"] is None
+
+    @pytest.mark.parametrize("value", ["#b85207", "#B85207", "  #0a0b0c  "])
+    def test_ramp_colour_accepts_hex(self, tmp_path, monkeypatch, value):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"chart_ramp_color": value})
+        assert user_settings.load()["chart_ramp_color"] == value.strip().lower()
+
+    @pytest.mark.parametrize("value", ["red", "#fff", "rgb(1,2,3)", "#gggggg", 12345])
+    def test_ramp_colour_rejects_anything_else(self, tmp_path, monkeypatch, value):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"chart_ramp_color": "#b85207"})
+        user_settings.save({"chart_ramp_color": value})
+        assert user_settings.load()["chart_ramp_color"] == "#b85207"
+
+    @pytest.mark.parametrize("value", [None, "", "default"])
+    def test_ramp_colour_can_be_cleared(self, tmp_path, monkeypatch, value):
+        """Clearing hands the ramp back to the theme's own tokens."""
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"chart_ramp_color": "#b85207"})
+        user_settings.save({"chart_ramp_color": value})
+        assert user_settings.load()["chart_ramp_color"] is None
