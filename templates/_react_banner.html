@@ -332,7 +332,11 @@
        The app's own 20px body padding is kept, with the bar's height added on
        top. The two panels the app pins to the viewport have to clear the bar
        as well, but .top-left only while it is actually pinned — under 768px
-       style.css returns it to the flow, where a `top` would displace it. */
+       style.css returns it to the flow, where a `top` would displace it.
+       .top-left's height has to come down by the same amount it was pushed
+       down: style.css sizes it `100vh - 40px` from the top of the viewport,
+       so without this its foot — the last line of the account panel — ends
+       up below the fold, out of reach of its own scrollbar. */
     body {
         padding-top: calc(20px + var(--rb-h, 0px));
     }
@@ -344,6 +348,7 @@
     @media (min-width: 769px) {
         .top-left {
             top: calc(20px + var(--rb-h, 0px));
+            max-height: calc(100vh - 40px - var(--rb-h, 0px));
         }
     }
     {% else %}
