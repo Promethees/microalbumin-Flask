@@ -229,7 +229,7 @@ A floating chat widget (bottom-right corner) powered by **Groq** (cloud LLM API)
 Seven, from `SUPPORTED_LANGUAGES` in `src/user_settings.py` — the one registry the UI (`ui_translations/`), the guide (`guide_translations/`) and the AI chat all read: English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (ja), Russian (ru), Korean (ko).
 
 ### 5.3 Default Model
-`llama-3.1-8b-instant` (Groq). Override with `AI_MODEL` environment variable.
+Chosen by the **server**, not the client: the desktop app sends no `model` in its proxy call, so `/ai/proxy/chat` applies `Config.AI_MODEL` (`openai/gpt-oss-20b` on `online`, override via the `AI_MODEL` Heroku config var). Setting `AI_MODEL` in a local `.env` overrides it for a source run — including the dev direct-Groq path, which falls back to `openai/gpt-oss-20b`. See Rule.md §2.13.
 
 ### 5.4 MCP Tools (available to the LLM — main branch only)
 | Tool | Description |

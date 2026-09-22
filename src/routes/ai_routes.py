@@ -99,7 +99,17 @@ if os.path.exists(_env_path):
                 os.environ.setdefault(_k.strip(), _parse_env_value(_v))
 
 _DEV_GROQ_KEY = os.environ.get('GROQ_API_KEY', '')
-_AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')
+# Which model to use is the SERVER's decision, not a shipped binary's. A frozen
+# build sends no model at all, so the proxy applies its own Config.AI_MODEL and a
+# retired model id can never be baked into a build we can no longer edit — that is
+# exactly how installed 1.5.x copies started answering with Groq's
+# `model_not_found` 404 for `llama-3.1-8b-instant`. Setting AI_MODEL in .env still
+# overrides, for testing a specific model against the proxy.
+_AI_MODEL = os.environ.get('AI_MODEL', '')
+
+# The dev-only direct-Groq path talks to Groq itself, so it must name a model.
+# Keep this in step with `Config.AI_MODEL` on the `online` branch.
+_LOCAL_AI_MODEL = _AI_MODEL or 'openai/gpt-oss-20b'
 
 
 def _dev_key():
@@ -279,12 +289,12 @@ def ai_chat(validated_data):
                     break
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             if fell_back:
-                for event in ai_assistant.chat_stream(messages, language, dev_fallback, _AI_MODEL, ui_context):
+                for event in ai_assistant.chat_stream(messages, language, dev_fallback, _LOCAL_AI_MODEL, ui_context):
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
     else:
         def generate():
-            for event in ai_assistant.chat_stream(messages, language, credential, _AI_MODEL, ui_context):
+            for event in ai_assistant.chat_stream(messages, language, credential, _LOCAL_AI_MODEL, ui_context):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
 

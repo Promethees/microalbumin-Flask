@@ -2144,12 +2144,14 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
     except Exception:
         machine_id = ''
 
+    # No model key unless one was explicitly configured: the proxy then picks its
+    # own Config.AI_MODEL, so the model a shipped build uses can be changed server
+    # side. A binary that names a model Groq has since retired cannot be fixed.
     payload = {
         'messages': messages,
         'language': language,
         'license_token': license_token,
         'hwid': machine_id,
-        'model': model,
         'ui_context': ui_context or {},
         # Ground the proxy LLM in THIS (downloaded/offline desktop) build's own
         # product knowledge, not the cloud website's. The proxy server otherwise
@@ -2177,6 +2179,8 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
                       if t.get('function', {}).get('name') != 'trigger_custom_steps'],
         },
     }
+    if model:
+        payload['model'] = model
 
     try:
         resp = http_req.post(
