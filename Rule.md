@@ -219,6 +219,7 @@ it: `oauth_routes._base_url()` (Google/GitHub sign-in), `account_routes._link_ba
 - The AI assistant uses **Groq API** (`https://api.groq.com`) — never Ollama or a local LLM.
 - `GROQ_API_KEY` and `AI_MODEL` are read from environment variables via `src/config.py` (`Config.GROQ_API_KEY`, `Config.AI_MODEL`).
 - Default model: `openai/gpt-oss-20b` (GPT-OSS reasoning model). Override via `AI_MODEL` env var on Heroku.
+- **The model is ours to choose — `/ai/proxy/chat` ignores `data['model']`.** Honouring it meant every installed desktop build pinned whatever model id was current when it was frozen, so Groq retiring `llama-3.1-8b-instant` 404'd (`model_not_found`) the chat in copies that can no longer be edited. Reading `Config.AI_MODEL` instead lets one Heroku config var move every client, shipped or not, onto a live model. The desktop side stopped sending the key as well (main `Rule.md` §2.13), but the server rule is the one that rescues builds already in the field. **Anti-pattern**: do not let a caller pick the model that our Groq key pays for.
   - GPT-OSS models spend completion tokens on reasoning; `_groq_chat` sets `reasoning_effort="low"` and a larger `max_tokens` for any `openai/gpt-oss*` model so answers aren't truncated. Reasoning is returned in a separate field, not `content`.
 - Settings are stored **per-session** in Flask `session['ai_settings']` via `src/ai_settings.py`. No file-based persistence.
 - The AI blueprint is `ai_bp` in `src/routes/ai_routes.py`, mounted at `/ai/*`.

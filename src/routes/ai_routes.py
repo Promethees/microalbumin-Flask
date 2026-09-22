@@ -121,7 +121,12 @@ def proxy_chat():
         return jsonify({'status': 'failure', 'message': 'AI not configured on server'}), 503
 
     language = data.get('language', 'en')
-    model = data.get('model') or Config.AI_MODEL
+    # The model is OUR choice, never the caller's. Honouring data['model'] meant
+    # every installed desktop build pinned the model id that was current when it
+    # was frozen, so Groq retiring `llama-3.1-8b-instant` 404'd the chat in copies
+    # we can no longer edit. Ignoring it lets one Heroku config var move every
+    # client, shipped or not, onto a live model.
+    model = Config.AI_MODEL
     ui_context = data.get('ui_context') or {}
     proxy_user_data = get_user_data(user_id=f'account_{user.id}')
 

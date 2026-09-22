@@ -82,3 +82,50 @@ def test_proxy_chat_is_rate_limited(client):
     codes = [client.post('/ai/proxy/chat', json={}).status_code for _ in range(limit + 1)]
     assert codes[-1] == 429
     assert all(c == 401 for c in codes[:limit])   # missing license_token → 401 before the limiter trips
+
+
+# ── #4: the model is the server's choice, not the caller's ────────────────────
+# A desktop build sends whatever model id was current when it was frozen, and a
+# binary cannot be edited afterwards — installed copies kept asking Groq for
+# `llama-3.1-8b-instant` after it was retired and 404'd every chat. The proxy
+# therefore ignores data['model'] so one Heroku config var moves every client,
+# shipped or not, onto a live model. See Rule.md §2.13.
+
+def test_proxy_chat_ignores_a_client_supplied_model(client, monkeypatch):
+    from config import Config
+    import routes.ai_routes as ai_routes
+    import routes.account_routes as account_routes
+
+    monkeypatch.setattr(Config, 'GROQ_API_KEY', 'test-key')
+    monkeypatch.setattr(Config, 'AI_MODEL', 'server/model')
+    monkeypatch.setattr(ai_routes, 'validate_activation_token', lambda t: {'sub': '7'})
+    monkeypatch.setattr(ai_routes, 'get_user_data', lambda user_id=None: {})
+    monkeypatch.setattr(account_routes, '_machine_is_licensed', lambda *a, **k: True)
+
+    # Swap the model itself: patching User.query on the real SQLAlchemy model
+    # still reaches the session and needs an app context.
+    class _User:
+        is_verified = True
+        id = 7
+
+    class _FakeUserModel:
+        query = type('Q', (), {'get': staticmethod(lambda _id: _User())})()
+
+    monkeypatch.setattr(ai_routes, 'User', _FakeUserModel)
+
+    used = {}
+
+    def fake_stream(messages, language, api_key, model, *args, **kwargs):
+        used['model'] = model
+        return iter([])
+
+    monkeypatch.setattr(ai_routes.ai_assistant, 'chat_stream', fake_stream)
+
+    r = client.post('/ai/proxy/chat', json={
+        'messages': [{'role': 'user', 'content': 'hi'}],
+        'license_token': 'tok',
+        'model': 'llama-3.1-8b-instant',   # a retired id from an old frozen build
+    })
+    assert r.status_code == 200
+    r.get_data()                            # drain the stream so the generator runs
+    assert used['model'] == 'server/model'
