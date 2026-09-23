@@ -457,6 +457,7 @@
   "devctl.mode.abort": "Halted",
   "devctl.fn.none": "ここでは無効",
   "devctl.fn.blank": "ブランク / 解除",
+  "devctl.fn.reblank": "ブランクを取り直す",
   "devctl.fn.open_menu": "メニューを開く",
   "devctl.fn.gain": "ゲインを切り替え",
   "devctl.fn.itime": "積分時間を切り替え",

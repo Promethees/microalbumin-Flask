@@ -379,6 +379,13 @@ function deviceButtonFunction(state, name) {
     if (state.mode === 'MEASURE' && name === 'menu' && state.meas === 'Raw Count') {
         return ['devctl.fn.save_settings', 'Save settings'];
     }
+    // Blank in MEASURE toggled on every build until `reblank`: a press on a
+    // blanked device dropped it back to "not blanked". Builds announcing it take
+    // a fresh blank on every press instead, and a toggle label would lie there.
+    if (state.mode === 'MEASURE' && name === 'blank'
+            && (state.caps || []).indexOf('reblank') !== -1) {
+        return ['devctl.fn.reblank', 'Take a new blank'];
+    }
     // Right in MEASURE mode is not the same control on every device: on the
     // multi-sensor builds it picks which sensor gain/integration time act on, on
     // the UV build it steps the sensor's own spectral channel, and on the plain

@@ -457,6 +457,7 @@
   "devctl.mode.abort": "Halted",
   "devctl.fn.none": "Không có tác dụng ở đây",
   "devctl.fn.blank": "Blank / bỏ blank",
+  "devctl.fn.reblank": "Lấy blank mới",
   "devctl.fn.open_menu": "Mở menu",
   "devctl.fn.gain": "Đổi gain",
   "devctl.fn.itime": "Đổi thời gian tích phân",

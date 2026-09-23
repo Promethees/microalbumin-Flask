@@ -457,6 +457,7 @@
   "devctl.mode.abort": "Halted",
   "devctl.fn.none": "Здесь не действует",
   "devctl.fn.blank": "Blank / отменить",
+  "devctl.fn.reblank": "Новый blank",
   "devctl.fn.open_menu": "Открыть меню",
   "devctl.fn.gain": "Переключить gain",
   "devctl.fn.itime": "Переключить время интегрирования",

@@ -457,6 +457,7 @@
   "devctl.mode.abort": "Halted",
   "devctl.fn.none": "No effect here",
   "devctl.fn.blank": "Blank / unblank",
+  "devctl.fn.reblank": "Take a new blank",
   "devctl.fn.open_menu": "Open menu",
   "devctl.fn.gain": "Cycle gain",
   "devctl.fn.itime": "Cycle integration time",

@@ -457,6 +457,7 @@
   "devctl.mode.abort": "중단됨",
   "devctl.fn.none": "여기서는 동작하지 않음",
   "devctl.fn.blank": "Blank / blank 해제",
+  "devctl.fn.reblank": "blank 새로 측정",
   "devctl.fn.open_menu": "메뉴 열기",
   "devctl.fn.gain": "게인 전환",
   "devctl.fn.itime": "적분 시간 전환",

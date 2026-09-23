@@ -457,6 +457,7 @@
   "devctl.mode.abort": "Halted",
   "devctl.fn.none": "此处无作用",
   "devctl.fn.blank": "Blank / 取消 blank",
+  "devctl.fn.reblank": "重新 blank",
   "devctl.fn.open_menu": "打开菜单",
   "devctl.fn.gain": "切换 gain",
   "devctl.fn.itime": "切换积分时间",
