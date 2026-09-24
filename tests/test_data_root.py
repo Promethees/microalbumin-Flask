@@ -73,8 +73,15 @@ class TestSetDataRoot:
         # pointer lives BESIDE the default folder, not inside it
         assert os.path.dirname(pointer) == os.path.dirname(str(tmp_path / "default_root"))
         assert os.path.isfile(pointer)
-        with open(pointer, encoding="utf-8") as f:
-            assert f.read().strip() == target
+        with open(pointer, "rb") as f:
+            assert state._decode_pointer(f.read()).strip() == target
+        assert os.path.abspath(state._read_dataroot_override()) == os.path.abspath(target)
+
+    def test_non_ascii_target_round_trips(self, tmp_path, monkeypatch):
+        """A Vietnamese/CJK data folder survives the pointer write + read."""
+        _setup_roots(tmp_path, monkeypatch)
+        parent = tmp_path / "Dữ liệu Thông 数据"
+        target, _moved = data_root.set_data_root(str(parent))
         assert os.path.abspath(state._read_dataroot_override()) == os.path.abspath(target)
 
     def test_copies_data_and_keeps_original_when_leaving_default(self, tmp_path, monkeypatch):
@@ -317,3 +324,35 @@ class TestRoutes:
     def test_browse_dirs_bad_path(self, client):
         resp = client.get('/browse_dirs?path=/no/such/dir/xyz123')
         assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Pointer encoding: the NSIS installer writes UTF-16LE + BOM, older app builds
+# wrote plain UTF-8. The reader must accept every form.
+# ---------------------------------------------------------------------------
+
+class TestPointerEncoding:
+    TARGET_NAME = "Phần mềm Thông 数据"
+
+    @pytest.mark.parametrize("raw_encoder", [
+        lambda s: b"\xff\xfe" + s.encode("utf-16-le"),   # NSIS FileWriteUTF16LE + BOM
+        lambda s: s.encode("utf-16"),                      # Python 'utf-16' (BOM + native)
+        lambda s: s.encode("utf-8"),                       # older app builds (UTF-8)
+        lambda s: s.encode("utf-8-sig"),                   # UTF-8 with BOM
+    ])
+    def test_reader_accepts_every_encoding(self, tmp_path, monkeypatch, raw_encoder):
+        _setup_roots(tmp_path, monkeypatch)
+        target = str(tmp_path / self.TARGET_NAME)
+        with open(state._dataroot_pointer_path(), "wb") as f:
+            f.write(raw_encoder(target))
+        assert os.path.abspath(state._read_dataroot_override()) == os.path.abspath(target)
+
+    def test_windows_writer_uses_utf16_with_bom(self, tmp_path, monkeypatch):
+        _setup_roots(tmp_path, monkeypatch)
+        monkeypatch.setattr(state, "_DATAROOT_POINTER_ENCODING", "utf-16")
+        target = str(tmp_path / self.TARGET_NAME)
+        data_root._write_pointer(target)
+        with open(state._dataroot_pointer_path(), "rb") as f:
+            raw = f.read()
+        assert raw[:2] in (b"\xff\xfe", b"\xfe\xff")
+        assert state._decode_pointer(raw) == target

@@ -120,6 +120,18 @@ def _default_app_data_dir():
 # NSIS's $DOCUMENTS, so the uninstaller reads the same file.
 # Source/dev runs ignore the pointer entirely and always use the project root.
 _DATAROOT_POINTER = '.easyokapi_dataroot'
+# Windows writes the pointer as UTF-16LE with a BOM: NSIS has no UTF-8 file I/O
+# (FileWrite/FileRead are ANSI), so UTF-16 is the only encoding the installer,
+# the uninstaller and the app all round-trip a non-ASCII path through. Elsewhere
+# the uninstallers `cat` it, so it stays UTF-8. Readers sniff the BOM.
+_DATAROOT_POINTER_ENCODING = 'utf-16' if os.name == 'nt' else 'utf-8'
+
+
+def _decode_pointer(raw):
+    """Decode pointer-file bytes: UTF-16 by BOM, else UTF-8 (BOM optional)."""
+    if raw[:2] in (b'\xff\xfe', b'\xfe\xff'):
+        return raw.decode('utf-16')
+    return raw.decode('utf-8-sig')
 
 
 def _dataroot_pointer_path():
@@ -144,8 +156,8 @@ def _read_dataroot_override():
         path = _dataroot_pointer_path()
         if not os.path.isfile(path):
             return None
-        with open(path, 'r', encoding='utf-8') as f:
-            target = f.read().strip()
+        with open(path, 'rb') as f:
+            target = _decode_pointer(f.read()).strip()
         if not target:
             return None
         target = os.path.abspath(os.path.expanduser(os.path.expandvars(target)))

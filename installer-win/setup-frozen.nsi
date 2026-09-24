@@ -727,14 +727,19 @@ Section "Install" SEC01
   ; run elevated, so we cannot force-kill it — ask the user to close it and retry.
   InitPluginsDir
   FileOpen $9 "$PLUGINSDIR\detect-easyokapi.ps1" w
-  ; Bake $INSTDIR straight into the script (single-quoted) rather than passing it
-  ; as an argument: a path ending in "\" inside quotes is mangled by command-line
-  ; quote-escaping ( \" = escaped quote ), which silently broke the StartsWith
-  ; match and made the check always report "not running". Two independent fail-safe
-  ; signals: (1) any EasyOKAPI.exe whose image path is under the install dir — or
+  ; Hand $INSTDIR over in an environment variable (nsExec children inherit ours)
+  ; rather than as an argument: a path ending in "\" inside quotes is mangled by
+  ; command-line quote-escaping ( \" = escaped quote ), which silently broke the
+  ; StartsWith match and made the check always report "not running". Nor may it be
+  ; baked into the script text: FileWrite writes the ANSI code page, so a non-ASCII
+  ; install dir (Vietnamese, CJK) became "?" and never matched either. An unset
+  ; variable counts as running (fail safe). Two independent fail-safe signals:
+  ; (1) any EasyOKAPI.exe whose image path is under the install dir — or
   ; whose path we cannot read — counts as running; (2) if EasyOKAPI.exe cannot be
   ; opened for writing, its files are locked = still in use. Exit 1 = running, 0 = clear.
-  FileWrite $9 "$$r = '$INSTDIR'$\r$\n"
+  System::Call 'Kernel32::SetEnvironmentVariableW(w "EASYOKAPI_INSTDIR", w "$INSTDIR") i'
+  FileWrite $9 "$$r = $$env:EASYOKAPI_INSTDIR$\r$\n"
+  FileWrite $9 "if (-not $$r) { exit 1 }$\r$\n"
   FileWrite $9 "$$exe = Join-Path $$r 'EasyOKAPI.exe'$\r$\n"
   FileWrite $9 "$$procs = @(Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' })$\r$\n"
   FileWrite $9 "foreach ($$p in $$procs) {$\r$\n"
@@ -887,12 +892,16 @@ Click Cancel to exit without making any changes." \
   ; uninstaller below). Write it only when the user chose a folder other than the
   ; default Documents location; otherwise clear any stale pointer so the default
   ; wins. One line, no trailing CR/LF (the app's reader strips, but match the
-  ; in-app writer which writes none).
+  ; in-app writer which writes none). UTF-16LE with a BOM, never FileWrite: that
+  ; writes the ANSI code page, which turned a non-ASCII folder into "?" and sent
+  ; the app to the default root without its activation.json. The app writes the
+  ; same format on Windows (src/state._DATAROOT_POINTER_ENCODING).
   ${If} $DataParent == "$DOCUMENTS"
     Delete "$DOCUMENTS\.easyokapi_dataroot"
   ${Else}
     FileOpen $9 "$DOCUMENTS\.easyokapi_dataroot" w
-    FileWrite $9 "$R0"
+    FileWriteWord $9 0xFEFF
+    FileWriteUTF16LE $9 "$R0"
     FileClose $9
   ${EndIf}
 
@@ -939,14 +948,19 @@ Section "Uninstall"
   ; removed. Ask the user to close it and retry (same as the installer).
   InitPluginsDir
   FileOpen $9 "$PLUGINSDIR\detect-easyokapi.ps1" w
-  ; Bake $INSTDIR straight into the script (single-quoted) rather than passing it
-  ; as an argument: a path ending in "\" inside quotes is mangled by command-line
-  ; quote-escaping ( \" = escaped quote ), which silently broke the StartsWith
-  ; match and made the check always report "not running". Two independent fail-safe
-  ; signals: (1) any EasyOKAPI.exe whose image path is under the install dir — or
+  ; Hand $INSTDIR over in an environment variable (nsExec children inherit ours)
+  ; rather than as an argument: a path ending in "\" inside quotes is mangled by
+  ; command-line quote-escaping ( \" = escaped quote ), which silently broke the
+  ; StartsWith match and made the check always report "not running". Nor may it be
+  ; baked into the script text: FileWrite writes the ANSI code page, so a non-ASCII
+  ; install dir (Vietnamese, CJK) became "?" and never matched either. An unset
+  ; variable counts as running (fail safe). Two independent fail-safe signals:
+  ; (1) any EasyOKAPI.exe whose image path is under the install dir — or
   ; whose path we cannot read — counts as running; (2) if EasyOKAPI.exe cannot be
   ; opened for writing, its files are locked = still in use. Exit 1 = running, 0 = clear.
-  FileWrite $9 "$$r = '$INSTDIR'$\r$\n"
+  System::Call 'Kernel32::SetEnvironmentVariableW(w "EASYOKAPI_INSTDIR", w "$INSTDIR") i'
+  FileWrite $9 "$$r = $$env:EASYOKAPI_INSTDIR$\r$\n"
+  FileWrite $9 "if (-not $$r) { exit 1 }$\r$\n"
   FileWrite $9 "$$exe = Join-Path $$r 'EasyOKAPI.exe'$\r$\n"
   FileWrite $9 "$$procs = @(Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' })$\r$\n"
   FileWrite $9 "foreach ($$p in $$procs) {$\r$\n"
@@ -991,7 +1005,15 @@ Click Cancel to stop removing EasyOKAPI." \
   ClearErrors
   FileOpen $8 "$R4" r
   IfErrors un_ptr_done
-    FileRead $8 $R5
+    ; UTF-16LE + BOM from the installer and current app; plain UTF-8/ANSI from
+    ; older app builds (read as ANSI - right for any ASCII path, as before).
+    FileReadWord $8 $0
+    ${If} $0 == 65279                            ; 0xFEFF little-endian BOM
+      FileReadUTF16LE $8 $R5
+    ${Else}
+      FileSeek $8 0 SET
+      FileRead $8 $R5
+    ${EndIf}
     FileClose $8
     ; Trim any trailing CR/LF the pointer might carry (the app writes none).
     un_ptr_trim:

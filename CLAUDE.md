@@ -221,6 +221,9 @@ devtools/                  ← DEV ONLY: the --monitor performance monitor; neve
 - **Frozen builds:** see `ENCODE_BUILD_PLAN.md` (feature-complete, cutover not taken).
 
 **Misc**
+- **Non-ASCII Windows paths** (`C:\Users\Thông`, a CJK data folder) must survive every hop:
+  UTF-8 std streams, `utf-8-sig` for Python-written `.ps1`, NSIS never `FileWrite`s a path,
+  and the data-root pointer is UTF-16LE + BOM on Windows with BOM-sniffing readers. **§2.11**
 - **Startup progress reporter:** `main.py` writes `pct label\n` to a FIFO
   (`/tmp/easyokapi_progress.pipe` on Mac) so launch scripts can show a progress bar.
 

@@ -49,7 +49,9 @@ function Get-UiStyle {
         $root    = Join-Path $docs 'EasyOKAPI'
         $pointer = Join-Path $docs '.easyokapi_dataroot'
         if (Test-Path $pointer) {
-            $moved = (Get-Content -LiteralPath $pointer -Raw -ErrorAction Stop).Trim()
+            # ReadAllText honours the BOM (UTF-16LE from the installer/app) and
+            # defaults to UTF-8; Get-Content would read a BOM-less file as ANSI.
+            $moved = [System.IO.File]::ReadAllText($pointer).Trim()
             if ($moved -and [System.IO.Path]::IsPathRooted($moved)) { $root = $moved }
         }
 

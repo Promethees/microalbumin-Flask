@@ -7,6 +7,18 @@
 # (hardware_routes runs log_cdc_data.py directly), but it works there too.
 import sys as _sys
 
+# ── UTF-8 standard streams ───────────────────────────────────────────────────
+# On Windows a redirected/piped stream uses the ANSI code page (cp1252, cp1258…)
+# with strict errors, so a print() of a path holding characters outside it
+# (C:\Users\Thông\…, a CJK data folder) raised UnicodeEncodeError inside the
+# route that printed it. Make every stream UTF-8 and never let one raise.
+# Runs before the --cdc-logger branch so the collector child is covered too.
+for _stream in (_sys.stdout, _sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='backslashreplace')
+    except Exception:
+        pass  # None (windowless frozen build) or not a TextIOWrapper
+
 if '--cdc-logger' in _sys.argv:
     import os as _o
 
@@ -339,7 +351,8 @@ if __name__ == '__main__':
         # Hide standard HTTP request logs for a cleaner terminal interface
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
         # Suppress all explicit backend print commands
-        sys.stdout = open(os.devnull, 'w')
+        # UTF-8: the default Windows code page cannot encode every path we print
+        sys.stdout = open(os.devnull, 'w', encoding='utf-8', errors='replace')
 
     if getattr(state.args, 'mem_monitor', False):
         def _mem_monitor_thread():

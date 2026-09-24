@@ -862,9 +862,12 @@ def _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra_args):
     except OSError:
         pass
 
-    with open(swap_ps1, 'w', encoding='utf-8') as f:
+    # utf-8-sig, not utf-8: Windows PowerShell 5.1 reads a BOM-less .ps1 in the
+    # ANSI code page, so a non-ASCII install/data path baked into the script
+    # (C:\Users\Thông\…) arrived garbled and every Move-Item/Test-Path missed.
+    with open(swap_ps1, 'w', encoding='utf-8-sig') as f:
         f.write(_build_windows_swap_script(live_root, staged_root, exe_name, result_txt, log_txt))
-    with open(coord_ps1, 'w', encoding='utf-8') as f:
+    with open(coord_ps1, 'w', encoding='utf-8-sig') as f:
         f.write(_build_windows_coordinator_script(
             live_root, port, exe_name, extra_args, swap_ps1, result_txt, log_txt))
 

@@ -105,7 +105,8 @@ def _write_pointer(target: str) -> None:
             os.remove(pointer)
         return
     os.makedirs(os.path.dirname(pointer), exist_ok=True)
-    with open(pointer, "w", encoding="utf-8") as f:
+    # Python's 'utf-16' codec writes the BOM the NSIS uninstaller sniffs for.
+    with open(pointer, "w", encoding=state._DATAROOT_POINTER_ENCODING) as f:
         f.write(target)
 
 

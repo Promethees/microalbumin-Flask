@@ -156,6 +156,21 @@ Timestamp,Value:1,Value:2,...
 - **Data logging**: Single cross-platform path `log_cdc_data.py` (CDC serial, no `sudo`/admin, no `hidapi`/`pyusb`/`libusbK`). The device's Left-button HID-keyboard fallback needs no host script — it types into any focused text field.
 - **Process termination**: Windows uses `process.terminate()`, Mac uses `os.killpg(SIGTERM)`.
 - **Hosts file**: Windows at `C:\Windows\System32\drivers\etc\hosts`, Mac at `/etc/hosts`.
+- **Non-ASCII paths (Windows)**: the install dir, the user profile (`C:\Users\Thông`) and a chosen data
+  root may hold characters outside the ANSI code page (cp1252/cp1258 cannot encode most Vietnamese or
+  any CJK). Every hop a path crosses must be Unicode-clean:
+  - **Python streams are UTF-8.** `main.py` reconfigures `stdout`/`stderr` to UTF-8 +
+    `backslashreplace` before anything else (the `--cdc-logger` child included), and the non-verbose
+    `os.devnull` sink is opened `encoding='utf-8'`. **Anti-pattern**: `open(os.devnull, 'w')` with the
+    locale encoding — every `print()` of such a path raised `UnicodeEncodeError` inside the route.
+  - **Python-written `.ps1` files use `utf-8-sig`.** Windows PowerShell 5.1 reads a BOM-less script
+    in the ANSI code page (`update_service._spawn_windows_swapper`).
+  - **NSIS never `FileWrite`s a path** (ANSI). Scripts: pass via env var (§2.18). Data files:
+    `FileWriteWord 0xFEFF` + `FileWriteUTF16LE`.
+  - **The `.easyokapi_dataroot` pointer is UTF-16LE + BOM on Windows** (installer, app via
+    `state._DATAROOT_POINTER_ENCODING`), UTF-8 elsewhere; every reader sniffs the BOM
+    (`state._decode_pointer`, the uninstaller's `FileReadWord`, the launcher's `ReadAllText`) so
+    pointers from older UTF-8 builds still resolve.
 
 ---
 
@@ -381,7 +396,8 @@ failure that never touched the software.
   - **Anti-pattern — the elevated swap script without `$ErrorActionPreference = 'Stop'`**: PowerShell cmdlet errors (`Move-Item`, `Remove-Item`, …) are **non-terminating** by default, so a `try/catch` does NOT catch them. Without `Stop`, a failed "move `$live` aside" falls straight through to "move `$new` in" — and since `$live` still exists, `Move-Item` **nests** the new build inside it and the script still writes `OK` (a false success that also clears the marker). The swap helper must set `$ErrorActionPreference = 'Stop'` so a failed move is terminating → caught → rolled back → reported `FAIL` → marker kept for retry. Keep only the two directory moves fatal; wrap the Uninstall-copy / `.old` cleanup / `icacls` as best-effort so they can't turn an applied swap into a false failure (or trigger a rollback over the new install). Guard with `if (Test-Path $live) { throw }` before the second move so nesting can never happen.
   - This transient `RunAs` is allowed; it does **not** violate the "no `requireAdministrator` on `EasyOKAPI.exe`" rule above — the EXE itself still ships with no elevation manifest.
 - **The installer and uninstaller refuse to touch a running instance.** Both the install-side overwrite guard and the `Section "Uninstall"` in `setup-frozen.nsi` write a `detect-easyokapi.ps1` (exit 1 = running, 0 = clear) with **two independent fail-safe signals**: (1) any `EasyOKAPI.exe` from `Get-CimInstance Win32_Process` whose `ExecutablePath` starts with the install dir — or whose path is unreadable — counts as running; (2) a **file-lock test** (`[System.IO.File]::Open($exe,'Open','ReadWrite','None')` throws ⇒ exe is in use). The lock test is the definitive, integrity-independent "can I delete these files" check. Keep both detectors identical.
-  - **Anti-pattern — trailing backslash in the passed path**: do **not** pass the install dir as a quoted argument ending in a backslash (`... detect-easyokapi.ps1" "$INSTDIR\"`). On the Windows command line `\"` is an escaped quote, so `"C:\…\EasyOKAPI\"` is mangled, `$args[0]` no longer matches `ExecutablePath`, the `StartsWith` fails, and the check silently reports "not running" → destructive `RMDir` against a locked folder. **Bake `$INSTDIR` into the script** via `FileWrite $9 "$$r = '$INSTDIR'$\r$\n"` (single-quoted; backslashes/spaces are literal in a PS single-quoted string) and invoke the script with **no path argument**.
+  - **Anti-pattern — trailing backslash in the passed path**: do **not** pass the install dir as a quoted argument ending in a backslash (`... detect-easyokapi.ps1" "$INSTDIR\"`). On the Windows command line `\"` is an escaped quote, so `"C:\…\EasyOKAPI\"` is mangled, `$args[0]` no longer matches `ExecutablePath`, the `StartsWith` fails, and the check silently reports "not running" → destructive `RMDir` against a locked folder. **Hand `$INSTDIR` over in an environment variable** (`System::Call 'Kernel32::SetEnvironmentVariableW(w "EASYOKAPI_INSTDIR", w "$INSTDIR") i'`; the script reads `$env:EASYOKAPI_INSTDIR`, and an unset value exits 1 = running) and invoke the script with **no path argument**.
+  - **Anti-pattern — baking a path into a `FileWrite`-generated script**: `FileWrite` writes the **ANSI code page** even in a `Unicode true` installer, so `$$r = '$INSTDIR'` turned a non-ASCII install dir into `?` and the match silently failed again. Generated `.ps1` text stays pure ASCII; paths go in via env vars or arguments (both UTF-16 end to end). See §2.11 *Non-ASCII paths*.
   - **Anti-pattern**: do not gate the process match on `-and $_.ExecutablePath` (drops processes whose path is unreadable → false "not running").
 - **The uninstall is cancellable.** `Section "Uninstall"` opens with a `MB_YESNO` confirmation (No → `Quit`, nothing removed), and the running-instance prompt's Cancel also `Quit`s. Keep an explicit, non-destructive bail-out path before any deletion.
 

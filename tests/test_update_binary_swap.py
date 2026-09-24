@@ -422,6 +422,25 @@ def test_spawn_windows_swapper_uses_resolved_powershell(tmp_path):
     assert popen.call_args[1].get('cwd') == str(tmp_path)
 
 
+def test_spawn_windows_swapper_scripts_carry_utf8_bom(tmp_path):
+    # Windows PowerShell 5.1 reads a BOM-less .ps1 in the ANSI code page, so a
+    # non-ASCII install/data path baked into the script arrived garbled and the
+    # swap missed every directory. Both scripts must start with the UTF-8 BOM and
+    # carry the path intact.
+    live = 'C:\\Ph\u1ea7n m\u1ec1m\\EasyOKAPI'          # "Phần mềm"
+    data = tmp_path / 'Th\u00f4ng \u6570\u636e'           # "Thông 数据"
+    data.mkdir()
+    with patch.object(u.state, 'script_dir', str(data)), \
+         patch.object(u, '_powershell_exe', return_value='powershell.exe'), \
+         patch('subprocess.Popen'):
+        u._spawn_windows_swapper(
+            live, str(data / '_update_staging' / 'EasyOKAPI'), 5099, 'EasyOKAPI.exe', [])
+    for name in ('_update_swap.ps1', '_update_coordinator.ps1'):
+        raw = (data / name).read_bytes()
+        assert raw.startswith(b'\xef\xbb\xbf'), f'{name} lacks the UTF-8 BOM'
+        assert live in raw.decode('utf-8-sig')
+
+
 def test_restart_windows_spawn_is_not_detached(monkeypatch):
     # Same console-app constraint for the source-build relauncher: no DETACHED_PROCESS.
     import subprocess
