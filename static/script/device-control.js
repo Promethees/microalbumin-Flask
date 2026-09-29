@@ -348,8 +348,9 @@ function renderDeviceReadout(state) {
         : '—');
 
     $text('devctl-blank', blank);
-    // Charge first, voltage beside it. Older firmware sends only the voltage.
-    const volts = state.bat ? `${state.bat} V` : '';
+    // Charge first, voltage beside it. Older firmware sends only the voltage,
+    // and sends bat=0.00 (not empty) before its first battery reading.
+    const volts = parseFloat(state.bat) > 0 ? `${state.bat} V` : '';
     $text('devctl-bat', Number.isInteger(state.batpct)
         ? `${state.batpct} %${volts ? ` · ${volts}` : ''}`
         : (volts || '—'));

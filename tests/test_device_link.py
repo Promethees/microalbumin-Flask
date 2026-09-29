@@ -37,7 +37,11 @@ def test_parse_state_types_the_known_fields():
 
 
 def test_parse_state_battery_percent_empty_before_first_reading():
-    """The firmware sends batpct= until the battery filter has a reading."""
+    """The firmware sends bat= and batpct= until the battery filter has a
+    reading; the first batpct firmware sent bat=0.00 beside the empty batpct."""
+    parsed = device_link.parse_state("STATE bat=;batpct=")
+    assert parsed['bat'] == ''
+    assert parsed['batpct'] is None
     assert device_link.parse_state("STATE bat=0.00;batpct=")['batpct'] is None
 
 
