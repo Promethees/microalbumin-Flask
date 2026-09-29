@@ -348,7 +348,11 @@ function renderDeviceReadout(state) {
         : '—');
 
     $text('devctl-blank', blank);
-    $text('devctl-bat', state.bat ? `${state.bat} V` : '—');
+    // Charge first, voltage beside it. Older firmware sends only the voltage.
+    const volts = state.bat ? `${state.bat} V` : '';
+    $text('devctl-bat', Number.isInteger(state.batpct)
+        ? `${state.batpct} %${volts ? ` · ${volts}` : ''}`
+        : (volts || '—'));
 }
 
 // The firmware keeps the gain / integration-time target on the DEVICE, not on

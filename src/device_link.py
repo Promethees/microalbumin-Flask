@@ -61,7 +61,10 @@ _STATE_INTS = ("blanked", "needsblank", "talking", "paused", "maxchan", "menupos
                # carries the active channels, so this counter is how a
                # keypad-side calibration — or a Clear that reset a channel the
                # panel is not showing — reaches the host at all.
-               "rcfrev")
+               "rcfrev",
+               # Battery charge, 0-100, next to the voltage in `bat`. Firmware
+               # predating it omits the field; an empty one means no reading yet.
+               "batpct")
 _STATE_INT_LISTS = ("chans",)
 _STATE_TEXT_LISTS = ("caps", "gains", "itimes", "vals")
 # rcf: the raw count factor of each ACTIVE channel, in the same order as

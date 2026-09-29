@@ -19,7 +19,7 @@ SAMPLE_STATE = (
     "vals=0.412,OVFL;blanked=1;needsblank=1;talking=0;paused=0;transport=;"
     "chans=0,3;maxchan=4;gains=high,high;itimes=600ms,600ms;sel=;menupos=0;"
     "menuitem=Absorbance;conc=;cunit=ng/µL;timeout=20;timeoutunit=min;"
-    "interval=1;intervalunit=min;bat=3.91"
+    "interval=1;intervalunit=min;bat=3.91;batpct=63"
 )
 
 
@@ -33,6 +33,16 @@ def test_parse_state_types_the_known_fields():
     assert parsed['caps'] == ['btn', 'state', 'channels']
     assert parsed['gains'] == ['high', 'high']
     assert parsed['bat'] == '3.91'
+    assert parsed['batpct'] == 63
+
+
+def test_parse_state_battery_percent_empty_before_first_reading():
+    """The firmware sends batpct= until the battery filter has a reading."""
+    assert device_link.parse_state("STATE bat=0.00;batpct=")['batpct'] is None
+
+
+def test_parse_state_older_firmware_has_no_battery_percent():
+    assert 'batpct' not in device_link.parse_state("STATE bat=3.91")
 
 
 def test_parse_state_keeps_overflow_sentinel_verbatim():
