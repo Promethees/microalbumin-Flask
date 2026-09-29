@@ -389,6 +389,7 @@
   "devctl.target_all": "all sensors",
   "devctl.target_now": "now",
   "devctl.battery": "バッテリー",
+  "devctl.battery_low": "要充電",
   "devctl.blank_na": "不要",
   "devctl.blank_done": "ブランク済み",
   "devctl.blank_missing": "ブランク未実施",

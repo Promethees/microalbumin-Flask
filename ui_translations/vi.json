@@ -389,6 +389,7 @@
   "devctl.target_all": "all sensors",
   "devctl.target_now": "now",
   "devctl.battery": "Pin",
+  "devctl.battery_low": "Cần sạc pin",
   "devctl.blank_na": "Không cần",
   "devctl.blank_done": "Đã blank",
   "devctl.blank_missing": "Chưa blank",

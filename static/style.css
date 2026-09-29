@@ -5894,6 +5894,12 @@ body.dark #run-script-btn:enabled {
     font-variant-numeric: tabular-nums;
 }
 
+/* Battery under the firmware's low threshold (batlow=1). */
+.devctl-value--low {
+    color: var(--danger);
+    font-weight: 600;
+}
+
 /* The board's own face, as a grid: the screen in the middle column, SELECT and
    START in the two top corners that flank it, the d-pad down its left side and
    A / B down its right — the PyBadge, read straight off the case. */

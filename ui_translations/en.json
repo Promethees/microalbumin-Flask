@@ -389,6 +389,7 @@
   "devctl.target_all": "all sensors",
   "devctl.target_now": "now",
   "devctl.battery": "Battery",
+  "devctl.battery_low": "Charge now",
   "devctl.blank_na": "Not needed",
   "devctl.blank_done": "Blanked",
   "devctl.blank_missing": "Not blanked",

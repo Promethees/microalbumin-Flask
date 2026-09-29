@@ -64,7 +64,9 @@ _STATE_INTS = ("blanked", "needsblank", "talking", "paused", "maxchan", "menupos
                "rcfrev",
                # Battery charge, 0-100, next to the voltage in `bat`. Firmware
                # predating it omits the field; an empty one means no reading yet.
-               "batpct")
+               "batpct",
+               # 1 while the pack is under the firmware's low threshold.
+               "batlow")
 _STATE_INT_LISTS = ("chans",)
 _STATE_TEXT_LISTS = ("caps", "gains", "itimes", "vals")
 # rcf: the raw count factor of each ACTIVE channel, in the same order as

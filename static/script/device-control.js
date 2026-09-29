@@ -351,9 +351,16 @@ function renderDeviceReadout(state) {
     // Charge first, voltage beside it. Older firmware sends only the voltage,
     // and sends bat=0.00 (not empty) before its first battery reading.
     const volts = parseFloat(state.bat) > 0 ? `${state.bat} V` : '';
-    $text('devctl-bat', Number.isInteger(state.batpct)
+    // The device owns the low threshold and says so in batlow; the words
+    // carry the warning, the colour only repeats it.
+    const low = state.batlow === 1;
+    const reading = Number.isInteger(state.batpct)
         ? `${state.batpct} %${volts ? ` · ${volts}` : ''}`
-        : (volts || '—'));
+        : (volts || '—');
+    $text('devctl-bat', low
+        ? `${reading} · ${t('devctl.battery_low', 'Charge now')}`
+        : reading);
+    $toggleClass('devctl-bat', 'devctl-value--low', low);
 }
 
 // The firmware keeps the gain / integration-time target on the DEVICE, not on

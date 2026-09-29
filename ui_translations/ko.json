@@ -389,6 +389,7 @@
   "devctl.target_all": "모든 센서",
   "devctl.target_now": "지금",
   "devctl.battery": "배터리",
+  "devctl.battery_low": "충전 필요",
   "devctl.blank_na": "필요 없음",
   "devctl.blank_done": "Blank 완료",
   "devctl.blank_missing": "Blank 안 됨",

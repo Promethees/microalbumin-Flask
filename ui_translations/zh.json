@@ -389,6 +389,7 @@
   "devctl.target_all": "all sensors",
   "devctl.target_now": "now",
   "devctl.battery": "电池",
+  "devctl.battery_low": "请充电",
   "devctl.blank_na": "不需要",
   "devctl.blank_done": "已完成 blank",
   "devctl.blank_missing": "未完成 blank",

@@ -49,6 +49,13 @@ def test_parse_state_older_firmware_has_no_battery_percent():
     assert 'batpct' not in device_link.parse_state("STATE bat=3.91")
 
 
+def test_parse_state_battery_low_flag():
+    """The firmware owns the low threshold; the host reads batlow, never batpct."""
+    assert device_link.parse_state("STATE bat=3.54;batpct=4;batlow=1")['batlow'] == 1
+    assert device_link.parse_state("STATE bat=3.91;batpct=63;batlow=0")['batlow'] == 0
+    assert 'batlow' not in device_link.parse_state("STATE bat=3.91;batpct=63")
+
+
 def test_parse_state_keeps_overflow_sentinel_verbatim():
     """OVFL is not a number and must survive as text — the readout shows it."""
     assert device_link.parse_state(SAMPLE_STATE)['vals'] == ['0.412', 'OVFL']
