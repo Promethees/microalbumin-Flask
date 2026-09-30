@@ -85,7 +85,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `account.py`                                             | `User` SQLAlchemy model (bcrypt passwords, verification/reset tokens); `run_migrations()` |
 | `firebase_service.py`                                    | Firebase Firestore persistence via REST API (not gRPC/firebase-admin, avoids eventlet conflicts); async background saves via `threading.Thread` |
 | `email_service.py`                                       | SMTP transactional emails: verification and password-reset messages                       |
-| `ai_assistant.py`                                        | Groq API client; `chat_stream()` generator (6-iteration agentic loop); guide keyword matching (`_match_guide_example`); greeting/OOS fast-paths; report clarification flow; multilingual system prompts |
+| `ai_assistant.py`                                        | Groq API client; `chat_stream()` generator (6-iteration agentic loop with tools-off retry, stable error codes, truncation notice); guide keyword matching + launch gate (`_match_guide_detail` / `resolve_guide`, shared with main); greeting/OOS fast-paths (skipped for grounded desktop calls); report clarification flow (pending marker); proxy hardening (local-only tool refusal, grounded tool allow-list, server scope rule); multilingual system prompts (translated prose + one English rules block) |
 | `ai_settings.py`                                         | Per-session AI settings via Flask session (enabled, preferred_languages, first_run_shown) |
 | `download_service.py`                                    | JWT helpers: generate/validate download tokens (30 min) and activation tokens (permanent) |
 
@@ -410,7 +410,8 @@ User registers & verifies email
 Desktop app
   │
   │  POST /ai/proxy/chat
-  │  body: { license_token, messages, language, model, ui_context }
+  │  body: { license_token, hwid, messages, language, ui_context, client_grounding? }
+  │  (model is ignored; limiter keyed on the licence sub)
   ▼
 Heroku  (src/routes/ai_routes.py  →  proxy_chat())
   │
@@ -421,10 +422,15 @@ Heroku  (src/routes/ai_routes.py  →  proxy_chat())
   ├─ 2. User.query.get(payload['sub'])
   │      → account missing or is_verified=False → 403
   │
-  ├─ 3. Config.GROQ_API_KEY present?
+  ├─ 3. messages filtered/capped (413), client_grounding capped at 16 KB (413),
+  │      language validated
+  │
+  ├─ 4. Config.GROQ_API_KEY present?
   │      → missing → 503
   │
-  └─ 4. ai_assistant.chat_stream(messages, language, GROQ_API_KEY, model, ui_context)
+  └─ 5. ai_assistant.chat_stream(..., proxy_request=True)
+         → local-only tools refused (not_available_via_proxy)
+         → grounded + ui_context.pending: no server fast paths
          → streams SSE events back to desktop
          → each event: data: {"type":"chunk","content":"..."}\n\n
          → terminated with: data: [DONE]\n\n
