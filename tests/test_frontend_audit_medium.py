@@ -101,3 +101,49 @@ OUT({ whileCarrying, afterClose, idle: draws - whileCarrying - afterClose });
 def test_chart_falls_back_to_polling_when_the_stream_closes_mid_run():
     r = _node(FALLBACK_TICK)
     assert r == {'whileCarrying': 0, 'afterClose': 2, 'idle': 0}
+
+
+# ---------------------------------------------------------------------------
+# data-handling.js:147 — calibration JSON keys/values reached tr.innerHTML
+# unescaped, and a non-string fit_type threw inside getFormula.
+# ---------------------------------------------------------------------------
+
+CAL_JSON_TABLE = PRELUDE + r"""
+const src = fs.readFileSync(path.join(process.env.EOK_JS, 'data-handling.js'), 'utf8');
+const a = src.indexOf('const fitType = JSON_content.fit_type');
+const b = src.indexOf('buildInfoTable(infoData);', a) + 'buildInfoTable(infoData);'.length;
+const body = src.slice(a, b);
+const html = [];
+function el() {
+    const e = { children: [], style: {}, appendChild(c) { this.children.push(c); } };
+    Object.defineProperty(e, 'innerHTML', { set(v) { html.push(v); }, get() { return ''; } });
+    return e;
+}
+const ctx = {
+    AppState: { currentMeasurementMode: process.env.EOK_MODE ? JSON.parse(process.env.EOK_MODE) : 'point' },
+    document: { createElement: el },
+    _escHtml: s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+};
+vm.createContext(ctx);
+let error = null;
+try {
+    vm.runInContext('(function (JSON_content, display) {' + body + '})', ctx)(JSON.parse(process.env.EOK_CAL), el());
+} catch (e) { error = String(e); }
+OUT({ error, html: html.join('\n') });
+"""
+
+EVIL = '<img src=x onerror=alert(1)>'
+
+
+@pytest.mark.parametrize('mode', ['point', 'kinetics'])
+def test_calibration_json_table_escapes_file_values(mode):
+    cal = {
+        'fit_type': 3,  # not a string: used to throw in getFormula
+        'for_meas': EVIL, 'meas_unit': EVIL, 'concen_unit': EVIL,
+        'fit_coef': {EVIL: EVIL},
+        EVIL: EVIL if mode == 'point' else {'fit_coef': {EVIL: EVIL}},
+    }
+    r = _node(CAL_JSON_TABLE, EOK_CAL=cal, EOK_MODE=mode)
+    assert r['error'] is None
+    assert '<img' not in r['html']
+    assert '&lt;img' in r['html']

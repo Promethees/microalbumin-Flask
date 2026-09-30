@@ -109,7 +109,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                             if (coefs && typeof coefs === 'object' && !Array.isArray(coefs)) {
                                 return Object.entries(coefs)
                                     .filter(([key]) => key !== '__proto__' && key !== 'constructor' && key !== 'prototype')
-                                    .map(([k, v]) => `${k} = ${v}`)
+                                    .map(([k, v]) => `${_escHtml(k)} = ${_escHtml(v)}`)
                                     .join(', ');
                             }
                             return '—';
@@ -122,7 +122,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                             exponential: "\\( [S] = a e^{q b} + c \\)",
                             "michaelis-menten": "\\( [S] = \\dfrac{K_m q}{V_{max} - q} \\)"
                         };
-                        const getFormula = (type) => formulas[type.toLowerCase()] || "No formula available for this fit type.";
+                        const getFormula = (type) => formulas[String(type).toLowerCase()] || "No formula available for this fit type.";
 
                         // --- Build tables dynamically ---
                         const buildCoefTable = (json) => {
@@ -151,14 +151,14 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                                 if (["fit_type", "for_meas", "meas_unit", "concen_unit", "x_axis"].includes(key)) continue;
                                 const tr = document.createElement("tr");
                                 tr.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
-                                    <td>${key}</td>
+                                    <td>${_escHtml(key)}</td>
                                     <td>${labelCoefficients(value?.fit_coef)}</td>
                                 ` : key === "fit_coef" ? `
-                                    <td>${key}</td>
+                                    <td>${_escHtml(key)}</td>
                                     <td>${labelCoefficients(value)}</td>
                                 ` : `
-                                    <td>${key}</td>
-                                    <td>${value}</td>
+                                    <td>${_escHtml(key)}</td>
+                                    <td>${_escHtml(value)}</td>
                                 `;
                                 tbody.appendChild(tr);
                             }
@@ -207,13 +207,15 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
 
                         const infoData = {
                             "Current Mode": mode,
-                            "Fit Type": fitType,
+                            // File-derived values are escaped here; qDesc and the
+                            // formula are our own markup (Rule.md §2.39).
+                            "Fit Type": _escHtml(fitType),
                             "Formula": getFormula(fitType),
                             "[S]": "Initial Substance Concentration",
                             [qLabel]: qDesc,
-                            "Measurement For": measFor,
-                            "Measurement Unit": measUnitFor,
-                            "Concentration Unit": concenUnitFor
+                            "Measurement For": _escHtml(measFor),
+                            "Measurement Unit": _escHtml(measUnitFor),
+                            "Concentration Unit": _escHtml(concenUnitFor)
                         };
 
                         buildCoefTable(JSON_content);
