@@ -313,3 +313,39 @@ def test_turn_export_skips_sentinel_values():
     pattern = re.compile(_SCHEMA_VALIDATORS[CSV_SCHEMA_POINT_CAL_TURN]['data'])
     assert all(pattern.match(f"{e['con']},{e['estValue']}") for e in entries)
     assert 'err' not in r['derive']
+
+
+# ---------------------------------------------------------------------------
+# data-handling.js:45 — the clear* helpers looped to the previous
+# AppState.numSources (1 after load), so sources 2..N of the next file kept
+# the last file's concentrations, labels and colours.
+# ---------------------------------------------------------------------------
+
+CLEAR_PER_SOURCE = PRELUDE + r"""
+const store = new Map();
+const localStorage = {
+    get length() { return store.size; },
+    key: i => [...store.keys()][i] ?? null,
+    getItem: k => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: k => store.delete(k),
+};
+for (let i = 0; i < 4; i++) {
+    localStorage.setItem(`con-value-read-source-${i}`, '5');
+    localStorage.setItem(`custom-line-label-source-${i}`, 'L');
+    localStorage.setItem(`custom-source-color-${i}`, '#000');
+}
+localStorage.setItem('theme', 'dark');
+const ctx = { localStorage, AppState: { numSources: 1 } };
+vm.createContext(ctx);
+const src = fs.readFileSync(path.join(process.env.EOK_JS, 'data-display.js'), 'utf8');
+const helper = /^function _clearLocalByPrefix/m.test(src) ? FN('data-display.js', '_clearLocalByPrefix') : '';
+vm.runInContext(helper + FN('data-display.js', 'clearConcentrationValues') + FN('data-display.js', 'clearCustomLabels')
+    + FN('data-display.js', 'clearCustomColors'), ctx);
+ctx.clearConcentrationValues(); ctx.clearCustomLabels(); ctx.clearCustomColors();
+OUT({ left: [...store.keys()] });
+"""
+
+
+def test_new_file_clears_every_source_not_just_the_previous_count():
+    assert _node(CLEAR_PER_SOURCE)['left'] == ['theme']

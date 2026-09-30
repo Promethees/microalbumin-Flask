@@ -1196,22 +1196,32 @@ function getMetaConcentration(metadata) {
 }
 
 // Clear all concentration values for this session
+// Remove every per-source key with this prefix, whatever the source count.
+// These run when a new file is selected, while AppState.numSources still holds
+// the previous (often reset-to-1) count — looping to it left sources 2..N of
+// the next file pre-filled with the last file's concentrations, labels and
+// colours, and Export wrote those concentrations.
+function _clearLocalByPrefix(prefix) {
+    try {
+        const doomed = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(prefix)) doomed.push(k);
+        }
+        doomed.forEach(k => localStorage.removeItem(k));
+    } catch (e) { /* storage blocked: nothing to clear */ }
+}
+
 function clearConcentrationValues() {
-    for (let i = 0; i < AppState.numSources; i++) {
-        localStorage.removeItem(`con-value-read-source-${i}`);
-    }
+    _clearLocalByPrefix('con-value-read-source-');
 }
 
 function clearCustomLabels() {
-    for (let i = 0; i < AppState.numSources; i++) {
-        localStorage.removeItem(`custom-line-label-source-${i}`);
-    }
+    _clearLocalByPrefix('custom-line-label-source-');
 }
 
 function clearCustomColors() {
-    for (let i = 0; i < AppState.numSources; i++) {
-        localStorage.removeItem(`custom-source-color-${i}`);
-    }
+    _clearLocalByPrefix('custom-source-color-');
 }
 
 // Reset every control inside #data-display-section back to its default value.
