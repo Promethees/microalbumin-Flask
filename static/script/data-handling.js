@@ -1063,11 +1063,12 @@ async function refreshReportSubjects() {
 async function editReportSubject(subjectName, button) {
     const _isDark = document.body.classList.contains('dark');
     const { value: result } = await Swal.fire({
-        title: `Edit Subject: "${subjectName}"`,
+        // titleText, not title: a subject name may hold < or " (Rule.md §2.39).
+        titleText: `Edit Subject: "${subjectName}"`,
         html: `
             <div style="text-align:left; margin-bottom:14px;">
                 <label style="display:block; margin-bottom:4px; font-size:0.85rem; color:#666;">Rename to</label>
-                <input id="swal-rename-input" class="swal2-input" value="${subjectName}" style="width:90%; margin:0;">
+                <input id="swal-rename-input" class="swal2-input" value="${_attr(subjectName)}" style="width:90%; margin:0;">
             </div>
             <div style="text-align:left; margin-bottom:6px; display:flex; align-items:baseline; gap:8px;">
                 <span style="font-weight:600; font-size:0.9rem;">Items</span>
@@ -1157,9 +1158,9 @@ async function loadEditSwalItems(subjectName, container) {
             card.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span class="drag-handle" data-hint="Drag to reorder" style="cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;">⠿</span>
-                    <span style="flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-hint="${item.filename}">${item.filename}</span>
-                    <span style="font-size:0.75rem; color:${isDark ? '#a5b4fc' : '#6366f1'}; background:${isDark ? '#312e81' : '#eef2ff'}; padding:1px 7px; border-radius:8px; flex-shrink:0;">${item.metadata.mode || 'Measurement'}</span>
-                    <button data-card-id="${safeId}" data-filename="${item.filename}" data-hint="Remove from subject" onclick="requestSwalItemDelete(this)" style="background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;">✕</button>
+                    <span style="flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-hint="${_attr(item.filename)}">${_escHtml(item.filename)}</span>
+                    <span style="font-size:0.75rem; color:${isDark ? '#a5b4fc' : '#6366f1'}; background:${isDark ? '#312e81' : '#eef2ff'}; padding:1px 7px; border-radius:8px; flex-shrink:0;">${_escHtml(item.metadata.mode || 'Measurement')}</span>
+                    <button data-card-id="${_attr(safeId)}" data-filename="${_attr(item.filename)}" data-hint="Remove from subject" onclick="requestSwalItemDelete(this)" style="background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;">✕</button>
                 </div>
                 <div class="swal-delete-confirm" style="display:none; margin-top:6px; padding-top:6px; border-top:1px solid ${isDark ? '#7f1d1d' : '#fee2e2'}; text-align:right;">
                     <span style="font-size:0.8rem; color:#ef4444; margin-right:8px;">Remove this item from report folder?</span>
@@ -1170,7 +1171,7 @@ async function loadEditSwalItems(subjectName, container) {
             container.appendChild(card);
         }
     } catch (e) {
-        container.innerHTML = `<p style="color:#ef4444; margin:8px 0;">Error: ${e.message}</p>`;
+        container.innerHTML = `<p style="color:#ef4444; margin:8px 0;">Error: ${_escHtml(e.message)}</p>`;
     }
 }
 
@@ -1806,7 +1807,7 @@ function showMergeSubjectsModal() {
         return;
     }
 
-    const options = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+    const options = subjects.map(s => `<option value="${_attr(s)}">${_escHtml(s)}</option>`).join('');
     Swal.fire({
         title: 'Merge Report Subjects',
         html: `

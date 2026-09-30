@@ -70,6 +70,9 @@ function LOAD(ctx, file) {
     vm.runInContext(fs.readFileSync(path.join(process.env.EOK_JS, file), 'utf8'), ctx);
 }
 function OUT(o) { process.stdout.write(JSON.stringify(o)); }
+// The real escape helpers (_escHtml / _esc / _attr) from navigation.js.
+const HELPERS = fs.readFileSync(path.join(process.env.EOK_JS, 'navigation.js'), 'utf8')
+    .split('\n').filter(l => /^const _(escHtml|esc|attr) = /.test(l)).join('\n');
 """
 
 
@@ -147,3 +150,49 @@ def test_calibration_json_table_escapes_file_values(mode):
     assert r['error'] is None
     assert '<img' not in r['html']
     assert '&lt;img' in r['html']
+
+
+# ---------------------------------------------------------------------------
+# data-handling.js:1059 — a subject named `Batch "7"` came back from the edit
+# dialog as `Batch`, and Save renamed the folder the user never touched. Item
+# cards and the merge <option>s had the same unescaped pattern.
+# ---------------------------------------------------------------------------
+
+SUBJECT_EDIT = PRELUDE + r"""
+const unhtml = s => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const subject = JSON.parse(process.env.EOK_SUBJECT);
+let opts = null;
+const fetched = [];
+const ctx = {
+    document: { body: { classList: { contains: () => false } } },
+    Swal: { fire: async (o) => { opts = o; return { value: undefined }; } },
+    fetch: async (u, o) => { fetched.push(u); return { json: async () => ({ status: 'success' }) }; },
+    AppState: {},
+};
+vm.createContext(ctx);
+vm.runInContext(HELPERS + FN('data-handling.js', 'editReportSubject') + FN('data-handling.js', 'loadEditSwalItems'), ctx);
+(async () => {
+    await vm.runInContext('editReportSubject', ctx)(subject, null);
+    const val = /id="swal-rename-input"[^>]*value="([^"]*)"/.exec(opts.html)[1];
+    // item cards
+    const cards = [];
+    const container = { innerHTML: '', appendChild(c) { cards.push(c); } };
+    ctx.fetch = async () => ({ json: async () => ({ status: 'success', items: [{ filename: subject + '.csv', metadata: { mode: subject } }] }) });
+    ctx.document.createElement = () => ({ style: {}, dataset: {} });
+    await vm.runInContext('loadEditSwalItems', ctx)(subject, container);
+    OUT({ value: unhtml(val), titleHtml: opts.title || null, titleText: opts.titleText || null, card: cards[0].innerHTML });
+})();
+"""
+
+
+@pytest.mark.parametrize('subject', ['Batch "7"', 'a<b>&c'])
+def test_edit_subject_dialog_keeps_the_exact_name(subject):
+    r = _node(SUBJECT_EDIT, EOK_SUBJECT=subject)
+    assert r['value'] == subject
+    assert r['titleHtml'] is None and subject in r['titleText']
+    assert '<b>' not in r['card'] and 'data-filename="' + subject.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;') + '.csv"' in r['card']
+
+
+def test_merge_subject_options_are_escaped():
+    src = _src('data-handling.js')
+    assert 'subjects.map(s => `<option value="${_attr(s)}">${_escHtml(s)}</option>`)' in src
