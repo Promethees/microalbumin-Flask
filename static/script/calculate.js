@@ -118,50 +118,62 @@ function getUniqueColumnEntries(data, columnName = "TimePoint") {
     return Array.from(uniqueColumnEntries).sort((a, b) => Number(b) - Number(a));
 }
 
+// Evaluate a fitted standard curve at x -> concentration. The client twin of
+// math_ops.evaluate_curve (and excel_formula.py): same models, same domain,
+// same coefficient handling — coefficients may be numbers or numeric strings
+// (the JSON editor saves text), as a dict or an ordered list. Pure: no DOM, so
+// the report path uses it too. Change one, change them all (Rule.md §2.39).
+function evaluateCurve(fitType, coefficients, x) {
+    const num = (v, name) => {
+        if (v === undefined || v === null || v === 'NONE' || v === '') throw new Error(`Missing coefficient: ${name}`);
+        const n = Number(v);
+        if (!Number.isFinite(n)) throw new Error(`Coefficient ${name} must be a number`);
+        return n;
+    };
+    const isList = Array.isArray(coefficients);
+    const pick = (key, idx) => (isList ? coefficients[idx] : (coefficients || {})[key]);
+    const type = String(fitType || '').toLowerCase();
+    x = Number(x);
+
+    if (type === 'michaelis-menten') {
+        const vmax = num(pick('VMax', 0), 'VMax');
+        const km = num(pick('Km', 1), 'Km');
+        if (vmax - x === 0) throw new Error(`Invalid input for Michaelis-Menten: VMax - x is zero (VMax: ${vmax})`);
+        return (km * x) / (vmax - x);
+    }
+    const a = num(pick('a', 0), 'a');
+    const b = num(pick('b', 1), 'b');
+    switch (type) {
+        case 'linear':
+            return a * x + b;
+        case 'polynomial':
+            return a * x * x + b * x + num(pick('c', 2), 'c');
+        case 'logarithmic': {
+            const c = num(pick('c', 2), 'c');
+            if (x + b <= 0) throw new Error('Invalid input for logarithm: x + b must be > 0');
+            return a * Math.log(x + b) + c;
+        }
+        case 'exponential': {
+            const y = a * Math.exp(b * x) + num(pick('c', 2), 'c');
+            // Python's math.exp raises OverflowError where JS returns Infinity.
+            if (!Number.isFinite(y)) throw new Error('Exponential result overflows');
+            return y;
+        }
+        default:
+            throw new Error('Unknown fit type: ' + fitType);
+    }
+}
+
 function computeFit(value, fit_type, coef) {
     const regressedQuantity = document.getElementById("regressed-quantity").value;
-    if (coef[0] === 'NONE' || coef[0] === 'NaN') {
+    // A failed fit writes "NONE" coefficients (processJSONCoef).
+    if (!coef || Object.values(coef).some(v => v === 'NONE' || v === 'NaN')) {
         throw new Error(`Fit_type: ${fit_type} cannot be used to derive concentration from ${regressedQuantity}`);
     }
     if (typeof value !== 'number' || isNaN(value)) {
         throw new Error(`Quantity: ${regressedQuantity} is not available`);
     }
-    switch (fit_type.toLowerCase()) {
-        case "linear":
-            // Expect coef = [a, b]
-            if (Object.keys(coef).length !== 2) throw new Error("Linear fit requires 2 coefficients: [a, b]");
-            return coef["a"] * value + coef["b"];
-
-        case "polynomial":
-            // Expect coef = [a, b, c]
-            if (Object.keys(coef).length !== 3) throw new Error("Polynomial fit requires 3 coefficients: [a, b, c]");
-            return coef["a"] * Math.pow(value, 2) + coef["b"] * value + coef["c"];
-
-        case "logarithmic":
-            // Expect coef = [a, b, c]
-            if (Object.keys(coef).length !== 3) throw new Error("Logarithmic fit requires 3 coefficients: [a, b, c]");
-            // Same domain as math_ops.evaluate_curve (and excel_formula.py): the
-            // logarithm's argument is x + b, not x.
-            if (value + Number(coef["b"]) <= 0) throw new Error("Invalid input for logarithm: x + b must be > 0");
-            return coef["a"] * Math.log(value + Number(coef["b"])) + coef["c"];
-
-        case "exponential":
-            // Expect coef = [a, b, c]
-            if (Object.keys(coef).length !== 3) throw new Error("Exponential fit requires 3 coefficients: [a, b, c]");
-            return coef["a"] * Math.exp(value * coef["b"]) + coef["c"];
-
-        case "michaelis-menten":
-            // Expect coef = [Vmax, Km]
-            if (Object.keys(coef).length !== 2) throw new Error("Michaelis-Menten fit requires 2 coefficients: [Vmax, Km]");
-            // Same domain as math_ops.evaluate_curve: only a zero denominator is
-            // rejected. A rate outside 0..VMax yields a (negative) value, as the
-            // server and the Excel formula do.
-            if (Number(coef["VMax"]) - value === 0) throw new Error(`Invalid input for Michaelis-Menten: VMax - x is zero (VMax: ${coef["VMax"]})`);
-            return (coef["Km"] * value) / (coef["VMax"] - value);
-
-        default:
-            throw new Error("Unknown fit type: " + fit_type);
-    }
+    return evaluateCurve(fit_type, coef, value);
 }
 
 function averageDuplicates(xColumn, yColumn) {

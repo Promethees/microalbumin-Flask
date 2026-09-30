@@ -658,5 +658,7 @@
   "ai.cmd.report": "Créer un rapport HTML rapide ou complet",
   "ai.cmd.status": "Afficher l'état de l'application (mode, données, appareil)",
   "ai.cmd.redo": "Rejouer le dernier guide ou relancer la dernière question",
-  "ai.cmd.clear": "Effacer l'historique de la conversation"
+  "ai.cmd.clear": "Effacer l'historique de la conversation",
+  "ai.msg.request_failed": "Échec de la requête",
+  "ai.msg.network_error": "Erreur réseau"
 }

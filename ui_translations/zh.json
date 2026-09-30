@@ -658,5 +658,7 @@
   "ai.cmd.report": "创建快速或完整的 HTML 报告",
   "ai.cmd.status": "显示当前应用状态(模式、数据、设备)",
   "ai.cmd.redo": "重放上一个指南或重试上一个问题",
-  "ai.cmd.clear": "清除对话历史"
+  "ai.cmd.clear": "清除对话历史",
+  "ai.msg.request_failed": "请求失败",
+  "ai.msg.network_error": "网络错误"
 }

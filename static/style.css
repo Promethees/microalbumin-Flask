@@ -2683,10 +2683,11 @@ body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-cancel {
     color: var(--ink) !important;
 }
 
+/* Hover text stays --ink: --accent on its own wash is 4.16:1 in dark mode. */
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-cancel:hover:enabled {
     border-color: var(--accent) !important;
     background: var(--accent-wash) !important;
-    color: var(--accent) !important;
+    color: var(--ink) !important;
 }
 
 /* Destructive: the dialogs that delete a file, a folder, a subject, or the AI's
@@ -2704,8 +2705,10 @@ body:not(.ui-classic) .swal2-popup .swal2-styled.swal-danger {
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-deny:hover:enabled,
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal-danger:hover:enabled {
     background: var(--danger-fill) !important;
-    border-color: var(--danger) !important;
-    box-shadow: 0 0 0 1px var(--danger) !important;
+    border-color: var(--danger-fill) !important;
+    /* A gap in the popup's own colour, then the ring: visible even where the
+       ring and the fill are the same red (light mode). */
+    box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--danger) !important;
 }
 
 body:not(.ui-classic) .swal2-popup .swal2-styled:disabled {
@@ -2724,7 +2727,7 @@ body:not(.ui-classic) .swal2-popup .swal2-footer .swal2-styled.swal2-confirm {
 body:not(.ui-classic) .swal2-popup .swal2-footer .swal2-styled.swal2-confirm:hover:enabled {
     border-color: var(--accent) !important;
     background: var(--accent-wash) !important;
-    color: var(--accent) !important;
+    color: var(--ink) !important;
 }
 
 body:not(.ui-classic) .swal2-popup .swal2-footer {

@@ -658,5 +658,7 @@
   "ai.cmd.report": "빠른 또는 전체 HTML 보고서 만들기",
   "ai.cmd.status": "현재 앱 상태 표시(모드, 데이터, 장치)",
   "ai.cmd.redo": "마지막 안내 다시 보기 또는 마지막 질문 재시도",
-  "ai.cmd.clear": "대화 기록 지우기"
+  "ai.cmd.clear": "대화 기록 지우기",
+  "ai.msg.request_failed": "요청에 실패했습니다",
+  "ai.msg.network_error": "네트워크 오류"
 }

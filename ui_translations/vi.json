@@ -658,5 +658,7 @@
   "ai.cmd.report": "Tạo báo cáo HTML nhanh hoặc đầy đủ",
   "ai.cmd.status": "Hiện trạng thái ứng dụng (chế độ, dữ liệu, thiết bị)",
   "ai.cmd.redo": "Chạy lại hướng dẫn trước hoặc hỏi lại câu trước",
-  "ai.cmd.clear": "Xóa lịch sử trò chuyện"
+  "ai.cmd.clear": "Xóa lịch sử trò chuyện",
+  "ai.msg.request_failed": "Yêu cầu thất bại",
+  "ai.msg.network_error": "Lỗi mạng"
 }

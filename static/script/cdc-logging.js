@@ -896,7 +896,9 @@ async function resyncRunningSession() {
     enterRunningUI({ manual: !!response.manual, intervalSec: response.interval_sec || null, paused: response.paused === true, measureArmed: true });
     $append("log-display", t('cdc.reconnected', 'Reconnected to the running session.') + "\n");
 }
-document.addEventListener('DOMContentLoaded', resyncRunningSession);
+// Called from index.js's ready handler, after AppState.reset() and the initial
+// switchingModes(): both stop a run only when scriptRunning is true, so the
+// peek must not be able to set it before they have run.
 
 // Main script runner
 async function runScript() {

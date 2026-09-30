@@ -487,6 +487,13 @@
         return (typeof t === 'function') ? t(key, fallback) : fallback;
     }
 
+    // Text written into the conversation follows the chat's own language
+    // picker (AI.activeLang), from the catalogs the page render passes in.
+    function _trChat(key, fallback) {
+        const cat = (typeof AI_CHAT_STRINGS !== 'undefined' && AI_CHAT_STRINGS) ? AI_CHAT_STRINGS[AI.activeLang || 'en'] : null;
+        return (cat && cat[key]) || fallback;
+    }
+
     // A command's description in the picker is widget chrome, so it follows
     // the app's UI language (t()); answers inside the chat follow AI.activeLang.
     function _cmdDesc(c) {
@@ -1141,7 +1148,8 @@
 
         if (cmd.action === 'help') {
             const lang = AI.activeLang || 'en';
-            const lines = SLASH_COMMANDS.map(c => `\`${c.cmd}\` — ${c.desc}`).join('\n');
+            const lines = SLASH_COMMANDS.map(c =>
+                `\`${c.cmd}\` — ${_trChat('ai.cmd.' + c.cmd.slice(1).replace(/-/g, '_'), c.desc)}`).join('\n');
             _addMsg('assistant', (_HELP_HEADER[lang] || _HELP_HEADER.en) + '\n\n' + lines);
             return;
         }
@@ -1535,7 +1543,7 @@
 
                     if (!resp.ok || !resp.body) {
                         const err = await resp.json().catch(() => ({}));
-                        _finalizeStreamingMsg(msgDiv, null, '⚠ ' + (err.message || 'Request failed'));
+                        _finalizeStreamingMsg(msgDiv, null, '⚠ ' + (err.message || _trChat('ai.msg.request_failed', 'Request failed')));
                         // Nothing was processed — the clarification still stands.
                         _rearmPending(pending);
                         return;
@@ -1621,7 +1629,7 @@
                             msgDiv?.remove();
                         }
                     } else {
-                        _finalizeStreamingMsg(msgDiv, null, '⚠ Network error: ' + err.message);
+                        _finalizeStreamingMsg(msgDiv, null, '⚠ ' + _trChat('ai.msg.network_error', 'Network error') + ': ' + err.message);
                         // The send failed before the server saw it — keep the
                         // clarification outstanding so retrying "quick" works.
                         // Without this the marker was burned by a flaky send and

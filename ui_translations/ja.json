@@ -658,5 +658,7 @@
   "ai.cmd.report": "簡易または完全な HTML レポートを作成",
   "ai.cmd.status": "現在のアプリ状態を表示(モード・データ・デバイス)",
   "ai.cmd.redo": "直前のガイドを再生、または直前の質問を再試行",
-  "ai.cmd.clear": "会話履歴を消去"
+  "ai.cmd.clear": "会話履歴を消去",
+  "ai.msg.request_failed": "リクエストに失敗しました",
+  "ai.msg.network_error": "ネットワークエラー"
 }

@@ -1397,6 +1397,9 @@
             // i18n.js applies these to [data-i18n*] elements and exposes t().
             const UI_LANG = {{ ui_lang | tojson | safe }};
             const UI_STRINGS = {{ ui_strings | tojson | safe }};
+            // ai.cmd.* / ai.msg.* for every language: the AI chat's in-conversation
+            // text follows its own language picker, not the UI language.
+            const AI_CHAT_STRINGS = {{ ai_chat_strings | tojson | safe }};
             // Per-file metadata (name -> {mtime, display}) for the File Selection table,
             // and the active sort order. Both feed the client-side date/name sorting in
             // navigation.js so re-sorting needs no server round-trip.

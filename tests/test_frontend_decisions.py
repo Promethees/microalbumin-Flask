@@ -55,8 +55,9 @@ const body = src.slice(start + 'reset: '.length, end);
 const out = [];
 const ctx = { terminateScript: () => out.push('terminate'), DATA_ROOT: '/d', modeDiv: undefined };
 vm.createContext(ctx);
-vm.runInContext('var reset = ' + body + ';', ctx);
-for (const running of JSON.parse(process.env.EOK_RUNNING)) {
+vm.runInContext('var statusCheckInterval = null; var reset = ' + body + ';', ctx);
+for (const [running, polling] of JSON.parse(process.env.EOK_RUNNING)) {
+    vm.runInContext('statusCheckInterval = ' + (polling ? '7' : 'null') + ';', ctx);
     const state = { scriptRunning: running, chartInstances: {} };
     out.length = 0;
     ctx.reset.call(state);
@@ -69,11 +70,24 @@ process.stdout.write(JSON.stringify(ctx.__r));
 
 
 def test_page_load_reset_leaves_a_running_logger_alone():
-    idle, driving = _node(RESET, EOK_RUNNING=[False, True])
+    idle, driving, lost = _node(RESET, EOK_RUNNING=[[False, False], [True, True], [False, True]])
     # Page load: this tab is not driving a run, so nothing is stopped.
     assert idle == [False]
     # Server went down while this tab was driving a run: stop it, as before.
     assert driving == ['terminate', False]
+    # The status poll's error handler cleared scriptRunning first, but the page
+    # is still showing the run: it must still go back to idle.
+    assert lost == ['terminate', False]
+
+
+def test_no_load_path_stops_a_run_unconditionally():
+    src = _src('index.js')
+    calls = [ln.strip() for ln in src.splitlines() if 'terminateScript()' in ln and 'function' not in ln]
+    assert calls, 'expected guarded calls'
+    assert all(ln.startswith('if (') for ln in calls), calls
+    ready = src[src.index('$(document).ready(function () {'):]
+    assert ready.index('AppState.reset();') < ready.index('switchingModes(_initialMode') \
+        < ready.index('resyncRunningSession()')
 
 
 # ---------------------------------------------------------------------------
@@ -108,31 +122,59 @@ const fs = require('fs'), vm = require('vm'), path = require('path');
 const ctx = { console, document: { getElementById: () => ({ value: 'maxRate' }) } };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(process.env.EOK_JS, 'calculate.js'), 'utf8'), ctx);
+const rep = fs.readFileSync(path.join(process.env.EOK_JS, 'report.js'), 'utf8');
+const i = rep.indexOf('function computeFitForReport');
+vm.runInContext(rep.slice(i, rep.indexOf('\n}\n', i) + 2), ctx);
 const out = [];
 for (const [type, coef, x] of JSON.parse(process.env.EOK_CASES)) {
-    try { out.push(ctx.computeFit(x, type, coef)); } catch (e) { out.push('ERR'); }
+    const r = [];
+    for (const fn of [ctx.computeFit, ctx.computeFitForReport]) {
+        try { const v = fn(x, type, coef); r.push(typeof v === 'number' ? v : 'NOT_A_NUMBER:' + v); }
+        catch (e) { r.push('ERR'); }
+    }
+    out.push(r);
 }
 process.stdout.write(JSON.stringify(out));
 """
 
+ALGO = {'linear': 'linear', 'polynomial': 'polynomial', 'logarithmic': 'logarithmic',
+        'exponential': 'exponential', 'michaelis-menten': 'Michaelis-Menten'}
 
-def test_preview_curve_domain_matches_the_server():
+
+def _cases():
+    coefs = {
+        'linear': [{'a': 2.0, 'b': 3.0}, {'a': '2', 'b': '3'}, {'a': 2, 'b': 3, 'c': 9}],
+        'polynomial': [{'a': 0.5, 'b': -1.0, 'c': 2.0}, {'a': '0.5', 'b': '-1', 'c': '2'}],
+        'logarithmic': [{'a': 2.0, 'b': 3.0, 'c': 1.0}, {'a': '2', 'b': '3', 'c': '1'}],
+        'exponential': [{'a': 1.5, 'b': 0.2, 'c': -1.0}, {'a': '1.5', 'b': '0.2', 'c': '-1'},
+                        {'a': 1.0, 'b': 50.0, 'c': 0.0}],
+        'michaelis-menten': [{'VMax': 1.0, 'Km': 0.5}, {'VMax': '1', 'Km': '0.5'}],
+    }
+    xs = [-4.0, -3.0, -2.5, -1.0, 0.0, 0.5, 1.0, 1.5, 5.0, 20.0]
+    return [(t, c, x) for t, cs in coefs.items() for c in cs for x in xs]
+
+
+def test_preview_and_report_curves_match_the_server_for_every_model():
     from math_ops import evaluate_curve
-    log = {'a': 2.0, 'b': 3.0, 'c': 1.0}
-    mm = {'VMax': 1.0, 'Km': 0.5}
-    cases = [('logarithmic', log, x) for x in (-4.0, -3.0, -2.5, -1.0, 0.0, 0.5, 5.0)]
-    cases += [('michaelis-menten', mm, x) for x in (-0.5, 0.0, 0.5, 1.0, 1.5)]
+    cases = _cases()
     got = _node(FIT, EOK_CASES=cases)
-    for (type_, coef, x), client in zip(cases, got):
-        algo = 'Michaelis-Menten' if type_ == 'michaelis-menten' else type_
+    for (type_, coef, x), pair in zip(cases, got):
         try:
-            server = evaluate_curve(algo, coef, x)
-        except ValueError:
+            server = evaluate_curve(ALGO[type_], coef, x)
+        except (ValueError, OverflowError):
             server = 'ERR'
-        if server == 'ERR' or client == 'ERR':
-            assert client == server, f'{type_} x={x}: client {client!r}, server {server!r}'
-        else:
-            assert math.isclose(client, server, rel_tol=1e-12), f'{type_} x={x}'
+        for where, client in zip(('preview', 'report'), pair):
+            label = f'{where} {type_} {coef} x={x}: client {client!r}, server {server!r}'
+            if server == 'ERR' or client == 'ERR':
+                assert client == server, label
+            else:
+                assert isinstance(client, (int, float)), label
+                assert math.isclose(client, server, rel_tol=1e-12, abs_tol=1e-12), label
+
+
+def test_failed_fit_coefficients_are_refused_by_both_paths():
+    got = _node(FIT, EOK_CASES=[['linear', {'a': 'NONE', 'b': 'NONE'}, 1.0]])
+    assert got == [['ERR', 'ERR']]
 
 
 # ---------------------------------------------------------------------------
@@ -269,3 +311,44 @@ def test_editor_escape_helper_covers_quotes():
     helper = src[src.index('function escapeHtml(text)'):]
     helper = helper[:helper.index('\n    }')]
     assert "&quot;" in helper and "&#39;" in helper
+
+
+# ---------------------------------------------------------------------------
+# Review follow-ups.
+# ---------------------------------------------------------------------------
+
+def test_editor_select_options_and_meas_unit_use_the_raw_value():
+    src = _src('edit-file.js')
+    assert '<option value="${opt}"' not in src
+    assert '<option value="${escapeHtml(opt)}" ${selected}>${escapeHtml(opt)}</option>' in src
+    # Re-reading the already-escaped valueAttr is what double-escaped meas_unit.
+    assert 'getValueFromAttr' not in src
+
+
+def test_renamed_file_handlers_quote_the_name_as_a_js_string():
+    src = _src('edit-file.js')
+    assert "selectFile('${newFileName}'" not in src
+    assert 'JSON.stringify(newFileName)' in src
+
+
+def test_dark_hover_text_on_the_accent_wash_uses_ink():
+    css = (REPO / 'static' / 'style.css').read_text(encoding='utf-8')
+    for sel in ('.swal2-styled.swal2-cancel:hover:enabled {',
+                '.swal2-footer .swal2-styled.swal2-confirm:hover:enabled {'):
+        rule = css[css.index(sel):]
+        rule = rule[:rule.index('}')]
+        assert 'color: var(--ink) !important;' in rule, sel
+
+
+def test_chat_messages_follow_the_chat_language(client):
+    src = _src('ai-chat.js')
+    assert "_trChat('ai.msg.request_failed'" in src
+    assert "_trChat('ai.msg.network_error'" in src
+    assert "${_trChat('ai.cmd.' + c.cmd.slice(1)" in src
+    html = client.get('/').get_data(as_text=True)
+    m = re.search(r'const AI_CHAT_STRINGS = (\{.*?\});\n', html)
+    assert m, 'index.html must carry AI_CHAT_STRINGS'
+    data = json.loads(m.group(1))
+    assert set(data) == set(LANGS)
+    assert data['vi']['ai.cmd.clear'] != data['en']['ai.cmd.clear']
+    assert 'ai.msg.network_error' in data['ja']

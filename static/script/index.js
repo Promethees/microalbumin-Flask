@@ -253,7 +253,11 @@ const AppState = {
         // arrives with scriptRunning false, so a reload (F5, or a language or
         // style change) leaves the logger alone and resyncRunningSession()
         // picks the run back up (Rule.md §2.39).
-        const stopRun = this.scriptRunning;
+        // statusCheckInterval covers the server dying mid-run: the status poll's
+        // error handler clears scriptRunning first, but the page is still
+        // showing the run and must go back to idle.
+        const stopRun = this.scriptRunning
+            || (typeof statusCheckInterval !== 'undefined' && statusCheckInterval !== null);
         this.scriptRunning = false;
         // Mirror the selected mode button rather than hard-coding "kinetics", so the
         // internal mode and the #measurement-mode highlight never desync. init.js sets
@@ -420,6 +424,9 @@ $(document).ready(function () {
     // this is the default layout, not a user-initiated switch.
     const _initialMode = modeDiv.getAttribute('data-value') || 'kinetics';
     switchingModes(_initialMode, { silent: true });
+    // Only now pick up a run already going: reset() and switchingModes() above
+    // stop a run when scriptRunning is set, and must see it still false.
+    if (typeof resyncRunningSession === 'function') resyncRunningSession();
     if (_initialMode === 'calibrate') $hidden(["num-sources-section"]);
 
     // Load data subfolders into the picker and selects; auto-select saved preference.
@@ -732,7 +739,10 @@ function calModeBehaviour() {
     if (calDiv.getAttribute('data-value') === 'kinetics') calKineticsBehaviour();
     else calPointBehaviour();
 
-    terminateScript();
+    // Only stop a run this page is driving. The initial mode is applied on
+    // every page load, and default_mode may be calibrate: an unconditional
+    // stop here killed a running reading on reload (Rule.md §2.39).
+    if (AppState.scriptRunning) terminateScript();
 
     AppState.numSources = 1;
 

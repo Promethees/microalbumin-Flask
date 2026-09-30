@@ -101,6 +101,14 @@ def index():
     time_tag_format = user_settings.get("time_tag_format", "iso")
     ui_lang = _i18n.normalize_lang(user_settings.get("ui_language", "en"))
     ui_strings = _i18n.load_catalog(ui_lang)
+    # Text the AI chat writes INTO the conversation follows the chat's own
+    # language picker, not the UI language (Rule.md §2.22), so the page gets
+    # that slice of every catalog: command descriptions and chat messages.
+    ai_chat_strings = {
+        lang: {k: v for k, v in _i18n.load_catalog(lang).items()
+               if k.startswith(('ai.cmd.', 'ai.msg.'))}
+        for lang in _user_settings.SUPPORTED_LANGUAGES
+    }
     file_meta = get_file_meta(DATA_ROOT, time_format=time_tag_format)
     file_list = sort_file_names(get_file_list(DATA_ROOT), file_meta, file_sort_order)
     cal_json_dir = os.path.join(state.json_root_path, "kinetics")
@@ -146,7 +154,8 @@ def index():
                          reset_display=state.consume_reset_display_pending(),
                          data_root_info=_data_root.get_info(),
                          ui_lang=ui_lang,
-                         ui_strings=ui_strings))
+                         ui_strings=ui_strings,
+                         ai_chat_strings=ai_chat_strings))
     return response
 
 

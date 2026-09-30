@@ -234,7 +234,11 @@ def test_resync_is_wired_to_page_load_and_shares_the_start_path():
     src = _src('cdc-logging.js')
     # The load-time probe is read-only: it must not consume a finished run.
     assert "fetch('/check_status?peek=1')" in src
-    assert "addEventListener('DOMContentLoaded', resyncRunningSession)" in src
+    idx = _src('index.js')
+    ready = idx[idx.index('$(document).ready(function () {'):]
+    # After reset() and the initial mode switch, which must not see the run.
+    assert ready.index('AppState.reset();') < ready.index('switchingModes(_initialMode') \
+        < ready.index('resyncRunningSession()')
     # A fresh start and a resync go through the same helper, so they can't drift.
     run = src[src.index('async function runScript'):]
     run = run[:run.index('\n}\n')]

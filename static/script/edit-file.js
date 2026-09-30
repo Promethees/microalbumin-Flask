@@ -109,14 +109,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
     function generateInputHtml(key, value, fullPath, valueAttr) {
         // -----------------------------------------------------------------
-        // 1. Helper to extract the raw value from valueAttr (e.g. "linear")
-        // -----------------------------------------------------------------
-        const getValueFromAttr = () => {
-            const m = valueAttr.match(/value=["']([^"']+)["']/);
-            return m ? m[1] : null;
-        };
-
-        // -----------------------------------------------------------------
         // 2. Multi-select definitions
         // -----------------------------------------------------------------
         const configs = {
@@ -138,13 +130,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         // -----------------------------------------------------------------
         if (configs[key]) {
             const cfg = configs[key];
-            const rawAttrVal = getValueFromAttr();                // e.g. "linear"
-            const currentArray = Array.isArray(value) ? value : (value ? [value] : []);
-
-            // Ensure the value from valueAttr is part of the selection set
-            if (rawAttrVal && !currentArray.includes(rawAttrVal)) {
-                currentArray.push(rawAttrVal);
-            }
+            // The raw value, never re-read from valueAttr: that string is
+            // already HTML-escaped, so parsing it back and escaping again
+            // produced entities (and a duplicate "foreign" option).
+            const currentArray = Array.isArray(value) ? value.map(String)
+                : (value !== undefined && value !== null && value !== '' ? [String(value)] : []);
 
             // Build the option list – include any "foreign" value as an extra option
             const allOptions = [...new Set([...cfg.options, ...currentArray])];
@@ -152,7 +142,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             let html = `<select class="json-input" data-path="${escapeHtml(fullPath)}">`;
             for (const opt of allOptions) {
                 const selected = currentArray.includes(opt) ? "selected" : "";
-                html += `<option value="${opt}" ${selected}>${opt}</option>`;
+                html += `<option value="${escapeHtml(opt)}" ${selected}>${escapeHtml(opt)}</option>`;
             }
             html += `</select>`;
             return html;
@@ -163,8 +153,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         //     checkbox that locks the field and stores the "NONE" sentinel.
         // -----------------------------------------------------------------
         if (key === 'meas_unit') {
-            const raw = getValueFromAttr();
-            const current = raw !== null ? raw : (value != null ? String(value) : '');
+            // The raw value (see the select branch above for why not valueAttr).
+            const current = value != null ? String(value) : '';
             const isNone = isNoneMetaValue(current);
             return `
             <span class="noneable-json-cell" style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
@@ -1233,9 +1223,12 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 let textMsg;
                                 if (fileName !== newFileName) {
                                     row.find("td:first").text(newFileName);
-                                    row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '${tableSelector}')`);
-                                    row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '${tableSelector}')`);
-                                    row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '${tableSelector}')`);
+                                    // .attr() sets the attribute directly (no HTML parse), so
+                                    // only the JS string needs quoting: JSON.stringify does it.
+                                    const nameArg = JSON.stringify(newFileName);
+                                    row.find("button:contains('Select')").attr('onclick', `selectFile(${nameArg}, this, '${tableSelector}')`);
+                                    row.find("button:contains('Edit')").attr('onclick', `editFile(${nameArg}, this, '${tableSelector}')`);
+                                    row.find("button:contains('Delete')").attr('onclick', `deleteFile(${nameArg}, this, '${tableSelector}')`);
                                     textMsg = `File ${fileName} renamed to ${newFileName} and content updated successfully.`;
                                 } else {
                                     textMsg = `File ${fileName} content updated successfully.`;

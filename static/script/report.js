@@ -2138,29 +2138,15 @@ async function fetchCalibrationJsonContent(mode, jsonName) {
 }
 
 function computeFitForReport(value, fit_type, coef, quantityLabel = '') {
-    // Copied behavior from calculate.js computeFit, but without relying on page DOM.
-    if (!coef || coef[0] === 'NONE' || coef[0] === 'NaN') {
+    // Same curve math as the page (evaluateCurve in calculate.js), without the
+    // page DOM for its error labels.
+    if (!coef || Object.values(coef).some(v => v === 'NONE' || v === 'NaN')) {
         throw new Error(`Fit_type: ${fit_type} cannot be used${quantityLabel ? ` to derive concentration from ${quantityLabel}` : ''}`);
     }
     if (typeof value !== 'number' || isNaN(value)) {
         throw new Error(`${quantityLabel || 'Quantity'} is not available`);
     }
-    switch ((fit_type || '').toLowerCase()) {
-        case "linear":
-            return coef["a"] * value + coef["b"];
-        case "polynomial":
-            return coef["a"] * Math.pow(value, 2) + coef["b"] * value + coef["c"];
-        case "logarithmic":
-            if (value <= 0) throw new Error("Invalid input for logarithm: value must be > 0");
-            return coef["a"] * Math.log(value + coef["b"]) + coef["c"];
-        case "exponential":
-            return coef["a"] * Math.exp(value * coef["b"]) + coef["c"];
-        case "michaelis-menten":
-            if (value >= coef["VMax"] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value must be < Vmax and >= 0`);
-            return (coef["Km"] * value) / (coef["VMax"] - value);
-        default:
-            throw new Error("Unknown fit type: " + fit_type);
-    }
+    return evaluateCurve(fit_type, coef, value);
 }
 
 function _timeUnitToSeconds(unit) {
