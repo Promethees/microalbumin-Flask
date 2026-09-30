@@ -648,3 +648,38 @@ def test_strip_state_is_reset_after_a_paused_run_ends():
     r = _node(STRIP_PAUSE_RESET)
     assert r['afterHide'] == ['Recording', False]
     assert r['afterReset'] == ['Recording', False]
+
+
+# ---------------------------------------------------------------------------
+# cdc-logging.js:621 — Pause is offered as soon as /run_script succeeds, but
+# the start-up watch kept counting while paused and tore a healthy session
+# down as "The device did not respond".
+# ---------------------------------------------------------------------------
+
+STARTUP_PAUSE = PRELUDE + r"""
+let now = 0, failed = false;
+const ctx = {
+    Date: { now: () => now }, document: { getElementById: () => null },
+    startupTimeoutSec: () => 60, setInterval: () => 1, clearInterval: () => {},
+};
+vm.createContext(ctx);
+vm.runInContext('let readingPaused = false, _pausedAt = null, _startupWatching = true, _startupStartedAt = 0,' +
+    ' sessionStartTime = null, lastDataPointTime = null, sessionTimerHandle = null;' +
+    'function _startupEl() { return null; } function applyPauseControlsUI() {} function applyStripPausedState() {}' +
+    'function syncReadingFab() {} function tickSessionTimer() {}' +
+    'function failStartupWatch() { globalThis.__failed = true; }' +
+    FN('cdc-logging.js', 'tickStartupWatch') + FN('cdc-logging.js', 'applyPausedState'), ctx);
+now = 5000; ctx.applyPausedState(true);
+now = 120000; ctx.tickStartupWatch();          // paused for 115 s
+const failedWhilePaused = !!ctx.__failed;
+ctx.applyPausedState(false);
+now = 130000; ctx.tickStartupWatch();          // 15 s of un-paused waiting in all
+const failedAfterResume = !!ctx.__failed;
+now = 5000 + 115000 + 61000; ctx.tickStartupWatch();
+OUT({ failedWhilePaused, failedAfterResume, failedPastLimit: !!ctx.__failed });
+"""
+
+
+def test_startup_watch_holds_while_paused():
+    r = _node(STARTUP_PAUSE)
+    assert r == {'failedWhilePaused': False, 'failedAfterResume': False, 'failedPastLimit': True}

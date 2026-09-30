@@ -633,6 +633,10 @@ function updateStartupProgress(logs) {
 
 function tickStartupWatch() {
     if (!_startupWatching) return;
+    // A Pause pressed before the first row holds the start-up clock too:
+    // otherwise a healthy, paused session is torn down as "did not respond"
+    // once reading_start_timeout_sec runs out (Rule.md §2.29).
+    if (readingPaused) return;
     const elapsed = Math.floor((Date.now() - _startupStartedAt) / 1000);
     const el = _startupEl('reading-startup-elapsed');
     if (el) el.textContent = `${elapsed}s`;
@@ -747,6 +751,7 @@ function applyPausedState(paused) {
         const held = _pausedAt ? Date.now() - _pausedAt : 0;
         if (sessionStartTime) sessionStartTime += held;
         if (lastDataPointTime) lastDataPointTime += held;
+        if (_startupWatching) _startupStartedAt += held;
         _pausedAt = null;
         // Only resume ticking if the widget was already live (first point seen).
         if (sessionStartTime && !sessionTimerHandle) {
