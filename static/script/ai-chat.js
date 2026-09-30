@@ -685,7 +685,10 @@
         if (!container || !afterDiv) return;
         // Respect the opt-out toggle (App Settings → AI Assistant). Read live so a
         // mid-session change takes effect on the next answer without a reload.
-        if (window.USER_SETTINGS && window.USER_SETTINGS.ai_feedback_enabled === false) return;
+        // USER_SETTINGS is a top-level `const` in index.html's classic script:
+        // a global binding, but not a window property — window.USER_SETTINGS
+        // was always undefined, so the opt-out never took effect.
+        if (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS && USER_SETTINGS.ai_feedback_enabled === false) return;
         const lang = AI.activeLang || 'en';
         const up = _esc(_FB_UP_HINT[lang] || _FB_UP_HINT.en);
         const down = _esc(_FB_DOWN_HINT[lang] || _FB_DOWN_HINT.en);

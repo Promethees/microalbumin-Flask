@@ -41,7 +41,7 @@ PRELUDE = r"""
 const fs = require('fs'), vm = require('vm'), path = require('path');
 function FN(file, name) {
     const src = fs.readFileSync(path.join(process.env.EOK_JS, file), 'utf8');
-    const re = new RegExp('^(async\\s+)?function\\s+' + name + '\\s*\\(', 'm');
+    const re = new RegExp('^[ \\t]*(async\\s+)?function\\s+' + name + '\\s*\\(', 'm');
     const m = re.exec(src);
     if (!m) throw new Error('no function ' + name + ' in ' + file);
     let i = src.indexOf('{', m.index + m[0].length - 1);
@@ -921,3 +921,32 @@ def test_report_item_delete_also_frees_the_point_chart():
     fn = src[src.index('async function deleteReportItem'):]
     fn = fn[:fn.index('\n}\n')]
     assert 'config.pointChart.destroy()' in fn
+
+
+# ---------------------------------------------------------------------------
+# ai-chat.js:688 — the feedback opt-out read window.USER_SETTINGS, but
+# index.html declares `const USER_SETTINGS` (a global binding, not a window
+# property), so the thumbs were shown with ai_feedback_enabled = false.
+# ---------------------------------------------------------------------------
+
+AI_FEEDBACK_OPTOUT = PRELUDE + FAKE_DOM + r"""
+const msgs = new El('div'); msgs.id = 'okapi-ai-messages'; DOC.body.appendChild(msgs);
+const bubble = new El('div'); msgs.appendChild(bubble);
+let inserted = 0;
+bubble.insertAdjacentElement = () => { inserted++; };
+const ctx = { document: DOC, window: {}, AI: { activeLang: 'en' }, _FB_UP_HINT: { en: 'up' }, _FB_DOWN_HINT: { en: 'down' },
+              _esc: s => s };
+vm.createContext(ctx);
+// Exactly how index.html declares it: a top-level const in a classic script.
+vm.runInContext('const USER_SETTINGS = { ai_feedback_enabled: false };', ctx);
+vm.runInContext(FN('ai-chat.js', '_attachFeedback'), ctx);
+let error = null;
+try { ctx._attachFeedback(bubble, { source: 'llm' }); } catch (e) { error = String(e); }
+OUT({ inserted, windowSees: ctx.window.USER_SETTINGS === undefined ? 'undefined' : 'object', error });
+"""
+
+
+def test_ai_feedback_opt_out_is_honoured():
+    r = _node(AI_FEEDBACK_OPTOUT)
+    assert r['windowSees'] == 'undefined'  # the premise of the bug
+    assert r['inserted'] == 0
