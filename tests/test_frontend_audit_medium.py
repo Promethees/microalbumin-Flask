@@ -820,7 +820,9 @@ const ctx = {
 vm.createContext(ctx);
 const src = fs.readFileSync(path.join(process.env.EOK_JS, 'report.js'), 'utf8');
 const algo = src.match(/^const REPORT_ALGO_CHOICES = \[[\s\S]*?\n\];/m)[0];
-vm.runInContext(HELPERS + '\n' + algo + FN('report.js', '_fullPointTpEntryHtml') + FN('report.js', 'loadReportItems'), ctx);
+const lifecycle = /^function destroyReportCharts/m.test(src)
+    ? FN('report.js', 'destroyReportCharts') + '\nlet _reportLoadSeq = 0;\n' : '';
+vm.runInContext(HELPERS + '\n' + algo + lifecycle + FN('report.js', '_fullPointTpEntryHtml') + FN('report.js', 'loadReportItems'), ctx);
 (async () => {
     await ctx.loadReportItems('subj');
     const html = container.children.map(c => c.innerHTML).join('\n');
