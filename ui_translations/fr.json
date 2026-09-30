@@ -586,5 +586,6 @@
   "btn.delete_plain": "Supprimer",
   "btn.edit_plain": "Modifier",
   "btn.select_subject_plain": "Sélectionner le sujet",
-  "cdc.reconnected": "Reconnecté à la session en cours."
+  "cdc.reconnected": "Reconnecté à la session en cours.",
+  "point.no_estimate": "Aucune lecture valide près du point de référence pour source-{s}."
 }

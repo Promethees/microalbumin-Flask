@@ -586,5 +586,6 @@
   "btn.delete_plain": "削除",
   "btn.edit_plain": "編集",
   "btn.select_subject_plain": "対象を選択",
-  "cdc.reconnected": "実行中のセッションに再接続しました。"
+  "cdc.reconnected": "実行中のセッションに再接続しました。",
+  "point.no_estimate": "source-{s} の参照点付近に有効な測定値がありません。"
 }

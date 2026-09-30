@@ -196,3 +196,36 @@ def test_edit_subject_dialog_keeps_the_exact_name(subject):
 def test_merge_subject_options_are_escaped():
     src = _src('data-handling.js')
     assert 'subjects.map(s => `<option value="${_attr(s)}">${_escHtml(s)}</option>`)' in src
+
+
+# ---------------------------------------------------------------------------
+# data-handling.js:896 — getEstimatedValue(...).toFixed(4) threw when a source
+# had no valid reading near the reference point, aborting the mode update.
+# ---------------------------------------------------------------------------
+
+POINT_NULL_EST = PRELUDE + r"""
+const els = {};
+const el = id => (els[id] = els[id] || { id, textContent: '', innerHTML: '' });
+const ctx = {
+    AppState: { xAxis: 'time', refCalPoint: 99999, responseData: [{ Timestamp: 0, 'Value:1': '0.5' }, { Timestamp: 10, 'Value:1': '0.6' }],
+                metaData: {}, globalAnalysis: { meas: 'Abs' } },
+    $hidden: () => {}, getTimeUnitMultiplier: () => 1, getTimeUnitValue: () => 'seconds',
+    measNumber: v => (isFinite(parseFloat(v)) ? parseFloat(v) : null),
+    document: { getElementById: el },
+    t: (k, f) => f, _escHtml: s => String(s), computeFit: v => v,
+};
+vm.createContext(ctx);
+LOAD(ctx, 'calculate.js');
+vm.runInContext(FN('data-handling.js', 'processPointMode'), ctx);
+const con = { id: 'der-con-source-0', innerHTML: '', textContent: '' };
+let error = null;
+try { ctx.processPointMode({ fit_type: 'linear', fit_coef: {} }, con); } catch (e) { error = String(e); }
+OUT({ error, msg: el('est-value-msg-source-0').textContent, con: con.textContent });
+"""
+
+
+def test_point_mode_survives_a_source_with_no_reading_at_the_reference():
+    r = _node(POINT_NULL_EST)
+    assert r['error'] is None
+    assert 'source-1' in r['msg']
+    assert r['con'] == '—'

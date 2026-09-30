@@ -586,5 +586,6 @@
   "btn.delete_plain": "删除",
   "btn.edit_plain": "编辑",
   "btn.select_subject_plain": "选择主题",
-  "cdc.reconnected": "已重新连接到正在运行的会话。"
+  "cdc.reconnected": "已重新连接到正在运行的会话。",
+  "point.no_estimate": "source-{s} 在参考点附近没有有效读数。"
 }

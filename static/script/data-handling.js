@@ -904,7 +904,17 @@ function processPointMode(jsonFile, derived_con_text) {
     const lookupPoint = AppState.xAxis === 'turn'
         ? AppState.refCalPoint
         : AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue());
-    const estValueRead = getEstimatedValue(AppState.responseData, lookupPoint, sourceIndex).toFixed(4);
+    const est = getEstimatedValue(AppState.responseData, lookupPoint, sourceIndex);
+    // null when this source has no valid reading near the reference point
+    // (out of range, or only OVFL/NONE there) — say so instead of throwing,
+    // which used to abort the whole mode update for every later source.
+    if (est == null || !isFinite(est)) {
+        const msgDiv = document.getElementById(`est-value-msg-source-${sourceIndex - 1}`);
+        if (msgDiv) msgDiv.textContent = t('point.no_estimate', 'No valid reading near the reference point for source-{s}.').replace('{s}', sourceIndex);
+        if (derived_con_text) derived_con_text.textContent = '—';
+        return;
+    }
+    const estValueRead = est.toFixed(4);
     if (estValueRead) {
         const unitPrinted = (AppState.metaData["Unit"] || "").toLowerCase() === "none" ? "" : AppState.metaData["Unit"];
         // Target the specific source message container
