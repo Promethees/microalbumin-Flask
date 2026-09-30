@@ -1013,3 +1013,41 @@ def test_ai_chat_icon_buttons_and_inputs_have_accessible_names():
         for lang in LANGS:
             assert key in cats[lang], (lang, key)
         assert cats['en'][key] == english, key
+
+
+# ---------------------------------------------------------------------------
+# style.css:3854 — the closed AI panel was only faded out (opacity +
+# pointer-events): its controls stayed in the Tab order and the a11y tree,
+# the FAB had no aria-expanded, and Escape did not close it.
+# ---------------------------------------------------------------------------
+
+AI_PANEL = PRELUDE + FAKE_DOM + r"""
+const fab = new El('button'); fab.id = 'okapi-ai-fab'; DOC.body.appendChild(fab);
+const panel = new El('div'); panel.id = 'okapi-ai-panel'; DOC.body.appendChild(panel);
+const ctx = { document: DOC };
+vm.createContext(ctx);
+vm.runInContext(FN('ai-chat.js', '_setPanelOpen'), ctx);
+ctx._setPanelOpen(false);
+const closed = { inert: panel.inert, hidden: panel.getAttribute('aria-hidden'), expanded: fab.getAttribute('aria-expanded') };
+ctx._setPanelOpen(true);
+const open = { inert: panel.inert, hidden: panel.getAttribute('aria-hidden'), expanded: fab.getAttribute('aria-expanded'),
+               cls: panel.classList.contains('okapi-ai-panel-open') };
+OUT({ closed, open });
+"""
+
+
+def test_closed_ai_panel_is_inert_and_the_fab_reports_it():
+    r = _node(AI_PANEL)
+    assert r['closed'] == {'inert': True, 'hidden': 'true', 'expanded': 'false'}
+    assert r['open'] == {'inert': False, 'hidden': None, 'expanded': 'true', 'cls': True}
+
+
+def test_ai_panel_open_close_and_escape_go_through_the_same_switch():
+    src = _src('ai-chat.js')
+    api = src[src.index('open_() {'):src.index('toggleLangMenu() {')]
+    assert api.count('_setPanelOpen(') == 2
+    assert "classList.add('okapi-ai-panel-open')" not in src
+    inject = src[src.index('function _injectWidget'):]
+    inject = inject[:inject.index('// Move lang menu')]
+    assert '_setPanelOpen(false)' in inject
+    assert "e.key === 'Escape' && !e.defaultPrevented" in inject

@@ -493,6 +493,8 @@
         fab.setAttribute('data-hint', 'OKAPI Assistant');
         fab.innerHTML = `<span class="okapi-ai-label">AI Assistant</span><span class="okapi-ai-icon">&#129302;</span>`;
         fab.addEventListener('click', _togglePanel);
+        fab.setAttribute('aria-controls', 'okapi-ai-panel');
+        fab.setAttribute('aria-expanded', 'false');
         document.body.appendChild(fab);
 
         const panel = document.createElement('div');
@@ -529,6 +531,15 @@
   </div>
 </div>`;
         document.body.appendChild(panel);
+        _setPanelOpen(false);
+        // Escape closes the panel — unless something inside it (the slash-
+        // command picker) already used the key.
+        panel.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !e.defaultPrevented && AI.open) {
+                e.preventDefault();
+                OkapiAI.close();
+            }
+        });
 
         // Move lang menu to <body> so position:fixed escapes the panel's transform
         const langMenu = panel.querySelector('#okapi-ai-lang-menu');
@@ -623,6 +634,23 @@
 
     function _togglePanel() {
         AI.open ? OkapiAI.close() : OkapiAI.open_();
+    }
+
+    // The closed panel is only faded out (opacity + pointer-events), which left
+    // its controls in the Tab order and the accessibility tree: Tab landed on
+    // invisible buttons and Enter on the invisible "+" opened a dialog. `inert`
+    // takes the whole closed panel out of both; aria-expanded tells the FAB's
+    // user whether it is open (Rule.md §2.36).
+    function _setPanelOpen(open) {
+        const panel = document.getElementById('okapi-ai-panel');
+        if (panel) {
+            panel.classList.toggle('okapi-ai-panel-open', open);
+            panel.inert = !open;
+            if (open) panel.removeAttribute('aria-hidden');
+            else panel.setAttribute('aria-hidden', 'true');
+        }
+        const fab = document.getElementById('okapi-ai-fab');
+        if (fab) fab.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
 
     // ── Language ──────────────────────────────────────────────────────────────
@@ -1305,15 +1333,18 @@
         open_() {
             AI.open = true;
             _clearTabNotification();
-            const panel = document.getElementById('okapi-ai-panel');
-            if (panel) panel.classList.add('okapi-ai-panel-open');
+            _setPanelOpen(true);
             if (!AI.settings) _loadStatus();
         },
 
         close() {
             AI.open = false;
             const panel = document.getElementById('okapi-ai-panel');
-            if (panel) panel.classList.remove('okapi-ai-panel-open');
+            // Focus inside a panel that is about to go inert would fall to
+            // <body>; hand it back to the button that opens the panel.
+            const hadFocus = !!(panel && panel.contains(document.activeElement));
+            _setPanelOpen(false);
+            if (hadFocus) document.getElementById('okapi-ai-fab')?.focus();
         },
 
         toggleLangMenu() {
