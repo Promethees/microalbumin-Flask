@@ -1073,21 +1073,23 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
 
     if (!isConfirmed || !formValues) return;
 
-    const ok = await fetch('/settings', {
+    // The reply carries the settings as stored (clamped / validated), or null.
+    const saved = await fetch('/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formValues)
-    }).then(r => r.ok).catch(() => false);
+    }).then(r => (r.ok ? r.json().catch(() => ({})) : null)).catch(() => null);
 
-    if (!ok) {
+    if (!saved) {
         Swal.fire(t('common.error_title', 'Error'), t('settings.save_failed', 'Could not save settings.'), 'error');
         return;
     }
 
     logEvent('settings', 'save', formValues);
 
-    // Update the live USER_SETTINGS object
-    Object.assign(USER_SETTINGS, formValues);
+    // Update the live USER_SETTINGS object — then overlay what the server
+    // actually kept, so a clamped value is the one applied below.
+    Object.assign(USER_SETTINGS, formValues, (saved && saved.settings) || {});
 
     // The UI language is applied by re-rendering the page in the new language
     // (the server injects the matching catalog on the next load). Reload now so
@@ -1159,6 +1161,12 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     // Apply the background-music toggle: mount or tear down the widget now
     // rather than waiting for the next page load.
     if (typeof OkapiMusic !== 'undefined') OkapiMusic.refresh();
+
+    // Apply the virtual-controller settings (panel shown, connection switch,
+    // poll interval) and the session-strip opt-out now: unticking "Connect to
+    // the device" must free the port at once, not after a reload (§2.35).
+    if (typeof applyDeviceControlSettings === 'function') applyDeviceControlSettings();
+    if (typeof applySessionStripSetting === 'function') applySessionStripSetting();
 
     // Apply default file sort order so the re-render below reflects the new choice
     if (formValues.file_sort_order) AppState.fileSortOrder = formValues.file_sort_order;

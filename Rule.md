@@ -179,7 +179,7 @@ Timestamp,Value:1,Value:2,...
 - User UI preferences are stored in `user_settings.json` at the project root via `src/user_settings.py`.
 - Supported keys: `theme` (`"light"|"dark"|"auto"`), `default_mode` (`"kinetics"|"point"|"calibrate"`), `default_window_size` (int ≥ 2), `default_subfolder` (str or null), `event_log_retention_days` (int ≥ 0, 0 = keep forever, default 30).
 - `user_settings.json` is **gitignored** (contains per-machine preferences, not project config).
-- Routes: `GET /settings` returns current settings; `POST /settings` accepts a partial update (any subset of keys).
+- Routes: `GET /settings` returns current settings; `POST /settings` accepts a partial update (any subset of keys) and answers `{status, settings}` — the settings **as stored**, after `save()` dropped invalid values. The settings modal overlays that echo onto `USER_SETTINGS` and then applies every setting it can live (theme, sizes, chart styles, music, `applyDeviceControlSettings()`, `applySessionStripSetting()`). **Anti-pattern**: merging a setting into `USER_SETTINGS` without applying it — unticking "Connect to the device" in App Settings used to leave the poll holding the port until a reload (§2.35).
 - The settings object is injected into `index.html` as the `USER_SETTINGS` JS constant (alongside `DATA_ROOT`, `DELIMITER`, etc.).
 - **Anti-pattern**: Do not add new per-machine state to `state.py` globals — use `user_settings.py` for anything user-configurable.
 

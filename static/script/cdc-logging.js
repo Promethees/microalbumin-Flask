@@ -61,6 +61,23 @@ function showSessionStrip() {
     document.body.classList.add('strip-open');
 }
 
+// Apply a changed session_strip_enabled without a reload. Mid-session the
+// live readout moves between the strip and the timer widget (only one of the
+// two is ever shown); between sessions there is nothing to show.
+function applySessionStripSetting() {
+    if (!sessionStartTime) return;
+    const timerEl = document.getElementById('session-timer');
+    if (timerEl) timerEl.classList.toggle('hidden', stripEnabled());
+    if (stripEnabled()) {
+        showSessionStrip();
+        drawSessionStrip();
+    } else {
+        const el = document.getElementById('session-strip');
+        if (el) el.classList.add('hidden');
+        document.body.classList.remove('strip-open');
+    }
+}
+
 function hideSessionStrip() {
     const el = document.getElementById('session-strip');
     if (el) {

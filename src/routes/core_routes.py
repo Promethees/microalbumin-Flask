@@ -256,7 +256,9 @@ def post_settings(validated_data):
         # Apply a shrunk event-log retention immediately instead of waiting
         # for the next index render.
         event_logger.cleanup_old_logs()
-        return jsonify({'status': 'success'})
+        # Echo the stored settings: save() clamps or drops invalid values, and
+        # the page must apply what was kept, not what it sent.
+        return jsonify({'status': 'success', 'settings': _user_settings.load()})
     return jsonify({'status': 'error', 'message': 'Could not save settings'}), 500
 
 

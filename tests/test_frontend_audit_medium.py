@@ -499,3 +499,76 @@ def test_legend_series_toggle_works_from_the_keyboard():
     assert r['hidden0'] is True and r['prevented'] is True
     assert r['pressedAfter'] == 'false'
     assert r['focusKept'] is True
+
+
+# ---------------------------------------------------------------------------
+# init.js:1085 — saving App Settings merged the controller settings into
+# USER_SETTINGS but never applied them: unticking "Connect to the device" kept
+# the poll (and the port) going until a reload, and /settings did not echo
+# the values it had actually kept.
+# ---------------------------------------------------------------------------
+
+DEVICE_SETTINGS = PRELUDE + FAKE_DOM + r"""
+const section = new El('div'); section.id = 'device-control-section'; DOC.body.appendChild(section);
+const box = new El('input'); box.id = 'devctl-link-toggle'; box.checked = true; section.appendChild(box);
+const collapse = new El('div'); collapse.id = 'device-control-collapse'; section.appendChild(collapse);
+const status = new El('div'); status.id = 'devctl-status'; section.appendChild(status);
+const fetched = [], timers = [];
+let nextId = 1;
+const ctx = {
+    document: DOC, window: { addEventListener() {} }, t: (k, f) => f, console,
+    USER_SETTINGS: { device_control_enabled: true, device_link_enabled: true, device_state_poll_ms: 1500 },
+    fetch: async (u) => { fetched.push(u); return { status: 200, json: async () => ({ status: 'offline' }) }; },
+    setInterval: (f, ms) => { const id = nextId++; timers.push({ id, ms, live: true }); return id; },
+    clearInterval: id => { const tm = timers.find(x => x.id === id); if (tm) tm.live = false; },
+    setTimeout: () => 0, clearTimeout: () => {},
+    requestAnimationFrame: () => 0, ResizeObserver: class { observe() {} disconnect() {} },
+};
+vm.createContext(ctx);
+LOAD(ctx, 'device-control.js');
+vm.runInContext('setDeviceControlStatus = () => {}; applyDeviceState = () => {};', ctx);
+vm.runInContext('startDevicePolling()', ctx);                         // panel open, polling at 1500
+const live = () => timers.filter(x => x.live).map(x => x.ms);
+const r = { start: live() };
+ctx.USER_SETTINGS.device_state_poll_ms = 3000;
+vm.runInContext('applyDeviceControlSettings()', ctx);
+r.newInterval = live();
+ctx.USER_SETTINGS.device_link_enabled = false;
+vm.runInContext('applyDeviceControlSettings()', ctx);
+r.afterOff = live(); r.boxChecked = box.checked; r.released = fetched.includes('/device/disconnect');
+ctx.USER_SETTINGS.device_control_enabled = false;
+vm.runInContext('applyDeviceControlSettings()', ctx);
+r.sectionHidden = section.classList.contains('hidden');
+OUT(r);
+"""
+
+
+def test_saved_device_settings_apply_without_a_reload():
+    r = _node(DEVICE_SETTINGS)
+    assert r['start'] == [1500]
+    assert r['newInterval'] == [3000]
+    assert r['afterOff'] == [] and r['boxChecked'] is False and r['released'] is True
+    assert r['sectionHidden'] is True
+
+
+def test_settings_save_applies_controller_and_strip_settings():
+    src = _src('init.js')
+    save = src[src.index("fetch('/settings', {\n        method: 'POST'"):]
+    save = save[:save.index("Swal.fire(t('settings.saved_title'")]
+    assert 'saved.settings' in save
+    assert 'applyDeviceControlSettings()' in save
+    assert 'applySessionStripSetting()' in save
+
+
+def test_post_settings_echoes_what_was_stored(tmp_path, monkeypatch):
+    import state
+    from main import app
+    monkeypatch.setattr(state, 'script_dir', str(tmp_path))
+    app.config['TESTING'] = True
+    with app.test_client() as c:
+        rv = c.post('/settings', json={'device_state_poll_ms': 100, 'device_link_enabled': False})
+    body = rv.get_json()
+    assert body['status'] == 'success'
+    # 100 ms is below the floor, so the stored (default) value comes back.
+    assert body['settings']['device_state_poll_ms'] == 1500
+    assert body['settings']['device_link_enabled'] is False

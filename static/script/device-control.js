@@ -203,6 +203,34 @@ function onDeviceLinkToggle() {
     setDeviceControlStatus('offline', t('devctl.link_off', 'Not connected — the port is free'));
 }
 
+// Re-apply the three controller settings after App Settings is saved: show or
+// hide the panel, move the connection switch to the saved position, and restart
+// the poll so a new interval takes effect. Turning the link (or the whole
+// feature) off frees the port straight away, as the switch itself does.
+function applyDeviceControlSettings() {
+    const section = document.getElementById('device-control-section');
+    if (!section) return;
+    const featureOn = deviceControlEnabled();
+    section.classList.toggle('hidden', !featureOn);
+    const linkToggle = document.getElementById('devctl-link-toggle');
+    const wasLinked = deviceLinkEnabled();
+    if (linkToggle && typeof USER_SETTINGS !== 'undefined') {
+        linkToggle.checked = USER_SETTINGS.device_link_enabled !== false;
+    }
+    const polling = !!devicePollTimer;
+    stopDevicePolling();
+    if (featureOn && deviceLinkEnabled()) {
+        if (polling || deviceControlExpanded()) startDevicePolling();
+        return;
+    }
+    // Release only when this save actually took the port away: a poll was
+    // running, or the switch went from on to off.
+    if (polling || (wasLinked && !deviceLinkEnabled())) {
+        releaseDeviceLink();
+        setDeviceControlStatus('offline', t('devctl.link_off', 'Not connected — the port is free'));
+    }
+}
+
 async function releaseDeviceLink() {
     try {
         await fetch('/device/disconnect', { method: 'POST' });
