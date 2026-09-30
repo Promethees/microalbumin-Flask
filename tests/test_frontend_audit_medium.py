@@ -712,3 +712,44 @@ def test_device_end_sentinel_defers_to_check_status():
     r = _node(END_SENTINEL)
     assert r['calls'] == ['check']
     assert r['running'] is True  # left for /check_status to decide
+
+
+# ---------------------------------------------------------------------------
+# cdc-logging.js:930 — terminateScript() had no in-flight guard while the
+# route can block ~6 s, so a double-click on Stop sent a second SIGINT.
+# ---------------------------------------------------------------------------
+
+TERMINATE_GUARD = PRELUDE + FAKE_DOM + r"""
+for (const id of ['terminate-script-btn', 'reading-fab-stop', 'measure-fab-stop']) {
+    const b = new El('button'); b.id = id; DOC.body.appendChild(b);
+}
+let posts = 0, release;
+const ctx = {
+    document: DOC, console,
+    fetch: (u) => { if (u === '/terminate_script') posts++; return new Promise(r => { release = () => r({ json: async () => ({ status: 'success' }) }); }); },
+};
+vm.createContext(ctx);
+const src = fs.readFileSync(path.join(process.env.EOK_JS, 'cdc-logging.js'), 'utf8');
+const guarded = /^async function _terminateScript/m.test(src);
+const decl = (src.match(/^const STOP_BUTTON_IDS = .*$/m) || [''])[0] + (src.match(/^let _terminateInFlight = null;$/m) || [''])[0];
+vm.runInContext(decl + 'function logEvent() {} function handleScriptTermination() {} async function clearLogs() {} function clearStatusCheck() {}' +
+    FN('cdc-logging.js', 'terminateScript') + (guarded ? FN('cdc-logging.js', '_terminateScript') : ''), ctx);
+(async () => {
+    const p1 = ctx.terminateScript();
+    const p2 = ctx.terminateScript();
+    await new Promise(r => setImmediate(r));
+    const during = ['terminate-script-btn', 'reading-fab-stop', 'measure-fab-stop'].map(id => DOC.getElementById(id).disabled);
+    const postsDuring = posts;
+    release();
+    await p1; await p2;
+    OUT({ postsDuring, during, fabAfter: DOC.getElementById('reading-fab-stop').disabled, again: (ctx.terminateScript(), posts) });
+})();
+"""
+
+
+def test_stop_sends_one_terminate_while_one_is_in_flight():
+    r = _node(TERMINATE_GUARD)
+    assert r['postsDuring'] == 1
+    assert r['during'] == [True, True, True]
+    assert r['fabAfter'] is False
+    assert r['again'] == 2  # a later, separate Stop still goes through

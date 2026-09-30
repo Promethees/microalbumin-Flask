@@ -998,7 +998,28 @@ function handleAjaxError(textStatus, errorThrown) {
 }
 
 // --- Terminate script ---
-async function terminateScript() {
+// Stop buttons a user can reach during a run: the inline one and the two
+// floating transports.
+const STOP_BUTTON_IDS = ['terminate-script-btn', 'reading-fab-stop', 'measure-fab-stop'];
+let _terminateInFlight = null;
+
+// /terminate_script can block for ~6 s (SIGINT, wait, SIGTERM, wait). A second
+// press in that window used to send a second SIGINT into the logger's clean
+// shutdown, so one request at a time: later callers share the first one's
+// promise, and every Stop control is disabled until it settles (§2.29).
+function terminateScript() {
+    if (_terminateInFlight) return _terminateInFlight;
+    STOP_BUTTON_IDS.forEach(id => { const b = document.getElementById(id); if (b) b.disabled = true; });
+    _terminateInFlight = _terminateScript().finally(() => {
+        _terminateInFlight = null;
+        // The floating Stops are hidden with their transports by now; re-enable
+        // them for the next run (the inline Stop is owned by the run state).
+        ['reading-fab-stop', 'measure-fab-stop'].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = false; });
+    });
+    return _terminateInFlight;
+}
+
+async function _terminateScript() {
     try {
         const res = await fetch("/terminate_script", { method: "POST", headers: { "Content-Type": "application/json" } });
         const response = await res.json();
