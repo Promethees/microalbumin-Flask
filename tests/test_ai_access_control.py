@@ -129,3 +129,58 @@ def test_proxy_chat_ignores_a_client_supplied_model(client, monkeypatch):
     assert r.status_code == 200
     r.get_data()                            # drain the stream so the generator runs
     assert used['model'] == 'server/model'
+
+
+# ── A4: rate-limit buckets follow the real client; JSON 429 ──────────────────
+
+def test_rate_limited_response_is_json(client):
+    limit = _count(AI_PROXY_LIMIT)
+    for _ in range(limit):
+        client.post('/ai/proxy/chat', json={})
+    r = client.post('/ai/proxy/chat', json={})
+    assert r.status_code == 429
+    body = r.get_json()
+    assert body['code'] == 'rate_limit'
+    assert body['status'] == 'failure'
+
+
+def test_forwarded_clients_get_separate_buckets():
+    """Behind ProxyFix(**PROXY_FIX_KWARGS) — main.py's settings — two clients
+    that reach us through the same router land in separate buckets."""
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    from rate_limit import PROXY_FIX_KWARGS
+
+    app = Flask(__name__)
+    app.config['TESTING'] = True
+    app.config['SECRET_KEY'] = 'test-secret'
+    limiter.init_app(app)
+    app.register_blueprint(ai_bp)
+    app.wsgi_app = ProxyFix(app.wsgi_app, **PROXY_FIX_KWARGS)
+    with app.app_context():
+        limiter.reset()
+    c = app.test_client()
+    limit = _count(AI_PROXY_LIMIT)
+    router = {'REMOTE_ADDR': '10.0.0.1'}
+    a = [c.post('/ai/proxy/chat', json={}, headers={'X-Forwarded-For': '1.1.1.1'},
+                environ_base=router).status_code for _ in range(limit + 1)]
+    b = c.post('/ai/proxy/chat', json={}, headers={'X-Forwarded-For': '2.2.2.2'},
+               environ_base=router).status_code
+    assert a[-1] == 429
+    assert b == 401          # a fresh bucket: reaches the view (missing token)
+
+
+def test_licences_get_separate_buckets(client, monkeypatch):
+    import routes.ai_routes as ai_routes
+    monkeypatch.setattr(ai_routes, 'validate_activation_token',
+                        lambda t: {'sub': t.split('-')[1]})
+    # The view looks the account up after the limiter; no user → 403.
+    monkeypatch.setattr(ai_routes, 'User', type('U', (), {
+        'query': type('Q', (), {'get': staticmethod(lambda _id: None)})()}))
+    limit = _count(AI_PROXY_LIMIT)
+    # Same address, two licences. messages missing → the view answers 400/401/403
+    # quickly; only the limiter's 429 matters here.
+    codes_a = [client.post('/ai/proxy/chat', json={'license_token': 'tok-1'}).status_code
+               for _ in range(limit + 1)]
+    code_b = client.post('/ai/proxy/chat', json={'license_token': 'tok-2'}).status_code
+    assert codes_a[-1] == 429
+    assert code_b != 429

@@ -36,6 +36,14 @@ REVIEW_SUBMIT_LIMIT = "3 per hour"     # review submission (/api/testimonials/su
 CONTACT_LIMIT = "5 per hour"           # contact form (/api/contact)
 
 
+# ProxyFix settings for main.py. Heroku's router is the one proxy in front of the
+# dyno, so trust exactly one hop of X-Forwarded-For/-Proto/-Host. Without
+# x_for, request.remote_addr is the router and every client on the internet
+# shares one rate-limit bucket (verify in the Heroku logs: remote_addr before
+# vs after this change). Kept here so the test applies the same settings.
+PROXY_FIX_KWARGS = {"x_for": 1, "x_proto": 1, "x_host": 1}
+
+
 def _storage_uri():
     """Redis when available so limits are shared across processes; else in-memory."""
     return os.environ.get('REDIS_URL') or "memory://"

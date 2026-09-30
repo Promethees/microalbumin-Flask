@@ -37,7 +37,9 @@ app.config.from_object(Config)
 # Production Security & Session handling
 if not app.debug:
     # Use ProxyFix to handle HTTPS behind Heroku's proxy
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    # x_for=1 so the rate limiter keys on the real client, not the router.
+    from rate_limit import PROXY_FIX_KWARGS
+    app.wsgi_app = ProxyFix(app.wsgi_app, **PROXY_FIX_KWARGS)
     # Ensure cookies are sent over HTTPS and during OAuth redirects
     app.config['SESSION_COOKIE_SECURE'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
