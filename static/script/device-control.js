@@ -906,18 +906,35 @@ async function loadDeviceUvChannels() {
     }
 }
 
+// A row of chips drawn on every state poll. Rebuilt only when the list itself
+// changes; otherwise the existing buttons are returned for an in-place update.
+// Rebuilding every 1.5 s dropped a keyboard user's focus to <body> (§2.36).
+function syncDeviceChipRow(host, names, build) {
+    const key = JSON.stringify(names);
+    if (host.dataset.chips !== key || host.children.length !== names.length) {
+        host.innerHTML = '';
+        names.forEach((name, index) => host.appendChild(build(name, index)));
+        host.dataset.chips = key;
+    }
+    return Array.from(host.children);
+}
+
 function drawDeviceUvChannels(current) {
     const strip = document.getElementById('devctl-uvchannel-boxes');
     if (!strip || !deviceUvChannels) return;
     strip.classList.remove('hidden');
-    strip.innerHTML = '';
-    deviceUvChannels.forEach(name => {
+    const buttons = syncDeviceChipRow(strip, deviceUvChannels, (name) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'devctl-menu-item';
         // textContent, not innerHTML: this is device output, and the controller
         // is the one place a garbled serial line reaches the DOM.
         button.textContent = name;
+        button.addEventListener('click', () => setDeviceUvChannel(name));
+        return button;
+    });
+    buttons.forEach((button, index) => {
+        const name = deviceUvChannels[index];
         button.classList.toggle('devctl-menu-item--open', name === current);
         // Only the in-flight request disables a chip, never "this one is already
         // selected". The blanket :disabled rule is (0,11,1) and repaints the
@@ -928,8 +945,6 @@ function drawDeviceUvChannels(current) {
         button.disabled = deviceUvChannelPending;
         button.setAttribute('data-hint',
             `${t('devctl.uvchannel_pick_hint', 'Measure on this spectral channel')} — ${name}`);
-        button.addEventListener('click', () => setDeviceUvChannel(name));
-        strip.appendChild(button);
     });
 }
 
@@ -1200,18 +1215,20 @@ function drawDeviceMenuItems(state) {
     // shows both: the highlighted entry is where the keypad's Up/Down sit, the
     // open one is what the device is actually doing.
     const openName = deviceMenuOpenName(state);
-    host.innerHTML = '';
-    deviceMenuItems.forEach((item, index) => {
+    const buttons = syncDeviceChipRow(host, deviceMenuItems, (item, index) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'devctl-menu-item';
         button.textContent = item || `#${index + 1}`;
+        button.addEventListener('click', () => selectDeviceMenu(index));
+        return button;
+    });
+    buttons.forEach((button, index) => {
+        const item = deviceMenuItems[index];
         button.classList.toggle('devctl-menu-item--open', !!openName && item === openName);
         button.classList.toggle('devctl-menu-item--cursor', index === state.menupos);
         button.disabled = deviceMenuPending;
         button.setAttribute('data-hint', t('devctl.menu_open_hint', 'Open on the device') + ` — ${item}`);
-        button.addEventListener('click', () => selectDeviceMenu(index));
-        host.appendChild(button);
     });
 }
 

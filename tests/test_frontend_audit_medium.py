@@ -753,3 +753,43 @@ def test_stop_sends_one_terminate_while_one_is_in_flight():
     assert r['during'] == [True, True, True]
     assert r['fabAfter'] is False
     assert r['again'] == 2  # a later, separate Stop still goes through
+
+
+# ---------------------------------------------------------------------------
+# device-control.js:1175 (and 885) — the menu and UV-channel chips were torn
+# down and rebuilt on every state poll, so a focused chip lost focus to
+# <body> within 1.5 s.
+# ---------------------------------------------------------------------------
+
+DEVICE_CHIPS = PRELUDE + FAKE_DOM + r"""
+for (const id of ['devctl-menu-items', 'devctl-uvchannel-boxes']) { const e = new El('div'); e.id = id; DOC.body.appendChild(e); }
+const ctx = {
+    document: DOC, window: { addEventListener() {} }, t: (k, f) => f, console,
+    setInterval: () => 1, clearInterval: () => {}, setTimeout: () => 0, clearTimeout: () => {},
+    fetch: async () => ({ status: 200, json: async () => ({}) }),
+    requestAnimationFrame: () => 0, ResizeObserver: class { observe() {} disconnect() {} },
+};
+vm.createContext(ctx);
+LOAD(ctx, 'device-control.js');
+vm.runInContext('deviceMenuItems = ["Absorbance", "Settings", "About"]; deviceUvChannels = ["UVA", "UVB"];', ctx);
+const menu = DOC.getElementById('devctl-menu-items'), uv = DOC.getElementById('devctl-uvchannel-boxes');
+vm.runInContext('drawDeviceMenuItems({ mode: "MEASURE", meas: "Absorbance", menupos: 0 }); drawDeviceUvChannels("UVA");', ctx);
+const m1 = menu.children[1], u1 = uv.children[1];
+m1.focus();
+vm.runInContext('drawDeviceMenuItems({ mode: "SETTINGS", menupos: 1 }); drawDeviceUvChannels("UVB");', ctx);
+const r = {
+    menuKept: menu.children[1] === m1, uvKept: uv.children[1] === u1, focusKept: DOC.activeElement === m1,
+    openMoved: [menu.children[0].classList.contains('devctl-menu-item--open'), m1.classList.contains('devctl-menu-item--open')],
+    cursor: m1.classList.contains('devctl-menu-item--cursor'), uvOpen: u1.classList.contains('devctl-menu-item--open'),
+};
+vm.runInContext('deviceMenuItems = ["Absorbance", "Settings"]; drawDeviceMenuItems({ mode: "MEASURE", meas: "Absorbance", menupos: 0 });', ctx);
+r.rebuiltOnNewList = menu.children.length === 2 && menu.children[1] !== m1;
+OUT(r);
+"""
+
+
+def test_device_chips_are_updated_in_place_across_polls():
+    r = _node(DEVICE_CHIPS)
+    assert r['menuKept'] and r['uvKept'] and r['focusKept']
+    assert r['openMoved'] == [False, True] and r['cursor'] and r['uvOpen']
+    assert r['rebuiltOnNewList']
