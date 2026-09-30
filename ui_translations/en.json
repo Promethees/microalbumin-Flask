@@ -585,5 +585,6 @@
   "btn.select_plain": "Select",
   "btn.delete_plain": "Delete",
   "btn.edit_plain": "Edit",
-  "btn.select_subject_plain": "Select subject"
+  "btn.select_subject_plain": "Select subject",
+  "cdc.reconnected": "Reconnected to the running session."
 }

@@ -96,7 +96,7 @@ function drawSessionStrip() {
     const xs = rows.map(r => Number(r.Timestamp));
     // The x scale is the session so far, so the pen sits at the right edge as
     // soon as there are two rows; the trace lengthens rather than sliding.
-    const xMax = Math.max(...xs.filter(Number.isFinite), 1);
+    const xMax = Math.max(arrayMax(xs.filter(Number.isFinite)), 1);
 
     // One shared y scale across sources, from the data itself — a per-source
     // scale would make two different absorbances look identical.
@@ -790,6 +790,79 @@ function stopControlObserver() {
     syncReadingFab();
 }
 
+// Lock the reading-setup inputs for the length of a run.
+function lockRunInputs() {
+    document.querySelectorAll('input[name="cdc-save-mode"]').forEach(r => (r.disabled = true));
+    const existingSel = document.getElementById('cdc-subfolder-select');
+    if (existingSel) existingSel.disabled = true;
+    const newInput = document.getElementById('cdc-new-folder-name');
+    if (newInput) newInput.disabled = true;
+    $disable(["base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit", "cdc-axis-turn"]);
+    document.querySelectorAll('input[name="cdc-run-mode"]').forEach(r => (r.disabled = true));
+    $toggleClass("run-script-btn", "blinking", false);
+    modeButtons.forEach(btn => btn.disabled = true);
+}
+
+// Put the page into its "session running" state: Stop enabled, the run's own
+// controls shown, the status poll and the live stream started. Shared by a
+// fresh start (runScript) and a reload that finds a run already going
+// (resyncRunningSession) — the two must never drift apart.
+function enterRunningUI({ manual, intervalSec, paused, measureArmed }) {
+    manualSession = !!manual;
+    AppState.scriptRunning = true;
+    $disable(["terminate-script-btn"], false);
+    $disable(["go-to-btn"], false);
+    $toggleClass("go-to-btn", "blinking", true);
+    startSessionTimer(intervalSec);
+    // Manual capture: reveal the "Measure now" button. A fresh start keeps it
+    // disabled until Turn 1 lands — the logger auto-records the first Turn on
+    // start, and onNewDataPoint arms the button once it arrives (so an early
+    // press can't queue a duplicate). Start watching it so the floating mirror
+    // appears when it scrolls out of view.
+    if (manual) {
+        const mBtn = document.getElementById('measure-point-btn');
+        if (mBtn) mBtn.classList.remove('hidden');
+        setMeasureArmed(!!measureArmed);
+        startMeasureObserver();
+    } else {
+        // Automatic run: offer Pause/Resume (inline + floating mirror).
+        // A manual run is already on-demand, so it has nothing to pause.
+        const pBtn = document.getElementById('pause-reading-btn');
+        if (pBtn) pBtn.classList.remove('hidden');
+        applyPausedState(!!paused);
+        startControlObserver();
+    }
+    clearStatusCheck();
+    statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
+    // Push channel for this run's rows and log text. The status poll
+    // above stays: it owns why a session ended, which the stream does
+    // not attempt to decide.
+    startLiveStream();
+}
+
+// A reload (F5, or a language/style change) mid-run used to leave the page
+// idle with Stop disabled while the logger kept recording. Ask the server
+// once on load and, if a session is running, re-enter the running state —
+// including a Pause already in force (Rule.md §2.29, §2.31). Only a running
+// answer is acted on: any other status is left for the next run to handle.
+async function resyncRunningSession() {
+    let response;
+    try {
+        // peek: read-only — never consume a finished run's end status here.
+        const res = await fetch('/check_status?peek=1');
+        response = await res.json();
+    } catch (err) {
+        return;
+    }
+    if (!response || response.status !== 'running' || AppState.scriptRunning) return;
+    _terminationNoticeFired = false;
+    lockRunInputs();
+    // Rows already exist, so a manual run's Measure now is armed straight away.
+    enterRunningUI({ manual: !!response.manual, intervalSec: response.interval_sec || null, paused: response.paused === true, measureArmed: true });
+    $append("log-display", t('cdc.reconnected', 'Reconnected to the running session.') + "\n");
+}
+document.addEventListener('DOMContentLoaded', resyncRunningSession);
+
 // Main script runner
 async function runScript() {
     if (!validateFileName("base-name") || !validateTimeoutInterval()) return;
@@ -823,16 +896,7 @@ async function runScript() {
     clearStatusCheck();
     blinkingItem("log-display", 3000);
 
-    // Disable inputs while running
-    document.querySelectorAll('input[name="cdc-save-mode"]').forEach(r => (r.disabled = true));
-    const existingSel = document.getElementById('cdc-subfolder-select');
-    if (existingSel) existingSel.disabled = true;
-    const newInput = document.getElementById('cdc-new-folder-name');
-    if (newInput) newInput.disabled = true;
-    $disable(["base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit", "cdc-axis-turn"]);
-    document.querySelectorAll('input[name="cdc-run-mode"]').forEach(r => (r.disabled = true));
-    $toggleClass("run-script-btn", "blinking", false);
-    modeButtons.forEach(btn => btn.disabled = true);
+    lockRunInputs();
 
     const manual = currentRunMode() === 'manual';
     manualSession = manual;
@@ -860,40 +924,13 @@ async function runScript() {
 
         if (response.status === "success") {
             logEvent('hardware', 'start', { subfolder, base_name: baseName });
-            AppState.scriptRunning = true;
-            $disable(["terminate-script-btn"], false);
-            $disable(["go-to-btn"], false);
-            $toggleClass("go-to-btn", "blinking", true);
             $text("log-display", "Script started...\n");
             if (saveMode === 'new' && typeof loadDataFolders === 'function') loadDataFolders();
-            startSessionTimer(payload.interval_sec);
             // /run_script returns as soon as the logger process survives its
             // first half-second — the device has NOT been reached yet. Watch the
             // start-up from here so the wait is visible and bounded.
+            enterRunningUI({ manual, intervalSec: payload.interval_sec, paused: false, measureArmed: false });
             beginStartupWatch();
-            // Manual capture: reveal the "Measure now" button but keep it disabled
-            // until Turn 1 lands — the logger auto-records the first Turn on start,
-            // and onNewDataPoint arms the button once it arrives (so an early press
-            // can't queue a duplicate). Start watching it so the floating mirror
-            // appears when it scrolls out of view.
-            if (manual) {
-                const mBtn = document.getElementById('measure-point-btn');
-                if (mBtn) mBtn.classList.remove('hidden');
-                setMeasureArmed(false);
-                startMeasureObserver();
-            } else {
-                // Automatic run: offer Pause/Resume (inline + floating mirror).
-                // A manual run is already on-demand, so it has nothing to pause.
-                const pBtn = document.getElementById('pause-reading-btn');
-                if (pBtn) pBtn.classList.remove('hidden');
-                applyPausedState(false);
-                startControlObserver();
-            }
-            statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
-            // Push channel for this run's rows and log text. The status poll
-            // above stays: it owns why a session ended, which the stream does
-            // not attempt to decide.
-            startLiveStream();
         } else if (response.status === "device_not_found") {
             handleDeviceNotFound(response);
         } else {

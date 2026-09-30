@@ -284,17 +284,17 @@ function createChartSection({
                 <div id="concentration-reader-section-source-${index}">
                     ${t('display.concen_from_source', 'Concentration from source-{n} sample is').replace('{n}', index + 1)}
                     ${metaConcentration !== null
-                        ? `<span class="der-con-value" id="con-value-read-display-source-${index}">${metaConcentration}</span>
-                           <input type="hidden" id="con-value-read-source-${index}" value="${metaConcentration}">`
+                        ? `<span class="der-con-value" id="con-value-read-display-source-${index}">${_escHtml(metaConcentration)}</span>
+                           <input type="hidden" id="con-value-read-source-${index}" value="${_attr(metaConcentration)}">`
                         : `<input type="number" id="con-value-read-source-${index}"
                         value="${previousValue}"
-                        onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')"
+                        onchange="handleConValueReadChange('${canvasId}', ${index}, '${_esc(unit)}')"
                         oninput="adjustInputWidth(this)"
                         onblur="saveConcentrationValue(${index})"
-                        min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input>`} ${concenUnit}
+                        min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input>`} ${_escHtml(concenUnit)}
                 </div>`}
                 <div id="derived-concentration-section-source-${index}" class="hidden">
-                    ${t('display.concen_derived_from_source', 'Concentration derived from the source-{n} is').replace('{n}', index + 1)} <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
+                    ${t('display.concen_derived_from_source', 'Concentration derived from the source-{n} is').replace('{n}', index + 1)} <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ${_escHtml(concenUnit)}
                 </div>
                 <div id="est-value-msg-source-${index}" class="est-value-msg"></div>
                 `}
@@ -505,15 +505,15 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
             ${AppState.xAxis === 'turn' ? '' : `
             <div id="concentration-reader-section-source-${i}">
                 ${t('display.concen_from_source', 'Concentration from source-{n} sample is').replace('{n}', i + 1)} ${metaConcentration !== null
-                    ? `<span class="der-con-value" id="con-value-read-display-source-${i}">${metaConcentration}</span>
-                       <input type="hidden" id="con-value-read-source-${i}" value="${metaConcentration}">`
+                    ? `<span class="der-con-value" id="con-value-read-display-source-${i}">${_escHtml(metaConcentration)}</span>
+                       <input type="hidden" id="con-value-read-source-${i}" value="${_attr(metaConcentration)}">`
                     : `<input type="number" id="con-value-read-source-${i}"
                     value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}"
                     oninput="adjustInputWidth(this)"
-                    min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input>`} ${concenUnit}
+                    min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input>`} ${_escHtml(concenUnit)}
             </div>`}
             <div id="derived-concentration-section-source-${i}" class="hidden">
-                ${t('display.concen_derived_from_source', 'Concentration derived from the source-{n} is').replace('{n}', i + 1)} <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
+                ${t('display.concen_derived_from_source', 'Concentration derived from the source-{n} is').replace('{n}', i + 1)} <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ${_escHtml(concenUnit)}
             </div>
             <div id="est-value-msg-source-${i}" class="est-value-msg"></div>
         `
@@ -866,7 +866,7 @@ function normalizeByMin(columnData) {
         .map(v => (v === null || v === undefined || v === "NONE") ? NaN : Number(v))
         .filter(v => !Number.isNaN(v));
     if (numeric.length === 0) return columnData.map(() => null);
-    const min = Math.min(...numeric);
+    const min = arrayMin(numeric);
     return columnData.map(value => {
         if (value === null || value === undefined || value === "NONE") return null;
         const n = Number(value);
@@ -964,6 +964,7 @@ function createToggleButton(analysisId = "plot-analysis", showText = null, hideT
 
 function buildKineticsTableHtml(analysisInfo, unitDisp, timeUnit) {
     if (!analysisInfo) return '';
+    unitDisp = _escHtml(unitDisp);  // the file's Unit metadata — untrusted (Rule §2.39)
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
     return `
@@ -1143,14 +1144,14 @@ function findYDimension(allYValues, labels) {
     } else {
         // Original logic for non-equal Y values
         if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-source")) {
-            yMin = Math.min(Math.min(...validYValues), 0);
+            yMin = Math.min(arrayMin(validYValues), 0);
             // Keep 0.6 as a uniform baseline ceiling across split-source charts,
             // but grow it when a source exceeds 0.6 so no points are clipped.
-            const dataMax = validYValues.length > 0 ? Math.max(...validYValues) : 0.6;
+            const dataMax = validYValues.length > 0 ? arrayMax(validYValues) : 0.6;
             yMax = Math.max(0.6, dataMax * 1.05);
         } else {
-            yMin = Math.min(Math.min(...validYValues), 0);
-            yMax = validYValues.length > 0 ? Math.max(...validYValues) * 1.1 : 1;
+            yMin = Math.min(arrayMin(validYValues), 0);
+            yMax = validYValues.length > 0 ? arrayMax(validYValues) * 1.1 : 1;
         }
         yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.1;
     }

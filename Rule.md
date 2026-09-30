@@ -1159,6 +1159,17 @@ failure that never touched the software.
 - **The page polls; it is not an SSE feed.** An unconsumed `stream_with_context` response leaves a request context pushed and breaks the *next* request (§2.37), and a monitor that can damage the process it watches is not worth a second of freshness. The client also pauses its own poll on an error instead of hammering an app that is already unhappy.
 - **Exempt from §2.22 (i18n) and from the Settings Coverage Rule; NOT exempt from §2.33 (design).** One audience, one machine — do not add `data-i18n`, `t()`, keys to `ui_translations/`, or a `user_settings.py` key for anything in this package. But `devtools/static/monitor.css` contains no hex literal and no gradient: the page links `static/style.css` for the token block and resolves every colour, font and radius through `var(--…)`, so the tool cannot drift from the app's palette. Full detail, including every metric and its unit, is in `devtools/README.md`.
 
+
+---
+
+### 2.39 Frontend Data Safety (escaping, large arrays, reload, polling)
+
+- **Pick the escape by context, from `navigation.js`.** `_escHtml` is for element text. `_attr` is for a double-quoted attribute value, and that includes `data-*`, `value=` and `title=`. `_esc` is **only** for a single-quoted JS string inside an inline handler (`onclick="f('${_esc(x)}')"`); it escapes backslashes and turns `'` into `\'`. **Anti-pattern**: `_esc` in a `data-*` attribute. The HTML parser keeps the backslash, so a folder named `Lan's samples` came back as `Lan\'s samples` and could not be opened, renamed or deleted.
+- **Anything read from a file is untrusted when it reaches HTML.** This covers CSV metadata (`# Concentration`, `# ConcenUnit`, `Measurement`, `Unit`), JSON fields, and file and subject names. Escape it at the render site. There is no CSP, and same-origin script passes the origin guard (§2.24), so a shared CSV that got into `innerHTML` could drive every route.
+- **Never spread a data array into a call.** `Math.min(...values)` throws `RangeError` past about 120k elements, and a 4-source, 3-hour run exceeds that. Use `arrayMin` / `arrayMax` from `short-hands.js`. They match `Math.min` / `Math.max` exactly: `±Infinity` when empty, `NaN` if any element is `NaN`.
+- **A page load resyncs with a run already going.** `resyncRunningSession()` asks `/check_status` once on `DOMContentLoaded`. If a run is going, it re-enters the running UI through `enterRunningUI()`, the same helper `runScript()` uses. `/check_status` reports `paused` and `manual` for this purpose. **Anti-pattern**: starting the status poll or the live stream anywhere except `enterRunningUI()`, because a fresh start and a reload would drift apart. A reload also happens on every `ui_language` or `ui_style` change.
+- **The directory poll must cost nothing when idle.** `/get_headers` results are cached per file path and invalidated by the `files_meta` mtime. `_setTableHtml()` rewrites a table only when its markup changed, since replacing identical rows twice a second destroyed keyboard focus (§2.36). The poll skips a hidden tab and catches up on `visibilitychange`. Tests: `tests/test_frontend_audit_fixes.py`.
+
 ---
 
 ## 3. Autonomous Documentation Updates

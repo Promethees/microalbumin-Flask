@@ -585,5 +585,6 @@
   "btn.select_plain": "선택",
   "btn.delete_plain": "삭제",
   "btn.edit_plain": "편집",
-  "btn.select_subject_plain": "주제 선택"
+  "btn.select_subject_plain": "주제 선택",
+  "cdc.reconnected": "실행 중인 세션에 다시 연결되었습니다."
 }

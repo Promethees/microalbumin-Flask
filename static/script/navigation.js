@@ -1,5 +1,5 @@
 const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const _esc = s => _escHtml(String(s)).replace(/"/g, '&quot;').replace(/'/g, "\\'");
+const _esc = s => _escHtml(String(s).replace(/\\/g, '\\\\')).replace(/"/g, '&quot;').replace(/'/g, "\\'");
 // Escape a string for use inside a double-quoted HTML attribute value.
 const _attr = s => _escHtml(String(s)).replace(/"/g, '&quot;');
 
@@ -126,7 +126,7 @@ function _selectDisableAttrs(rowId, counterpart) {
     const msg = (m.reason === 'axis')
         ? "Turn and time-series don't mix: a time calibration derives concentration from the signal at a fixed time point, which a Turn file has no axis for; a Turn calibration expects discrete turns, not a time-series. Pair a Turn file with a Turn calibration, and a time-series file with a time calibration."
         : identityMismatchLabel(m.reason) + ' differs from the selected file — cannot pair';
-    return ` disabled title="${_esc(msg)}" data-hint="${_esc(msg)}"`;
+    return ` disabled title="${_attr(msg)}" data-hint="${_attr(msg)}"`;
 }
 
 // The identity of the loaded counterpart, only in kinetics/point mode (pairing is
@@ -195,8 +195,8 @@ function _renderFolderList(containerId, folders) {
     container.innerHTML = folders.map(f => {
         const isSelected = currentDir && (currentDir === f.path || currentDir.replace(/\\\\/g, '\\') === f.path);
         return `<div class="folder-item${isSelected ? ' selected' : ''}"
-                     data-path="${_esc(f.path)}"
-                     data-name="${_esc(f.name.toLowerCase())}"
+                     data-path="${_attr(f.path)}"
+                     data-name="${_attr(f.name.toLowerCase())}"
                      onclick="selectDataFolder('${_esc(f.name)}', this.dataset.path)"
                      data-hint="${_escHtml(f.path)}"><span class="folder-item-name">${_escHtml(f.name)}</span><button type="button" class="folder-item-rename" data-hint="Rename folder" onclick="event.stopPropagation(); renameDataFolder('${_esc(f.name)}', this.closest('.folder-item').dataset.path)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button><button type="button" class="folder-item-delete" data-hint="Delete folder" onclick="event.stopPropagation(); deleteDataFolder('${_esc(f.name)}', this.closest('.folder-item').dataset.path)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button></div>`;
     }).join('');
@@ -420,31 +420,45 @@ function browseDirectory(blinkItem = false) {
     if (blinkItem) blinkingItem("file-selection", 5000);
 }
 
+// Header rows by file path, valid while the file's mtime (from /browse
+// files_meta) is unchanged. The 500 ms directory poll used to re-read the
+// header of every CSV in the folder on every tick — a few hundred requests a
+// cycle, idle or not. Only a file that has changed (the live file mid-run) is
+// read again. Failed reads are never cached, so a transient error retries.
+const _headerCache = new Map();
+
 async function filterFiles(files) {
     const checks = await Promise.all(
         files.map(async (fileName) => {
             const filePath = AppState.currentDirectory + DELIMITER + fileName;
-
-            let response;
-            try {
-                response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
-            } catch (networkErr) {
-                console.warn(`Network error for ${fileName}:`, networkErr);
-                return false;
-            }
+            const mtime = AppState.fileMeta && AppState.fileMeta[fileName] && AppState.fileMeta[fileName].mtime;
+            const cached = _headerCache.get(filePath);
 
             let data;
-            try {
-                data = await response.json();
-            } catch (jsonErr) {
-                console.warn(`Invalid JSON for ${fileName}:`, jsonErr);
-                return false;
-            }
+            if (cached && typeof mtime === 'number' && cached.mtime === mtime) {
+                data = cached.data;
+            } else {
+                let response;
+                try {
+                    response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
+                } catch (networkErr) {
+                    console.warn(`Network error for ${fileName}:`, networkErr);
+                    return false;
+                }
 
-            if (!response.ok) {
-                const friendlyMsg = data.error ?? `Server error ${response.status}`;
-                console.info(`Header check failed (${response.status}) for ${fileName}: ${friendlyMsg}`);
-                return { error: friendlyMsg };
+                try {
+                    data = await response.json();
+                } catch (jsonErr) {
+                    console.warn(`Invalid JSON for ${fileName}:`, jsonErr);
+                    return false;
+                }
+
+                if (!response.ok) {
+                    const friendlyMsg = data.error ?? `Server error ${response.status}`;
+                    console.info(`Header check failed (${response.status}) for ${fileName}: ${friendlyMsg}`);
+                    return { error: friendlyMsg };
+                }
+                if (typeof mtime === 'number') _headerCache.set(filePath, { mtime, data });
             }
 
             const cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat"];
@@ -559,7 +573,7 @@ function _jsonTableHeaderHtml() {
 
 // Render the calibration-JSON rows into #json-table, honouring the active sort
 // order, the max-JSON-rows limit and the modified-date column (AppState.jsonMeta).
-function renderJsonRows(files) {
+function renderJsonRows(files, force) {
     AppState.jsonNames = (files || []).slice();
     let html = _jsonTableHeaderHtml();
     if (files && files.length > 0) {
@@ -584,7 +598,7 @@ function renderJsonRows(files) {
     } else {
         html += `<tr><td colspan="5">${_escHtml(t('caljson.none_available','No Calibrated JSON is available.'))}</td></tr>`;
     }
-    document.getElementById("json-table").innerHTML = html;
+    if (!_setTableHtml("json-table", html, force)) return;
     const searchInput = document.getElementById('json-search');
     if (searchInput && searchInput.value) {
         filterTable('json-table', searchInput.value);
@@ -627,7 +641,7 @@ function _reportTableHeaderHtml() {
 
 // Render the report-subject folder rows into #file-table, honouring the active
 // sort order and the modified-date column (AppState.reportMeta).
-function renderReportRows(subjects) {
+function renderReportRows(subjects, force) {
     AppState.reportNames = (subjects || []).slice();
     let html = _reportTableHeaderHtml();
     if (subjects && subjects.length > 0) {
@@ -641,7 +655,7 @@ function renderReportRows(subjects) {
     } else {
         html += `<tr><td colspan="5">${_escHtml(t('report.none_found','No report subjects found.'))}</td></tr>`;
     }
-    document.getElementById("file-table").innerHTML = html;
+    if (!_setTableHtml("file-table", html, force)) return;
     const searchInput = document.getElementById('file-search');
     if (searchInput && searchInput.value) {
         filterTable('file-table', searchInput.value);
@@ -720,7 +734,27 @@ function _applySortOrder(key) {
 // Render the CSV file rows (already passed through filterFiles) into #file-table,
 // honouring the active sort order and the max-CSV-rows limit. Stores the rendered
 // (filtered) names on AppState so a sort click can re-render without re-fetching.
-function renderFileRows(names) {
+// Write a table's rows only when they differ from what is already there.
+// Replacing identical markup every poll tick destroyed keyboard focus on the
+// row buttons twice a second. Returns true when the table was rewritten.
+function _setTableHtml(id, html, force) {
+    const el = document.getElementById(id);
+    if (!el) return false;
+    if (!force && el._eokRenderedHtml === html) return false;
+    el.innerHTML = html;
+    el._eokRenderedHtml = html;
+    return true;
+}
+
+// Forget what a table last rendered. Call after changing its rows directly
+// (removing a row, moving the `selected` class): the next poll then rewrites
+// it from state, as it always did before the skip existed.
+function _invalidateTable(id) {
+    const el = document.getElementById(id);
+    if (el) delete el._eokRenderedHtml;
+}
+
+function renderFileRows(names, force) {
     AppState.fileNames = (names || []).slice();
     let html = _fileTableHeaderHtml();
     if (names && names.length > 0) {
@@ -742,7 +776,7 @@ function renderFileRows(names) {
     } else {
         html += `<tr><td colspan="5">${_escHtml(t('files.none_found','No CSV files found in the directory.'))}</td></tr>`;
     }
-    document.getElementById("file-table").innerHTML = html;
+    if (!_setTableHtml("file-table", html, force)) return;
     const searchInput = document.getElementById('file-search');
     if (searchInput && searchInput.value) {
         filterTable('file-table', searchInput.value);
@@ -769,7 +803,7 @@ function sortReportTable(key) {
 
 function updateFileTable(files, deselect) {
     return filterFiles(files).then((filteredFiles) => {
-        renderFileRows(filteredFiles || []);
+        renderFileRows(filteredFiles || [], !!deselect);
         if (deselect) {
             AppState.currentFile = null;
             $toggleQueryClass("#file-table tr", "selected", false);

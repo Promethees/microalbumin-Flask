@@ -6,6 +6,29 @@ function arraysEqual(arr1, arr2) {
     if (arr1.length !== arr2.length) return false;
     return arr1.every((value, index) => value === arr2[index]);
 }
+// Shared: Math.min/Math.max over an array without spreading it. A spread passes
+// every element as a call argument, and V8 throws "Maximum call stack size
+// exceeded" past ~120k of them — a 4-source, 3-hour run reaches that. Same
+// results as Math.min(...arr) / Math.max(...arr): Infinity / -Infinity when
+// empty, NaN if any element is NaN, elements coerced with Number().
+function arrayMin(arr) {
+    let m = Infinity;
+    for (let i = 0; i < arr.length; i++) {
+        const v = Number(arr[i]);
+        if (v !== v) return NaN;
+        if (v < m) m = v;
+    }
+    return m;
+}
+function arrayMax(arr) {
+    let m = -Infinity;
+    for (let i = 0; i < arr.length; i++) {
+        const v = Number(arr[i]);
+        if (v !== v) return NaN;
+        if (v > m) m = v;
+    }
+    return m;
+}
 // Shared: the non-numeric tokens a colorimeter value cell can carry — mirror of
 // src/sentinels.py (OVFL saturated, NONE nothing measured yet, INF a fully
 // attenuated channel; firmware predating the token writes "inf"). Single global

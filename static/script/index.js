@@ -447,7 +447,9 @@ $(document).ready(function () {
     // Periodically update file table every 0.5 seconds
     updateInterval = setInterval(function () {
         if (!serverAvailable) return;
-        updateDirectory(AppState.currentDirectory, false);
+        // Nobody is looking at a hidden tab's file table; it catches up on the
+        // visibilitychange below instead of polling in the background.
+        if (!document.hidden) updateDirectory(AppState.currentDirectory, false);
 
         if (AppState.currentFile) {
             if (AppState.currentFile !== AppState.prevFile) {
@@ -756,6 +758,14 @@ function calPointBehaviour() {
     document.getElementById('select-quantity-section')?.classList.add('hidden');
     document.getElementById('select-time-point')?.classList.remove('hidden');
 }
+
+// Refresh the file table as soon as a hidden tab is shown again (the poll
+// skips the directory while the tab is hidden).
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && serverAvailable && AppState.currentDirectory) {
+        updateDirectory(AppState.currentDirectory, false);
+    }
+});
 
 let isUpdatingDirectory = false;
 function updateDirectory(path, deselect, changeToCalibrate = false) {

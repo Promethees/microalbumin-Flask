@@ -30,6 +30,9 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                 const m = identityMatch(csvId, jsonId);
                 if (!m.ok) {
                     if (closestTr) closestTr.classList.remove('selected');
+                    // The rows were changed by hand; let the next poll redraw them
+                    // from state so the real selection is lit again.
+                    if (typeof _invalidateTable === 'function') _invalidateTable(tableSelector.replace('#', ''));
                     Swal.fire({
                         title: `${identityMismatchLabel(m.reason)} mismatch`,
                         text: identityClashText(csvId, jsonId, m.reason),
@@ -69,6 +72,9 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                 const m = identityMatch(csvId, jsonId);
                 if (!m.ok) {
                     if (closestTr) closestTr.classList.remove('selected');
+                    // The rows were changed by hand; let the next poll redraw them
+                    // from state so the real selection is lit again.
+                    if (typeof _invalidateTable === 'function') _invalidateTable(tableSelector.replace('#', ''));
                     Swal.fire({
                         title: `${identityMismatchLabel(m.reason)} mismatch`,
                         text: identityClashText(csvId, jsonId, m.reason),
@@ -518,6 +524,9 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
         const proceedDelete = () => {
             logEvent('file', 'delete', { name: fileName, table: tableSelector });
             $(button).closest("tr").remove();
+            // If the delete fails the listing is unchanged, so without this the
+            // removed row would never come back until a reload.
+            if (typeof _invalidateTable === 'function') _invalidateTable(tableSelector.replace('#', ''));
 
             // Update the AppState
             if (tableSelector === "#file-table") {
@@ -900,7 +909,7 @@ function processPointMode(jsonFile, derived_con_text) {
         const msgDivId = `est-value-msg-source-${sourceIndex - 1}`;
         const msgDiv = document.getElementById(msgDivId);
         if (msgDiv) {
-            msgDiv.innerHTML = `The estimated ${AppState.globalAnalysis.meas} value read from source-${sourceIndex} is ${estValueRead}${unitPrinted}.`;
+            msgDiv.innerHTML = `The estimated ${_escHtml(AppState.globalAnalysis.meas)} value read from source-${sourceIndex} is ${estValueRead}${_escHtml(unitPrinted)}.`;
         }
     }
     try {
@@ -926,7 +935,7 @@ function processTurnDerive(jsonFile) {
 
     let html = `<div style="overflow-x:auto;"><table class="turn-cal-table"><thead><tr><th>${t('export.turn_col_turn', 'Turn')}</th>`;
     for (let s = 1; s <= n; s++) {
-        html += `<th>${n > 1 ? 'Value:' + s + ' → ' : ''}${conLabel} (${concenUnit})</th>`;
+        html += `<th>${n > 1 ? 'Value:' + s + ' → ' : ''}${conLabel} (${_escHtml(concenUnit)})</th>`;
     }
     html += `</tr></thead><tbody>`;
     rows.forEach(row => {
@@ -1395,7 +1404,7 @@ function showMergeDirectoryPicker() {
                     </label>`;
                 body.innerHTML = allRow + csvFiles.map(f => `
                     <label style="display:flex; align-items:center; gap:8px; padding:3px 4px; cursor:pointer; font-size:0.85rem;">
-                        <input type="checkbox" class="merge-pick-cb" data-file="${_esc(f)}"
+                        <input type="checkbox" class="merge-pick-cb" data-file="${_attr(f)}"
                             ${selected.has(_key(path, f)) ? 'checked' : ''}>
                         <span>${_escHtml(f)}</span>
                     </label>
@@ -1587,7 +1596,7 @@ function showMergeSortModal(preselected) {
                     folders = [{ name: 'Main data folder', path: DATA_ROOT }, ...folders];
                 }
                 folderOpts = folders.map(f =>
-                    `<option value="${_esc(f.path)}">${_escHtml(f.name)}</option>`
+                    `<option value="${_attr(f.path)}">${_escHtml(f.name)}</option>`
                 ).join('');
             } catch (e) { }
 
@@ -1615,7 +1624,7 @@ function showMergeSortModal(preselected) {
                         fileSel.innerHTML = '<option value="">No CSV files in folder</option>';
                     } else {
                         fileSel.innerHTML = csvFiles.map(f =>
-                            `<option value="${_esc(f)}">${_escHtml(f)}</option>`
+                            `<option value="${_attr(f)}">${_escHtml(f)}</option>`
                         ).join('');
                         if (preselectFile && csvFiles.includes(preselectFile)) {
                             fileSel.value = preselectFile;
@@ -2029,7 +2038,7 @@ function renderTurnCalTable() {
     for (let s = 1; s <= n; s++) {
         html += `<th>${n > 1 ? 'Value:' + s : t('export.turn_col_value', 'Value')}</th>`;
     }
-    html += `<th>${t('export.turn_col_concen', 'Concentration')} (${concenUnit})</th></tr></thead><tbody>`;
+    html += `<th>${t('export.turn_col_concen', 'Concentration')} (${_escHtml(concenUnit)})</th></tr></thead><tbody>`;
     rows.forEach((row) => {
         const turn = row['Timestamp'];  // Turn index (renamed to Timestamp on read)
         const storeKey = `turn-con-${fileKey}-${turn}`;

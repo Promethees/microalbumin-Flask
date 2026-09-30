@@ -36,6 +36,9 @@ function _syncToggleIcon(savedPref) {
 
 // Save a single key/value to the server-side user_settings.json (fire-and-forget).
 function saveUserSetting(key, value) {
+    // Keep the page's copy current, so the settings modal (which fills from
+    // USER_SETTINGS) never writes a stale value back over this one.
+    if (typeof USER_SETTINGS !== 'undefined') USER_SETTINGS[key] = value;
     fetch('/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,13 +98,15 @@ document.getElementById('toggleContainer').addEventListener('click', function ()
     toggleMode();
 });
 
-document.getElementById('shutdown-btn').addEventListener('click', function () {
-    terminateScript();
+document.getElementById('shutdown-btn').addEventListener('click', async function () {
     const confirmationMessage = "{{ production_mode }}" === "True"
         ? 'WARNING: Production mode. This will terminate the server process and close the terminal. Continue?'
         : 'Are you sure you want to shutdown the program?';
 
     if (confirm(confirmationMessage)) {
+        // Stop a running session only once the user has confirmed: Cancel must
+        // leave the run untouched (Rule.md §2.29 — a run ends only on request).
+        await terminateScript();
         // Determine the current mode
         fetch('/shutdown', {
             method: 'POST',
@@ -290,7 +295,7 @@ function updatePointEstimate() {
     } else {
         estValError.innerHTML = '';
         estValExp.innerHTML = `Estimated values at ${currExpTimePoint} ${timeUnitLabel} are: ${AppState.globalEstimatedValue
-                .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
+                .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${_escHtml(AppState.globalAnalysis.meas_unit)}</span>`)
                 .join(", ")
             }`;
     }
@@ -1124,10 +1129,8 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     const wsInput = document.getElementById('window-size');
     if (wsInput) wsInput.value = formValues.default_window_size;
 
-    // Apply mode
-    const allModeBtns = modeDiv.querySelectorAll('button[data-mode]');
-    const targetBtn = Array.from(allModeBtns).find(b => b.getAttribute('data-mode') === formValues.default_mode);
-    if (targetBtn) selectButton(targetBtn, allModeBtns, modeDiv);
+    // default_mode is a load-time default only. Highlighting its button here
+    // (without switchingModes()) desynced the mode bar from the live layout.
 
     // Apply chart height
     const chartEl = document.getElementById('chart-container');

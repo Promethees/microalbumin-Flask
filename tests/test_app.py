@@ -218,6 +218,61 @@ def test_check_status_reports_paused_flag(client, tmp_path):
     state.reading_paused = False
 
 
+@pytest.mark.parametrize('args, want', [
+    (['python', 'send_command.py', '--manual'], True),
+    (['python', 'send_command.py'], False),
+])
+def test_check_status_reports_manual_flag(client, tmp_path, args, want):
+    """A reloaded page must know a running session is manual, to show Measure
+    now instead of Pause/Resume; the flag is read off the logger's command line."""
+    (tmp_path / 'log').mkdir()
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    state.process.args = args
+    with patch.object(state, 'log_file', str(tmp_path / 'log' / 'script_logs.txt')):
+        body = client.get('/check_status').get_json()
+    state.process = None
+    assert body['status'] == 'running'
+    assert body['manual'] is want
+
+
+def test_check_status_reports_interval_sec(client, tmp_path):
+    """A reloaded page restores the session clock's interval from the run."""
+    (tmp_path / 'log').mkdir()
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    state.process.args = ['python', 'log_cdc_data.py', '--interval-sec', '30.0', '--axis', 'time']
+    with patch.object(state, 'log_file', str(tmp_path / 'log' / 'script_logs.txt')):
+        body = client.get('/check_status').get_json()
+    state.process = None
+    assert body['interval_sec'] == 30.0
+
+
+def test_check_status_peek_never_consumes_a_finished_run(client, tmp_path):
+    """The page-load probe must leave a just-finished run for the tab that
+    started it: no clearing the process, no reporting why it ended."""
+    (tmp_path / 'log').mkdir()
+    proc = MagicMock()
+    proc.poll.return_value = 0          # the logger has exited
+    state.process = proc
+    with patch.object(state, 'log_file', str(tmp_path / 'log' / 'script_logs.txt')), \
+         patch('routes.hardware_routes.clear_logs') as clear:
+        body = client.get('/check_status?peek=1').get_json()
+        assert body['status'] == 'ending'
+        assert state.process is proc
+        clear.assert_not_called()
+    state.process = None
+
+
+def test_check_status_peek_reports_a_live_run(client, tmp_path):
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    state.process.args = ['python', 'log_cdc_data.py', '--manual']
+    body = client.get('/check_status?peek=1').get_json()
+    state.process = None
+    assert body['status'] == 'running' and body['manual'] is True
+
+
 def test_run_script_clears_stale_control_trigger(client, tmp_path):
     """A new run always starts unpaused: a leftover trigger/flag is swept."""
     log_dir = tmp_path / 'log'

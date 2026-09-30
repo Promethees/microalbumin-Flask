@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, Response, stream_with_context
+from flask import Blueprint, jsonify, request, Response, stream_with_context
 import os
 import sys
 import platform
@@ -890,10 +890,37 @@ def stream_session():
     )
 
 
+def _running_status():
+    """The 'running' answer. `paused`, `manual` and `interval_sec` let a
+    reloaded page resync its controls with a run already going: Pause/Resume
+    for a timed run, Measure now for a manual one, and the session clock's
+    interval. The last two are read off the logger's own command line."""
+    raw = getattr(state.process, 'args', None)
+    args = list(raw) if isinstance(raw, (list, tuple)) else []
+    interval = None
+    if '--interval-sec' in args:
+        try:
+            interval = float(args[args.index('--interval-sec') + 1])
+        except (IndexError, ValueError):
+            interval = None
+    return jsonify({'status': 'running', 'message': 'Script is running',
+                    'paused': state.reading_paused, 'manual': '--manual' in args,
+                    'interval_sec': interval})
+
+
 @hardware_bp.route('/check_status', methods=['GET'])
 def check_status():
     if state.process is None:
         return jsonify({'status': 'not_running', 'message': 'No process running'})
+
+    # `?peek=1` is the page-load probe: it answers "is a run going" and changes
+    # nothing. The plain call below is the one that ends a finished run
+    # (clears the process and the log) and reports why — a reloading tab must
+    # not consume that answer before the tab that started the run sees it.
+    if request.args.get('peek') == '1':
+        if state.process.poll() is None:
+            return _running_status()
+        return jsonify({'status': 'ending', 'message': 'Session is ending'})
 
     error = check_log_for_errors(state.log_file)
     if error:
@@ -905,9 +932,7 @@ def check_status():
         return jsonify({'status': 'failure', 'message': 'Device communication error detected during runtime.'})
 
     if state.process.poll() is None:
-        # `paused` lets a reloaded page resync its Pause/Resume controls with a
-        # run that is already on hold.
-        return jsonify({'status': 'running', 'message': 'Script is running', 'paused': state.reading_paused})
+        return _running_status()
 
     # The logger exited: a clean end-of-session (device timeout / user stop)
     # always logs "New session started"; a handshake failure does not.

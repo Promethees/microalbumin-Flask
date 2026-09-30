@@ -230,7 +230,7 @@ function averagePointsByConcentration(pts) {
     for (const [x, ys] of groups) {
         // Carry the value spread (min/max/n) so replicate ranges can render as
         // error bars, matching the live calibrate display (Rule §2.27).
-        out.push({ x, y: ys.reduce((a, b) => a + b, 0) / ys.length, yMin: Math.min(...ys), yMax: Math.max(...ys), n: ys.length });
+        out.push({ x, y: ys.reduce((a, b) => a + b, 0) / ys.length, yMin: arrayMin(ys), yMax: arrayMax(ys), n: ys.length });
     }
     return out.sort((a, b) => a.x - b.x);
 }
@@ -258,7 +258,7 @@ function getPointCalibrationData(timePointOverride) {
 // loops in the kinetics report branches. Returns [] when there are no coefficients.
 function buildCalibrationRegressionLine(xConc, coefficients, algo) {
     if (!coefficients || !xConc || xConc.length === 0) return [];
-    const xMin = Math.min(...xConc), xMax = Math.max(...xConc);
+    const xMin = arrayMin(xConc), xMax = arrayMax(xConc);
     const range = (xMax - xMin) || Math.abs(xMax) || 1;
     const pXMin = xMin - 0.1 * range, pXMax = xMax + 0.1 * range;
     const step = (pXMax - pXMin) / 149;
@@ -446,7 +446,7 @@ async function generateReport() {
                 ${isCalibrate ? `
                 <label style="display:block; margin:10px 0 5px;">Excel chart axis labels <span style="color:#888; font-weight:normal; font-size:0.8rem;">(editable later in Excel)</span></label>
                 <div style="display:flex; gap:10px; margin-bottom:6px;">
-                    <input id="swal-xlabel" class="swal2-input" placeholder="X-axis label" value="${_concenAxisLabel(AppState.metaData)}" style="margin:0; flex:1;">
+                    <input id="swal-xlabel" class="swal2-input" placeholder="X-axis label" value="${_attr(_concenAxisLabel(AppState.metaData))}" style="margin:0; flex:1;">
                     <input id="swal-ylabel" class="swal2-input" placeholder="Y-axis (auto per metric)" style="margin:0; flex:1;">
                 </div>
                 <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">Calibration charts export as native Excel charts. Leave Y blank to auto-label each chart with its metric.</div>` : ''}
@@ -643,8 +643,8 @@ async function generateReport() {
             const regressAlgo = algo;
 
             // Generate regression curve points
-            const xMin = Math.min(...dataPoint.x);
-            const xMax = Math.max(...dataPoint.x);
+            const xMin = arrayMin(dataPoint.x);
+            const xMax = arrayMax(dataPoint.x);
             const range = xMax - xMin;
             const plotXMin = xMin - 0.1 * range;
             const plotXMax = xMax + 0.1 * range;
@@ -769,7 +769,7 @@ async function generateReport() {
         derConSections.forEach((sec, idx) => {
             if (!sec.classList.contains('hidden')) {
                 const val = sec.querySelector('.der-con-value')?.innerText || "--";
-                concentrationResults += `<div style="margin-bottom:8px; font-size: 1.1rem;">Concentration (Source ${idx + 1}): <strong style="color:#2980b9;">${val} ${_reportConcenUnit(AppState.currentJSONcontent)}</strong></div>`;
+                concentrationResults += `<div style="margin-bottom:8px; font-size: 1.1rem;">Concentration (Source ${idx + 1}): <strong style="color:#2980b9;">${val} ${_escHtml(_reportConcenUnit(AppState.currentJSONcontent))}</strong></div>`;
             }
         });
 
@@ -990,8 +990,8 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
                 fits.push({ entity: dataPoint.metric, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
 
                 // Build regression line
-                const xMin  = Math.min(...dataPoint.x);
-                const xMax  = Math.max(...dataPoint.x);
+                const xMin  = arrayMin(dataPoint.x);
+                const xMax  = arrayMax(dataPoint.x);
                 const range = xMax - xMin;
                 const pXMin = xMin - 0.1 * range;
                 const pXMax = xMax + 0.1 * range;
@@ -1852,8 +1852,8 @@ async function finalizeReport() {
                         tempCanvas.height = 800;
                         const tempCtx = tempCanvas.getContext('2d');
 
-                        const plotXMin = Math.min(...xValues);
-                        const plotXMax = Math.max(...xValues);
+                        const plotXMin = arrayMin(xValues);
+                        const plotXMax = arrayMax(xValues);
                         const range = plotXMax - plotXMin;
                         const pXMin = plotXMin - 0.1 * range;
                         const pXMax = plotXMax + 0.1 * range;
@@ -2186,7 +2186,7 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
                 } catch (e) {
                     con = `ERR: ${e.message}`;
                 }
-                rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ${_reportConcenUnit(json)}</strong></div>`;
+                rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ${_escHtml(_reportConcenUnit(json))}</strong></div>`;
             }
             return `
                 <div class="report-derived-concentration" style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
@@ -2212,7 +2212,7 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
             } catch (e) {
                 con = `ERR: ${e.message}`;
             }
-            rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ${_reportConcenUnit(json)}</strong></div>`;
+            rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ${_escHtml(_reportConcenUnit(json))}</strong></div>`;
         }
 
         return `
@@ -2273,7 +2273,7 @@ function _normalizeTraces(renderData, traceIndices) {
             .map(row => measNumber(row[key]))
             .filter(v => v !== null);
         if (validVals.length === 0) continue;
-        const min = Math.min(...validVals);
+        const min = arrayMin(validVals);
         normalized.forEach((row, i) => {
             const raw = measNumber(renderData[i][key]);
             if (raw !== null) {
@@ -2602,8 +2602,8 @@ async function finalizeReportExcel() {
 
                         fits.push({ entity: niceMetric, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
 
-                        const pXMin = Math.min(...xVals) - 0.1 * (Math.max(...xVals) - Math.min(...xVals));
-                        const pXMax = Math.max(...xVals) + 0.1 * (Math.max(...xVals) - Math.min(...xVals));
+                        const pXMin = arrayMin(xVals) - 0.1 * (arrayMax(xVals) - arrayMin(xVals));
+                        const pXMax = arrayMax(xVals) + 0.1 * (arrayMax(xVals) - arrayMin(xVals));
                         const step  = (pXMax - pXMin) / 149;
                         const regLine = [];
                         for (let j = 0; j < 150; j++) {

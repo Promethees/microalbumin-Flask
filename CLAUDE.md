@@ -122,7 +122,7 @@ devtools/                  ← DEV ONLY: the --monitor performance monitor; neve
 - All routes go in blueprints under `src/routes/`. Never add one to `main.py`.
 - `@validate_json` (from `validators.py`) is mandatory on every POST route that accepts
   JSON. Documented exemption: `/download_event_logs` (GET+POST, validates inline).
-- Tests live in `tests/` (43 files). CI runs the whole suite on 3.12 before any build.
+- Tests live in `tests/` (45 files). CI runs the whole suite on 3.12 before any build.
 - **The dev monitor is a package, not a feature.** `--monitor` attaches `devtools/` (its own
   blueprint at `/__dev/monitor`, its own page, attach-time wrappers instead of production
   hooks). It never opens the serial port, 404s when off, and never ships — excluded in
@@ -169,6 +169,9 @@ devtools/                  ← DEV ONLY: the --monitor performance monitor; neve
   classic is a **generated** override layer in `style.css` (`tools/gen_classic_style.py`),
   not a second stylesheet. `isClassicUI()` gates the two JS differences. Standalone
   pages branch server-side instead. Bug fixes are shared by both styles. **§2.34**
+
+**Frontend data safety**
+- `_attr` for attribute values, `_esc` only inside inline-handler JS strings, and file-derived text is always escaped. Never `Math.min(...data)`; use `arrayMin`/`arrayMax`. A page load resyncs with a running session. **§2.39**
 
 **Content**
 - **UI localization:** 7 languages (`en`/`vi`/`zh`/`fr`/`ja`/`ru`/`ko`), one registry —

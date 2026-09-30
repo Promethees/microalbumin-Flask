@@ -162,8 +162,8 @@ function createRegressionDataset(xMax, xMin, analysis, label) {
 
 function getChartScales(xColumn, allYValues, labels) {
     const isSinglePoint = xColumn.length === 1;
-    const xMin = isSinglePoint ? xColumn[0] - 1 : Math.min(...xColumn);
-    const xMax = isSinglePoint ? xColumn[0] + 1 : Math.max(...xColumn);
+    const xMin = isSinglePoint ? xColumn[0] - 1 : arrayMin(xColumn);
+    const xMax = isSinglePoint ? xColumn[0] + 1 : arrayMax(xColumn);
     const xStepSize = isSinglePoint ? 0.5 : Number((xMax - xMin) / (xColumn.length - 1)).toFixed(4) || 1;
     const { yMin, yMax, yStepSize } = findYDimension(allYValues, labels[0]);
 

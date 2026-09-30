@@ -160,8 +160,8 @@ function averageDuplicates(xColumn, yColumn) {
         if (validValues.length > 0) {
             const avg = validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
             averagedY.push(avg);
-            minY.push(Math.min(...validValues));
-            maxY.push(Math.max(...validValues));
+            minY.push(arrayMin(validValues));
+            maxY.push(arrayMax(validValues));
 
             // Calculate standard deviation
             if (validValues.length > 1) {

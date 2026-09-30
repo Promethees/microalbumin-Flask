@@ -585,5 +585,6 @@
   "btn.select_plain": "Выбрать",
   "btn.delete_plain": "Удалить",
   "btn.edit_plain": "Изменить",
-  "btn.select_subject_plain": "Выбрать предмет"
+  "btn.select_subject_plain": "Выбрать предмет",
+  "cdc.reconnected": "Повторное подключение к текущему сеансу выполнено."
 }

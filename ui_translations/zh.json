@@ -585,5 +585,6 @@
   "btn.select_plain": "选择",
   "btn.delete_plain": "删除",
   "btn.edit_plain": "编辑",
-  "btn.select_subject_plain": "选择主题"
+  "btn.select_subject_plain": "选择主题",
+  "cdc.reconnected": "已重新连接到正在运行的会话。"
 }
