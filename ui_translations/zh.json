@@ -587,5 +587,7 @@
   "btn.edit_plain": "编辑",
   "btn.select_subject_plain": "选择主题",
   "cdc.reconnected": "已重新连接到正在运行的会话。",
-  "point.no_estimate": "source-{s} 在参考点附近没有有效读数。"
+  "point.no_estimate": "source-{s} 在参考点附近没有有效读数。",
+  "export.no_estimate_title": "参考点处没有读数",
+  "export.no_estimate_src": "以下源在参考点附近没有有效读数：{s}。请取消选择该源或选择其他参考点。"
 }

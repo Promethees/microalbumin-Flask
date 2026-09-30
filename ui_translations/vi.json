@@ -587,5 +587,7 @@
   "btn.edit_plain": "Sửa",
   "btn.select_subject_plain": "Chọn chủ đề",
   "cdc.reconnected": "Đã kết nối lại với phiên đang chạy.",
-  "point.no_estimate": "Không có giá trị đo hợp lệ gần điểm tham chiếu cho source-{s}."
+  "point.no_estimate": "Không có giá trị đo hợp lệ gần điểm tham chiếu cho source-{s}.",
+  "export.no_estimate_title": "Không có giá trị đo tại điểm tham chiếu",
+  "export.no_estimate_src": "Không có giá trị đo hợp lệ gần điểm tham chiếu cho nguồn: {s}. Hãy bỏ chọn nguồn đó hoặc chọn điểm tham chiếu khác."
 }

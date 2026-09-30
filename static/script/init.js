@@ -295,7 +295,7 @@ function updatePointEstimate() {
     } else {
         estValError.innerHTML = '';
         estValExp.innerHTML = `Estimated values at ${currExpTimePoint} ${timeUnitLabel} are: ${AppState.globalEstimatedValue
-                .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${_escHtml(AppState.globalAnalysis.meas_unit)}</span>`)
+                .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v == null || !isFinite(v) ? '—' : `${v.toFixed(4)} ${_escHtml(AppState.globalAnalysis.meas_unit)}`}</span>`)
                 .join(", ")
             }`;
     }

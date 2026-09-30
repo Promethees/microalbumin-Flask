@@ -1983,8 +1983,24 @@ function generatePointData() {
     const timePointMinutes = currExpTimePoint * getTimeUnitMultiplier(timeUnit) / getTimeUnitMultiplier('minutes');
 
     // globalEstimatedValue is always a per-source array (see updatePointEstimate);
-    // pick the selected sources in display order.
-    return getSelectedExportSources().map(src => {
+    // pick the selected sources in display order. A source can still be null
+    // when only the others have a reading near the reference point — refuse
+    // the export and name it, rather than throwing on .toFixed (§2.10).
+    const sources = getSelectedExportSources();
+    const missing = sources.filter(src => {
+        const v = AppState.globalEstimatedValue[src - 1];
+        return v == null || !isFinite(v);
+    });
+    if (missing.length) {
+        Swal.fire({
+            title: t('export.no_estimate_title', 'No reading at the reference point'),
+            text: t('export.no_estimate_src', 'No valid reading near the reference point for source: {s}. Deselect it or choose another reference point.').replace('{s}', missing.join(', ')),
+            icon: 'warning',
+            confirmButtonText: 'OK'
+        });
+        return null;
+    }
+    return sources.map(src => {
         const i = src - 1;
         return {
             estValue: AppState.globalEstimatedValue[i].toFixed(4),

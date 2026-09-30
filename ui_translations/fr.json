@@ -587,5 +587,7 @@
   "btn.edit_plain": "Modifier",
   "btn.select_subject_plain": "Sélectionner le sujet",
   "cdc.reconnected": "Reconnecté à la session en cours.",
-  "point.no_estimate": "Aucune lecture valide près du point de référence pour source-{s}."
+  "point.no_estimate": "Aucune lecture valide près du point de référence pour source-{s}.",
+  "export.no_estimate_title": "Aucune lecture au point de référence",
+  "export.no_estimate_src": "Aucune lecture valide près du point de référence pour la source : {s}. Désélectionnez-la ou choisissez un autre point de référence."
 }

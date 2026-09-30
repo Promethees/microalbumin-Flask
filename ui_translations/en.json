@@ -587,5 +587,7 @@
   "btn.edit_plain": "Edit",
   "btn.select_subject_plain": "Select subject",
   "cdc.reconnected": "Reconnected to the running session.",
-  "point.no_estimate": "No valid reading near the reference point for source-{s}."
+  "point.no_estimate": "No valid reading near the reference point for source-{s}.",
+  "export.no_estimate_title": "No reading at the reference point",
+  "export.no_estimate_src": "No valid reading near the reference point for source: {s}. Deselect it or choose another reference point."
 }

@@ -587,5 +587,7 @@
   "btn.edit_plain": "편집",
   "btn.select_subject_plain": "주제 선택",
   "cdc.reconnected": "실행 중인 세션에 다시 연결되었습니다.",
-  "point.no_estimate": "source-{s}의 기준점 근처에 유효한 측정값이 없습니다."
+  "point.no_estimate": "source-{s}의 기준점 근처에 유효한 측정값이 없습니다.",
+  "export.no_estimate_title": "기준점에 측정값이 없습니다",
+  "export.no_estimate_src": "다음 소스의 기준점 근처에 유효한 측정값이 없습니다: {s}. 선택을 해제하거나 다른 기준점을 선택하세요."
 }

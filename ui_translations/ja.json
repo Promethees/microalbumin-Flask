@@ -587,5 +587,7 @@
   "btn.edit_plain": "編集",
   "btn.select_subject_plain": "対象を選択",
   "cdc.reconnected": "実行中のセッションに再接続しました。",
-  "point.no_estimate": "source-{s} の参照点付近に有効な測定値がありません。"
+  "point.no_estimate": "source-{s} の参照点付近に有効な測定値がありません。",
+  "export.no_estimate_title": "参照点に測定値がありません",
+  "export.no_estimate_src": "ソース {s} の参照点付近に有効な測定値がありません。選択を解除するか、別の参照点を選んでください。"
 }

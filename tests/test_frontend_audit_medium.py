@@ -229,3 +229,40 @@ def test_point_mode_survives_a_source_with_no_reading_at_the_reference():
     assert r['error'] is None
     assert 'source-1' in r['msg']
     assert r['con'] == '—'
+
+
+# ---------------------------------------------------------------------------
+# data-handling.js:1968 / init.js:291 — one source's estimate being null (the
+# others fine) made Export throw on .toFixed and the estimate line fail.
+# ---------------------------------------------------------------------------
+
+PARTIAL_NULL_EST = PRELUDE + r"""
+const swals = [];
+const els = {};
+const el = id => (els[id] = els[id] || { id, innerHTML: '' });
+const ctx = {
+    AppState: { globalEstimatedValue: [0.5, null], numSources: 2, responseData: [], plotColors: ['a', 'b'],
+                globalAnalysis: { meas: 'Abs', meas_unit: 'AU' } },
+    Swal: { fire: o => swals.push(o) },
+    getValFloat: () => 30, getExpTimeUnit: () => 'seconds', getTimeUnitMultiplier: () => 1,
+    getSelectedExportSources: () => [1, 2],
+    getEstimatedValue: (d, tp, i) => (i === 1 ? 0.5 : null),
+    document: { getElementById: el },
+    t: (k, f) => f, _escHtml: s => String(s),
+};
+vm.createContext(ctx);
+vm.runInContext(FN('init.js', 'isNullOrArrayOfNull') + FN('init.js', 'updatePointEstimate') + FN('data-handling.js', 'generatePointData'), ctx);
+const errors = [];
+let data;
+try { data = ctx.generatePointData(); } catch (e) { errors.push('export: ' + e); }
+try { ctx.updatePointEstimate(); } catch (e) { errors.push('estimate: ' + e); }
+OUT({ errors, data, swal: swals.map(s => s.text), line: el('est-val-exp').innerHTML });
+"""
+
+
+def test_export_and_estimate_line_survive_one_null_source():
+    r = _node(PARTIAL_NULL_EST)
+    assert r['errors'] == []
+    assert r['data'] is None
+    assert len(r['swal']) == 1 and 'source: 2' in r['swal'][0]
+    assert '0.5000' in r['line'] and '[#S2] —' in r['line']
