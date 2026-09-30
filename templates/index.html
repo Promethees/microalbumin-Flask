@@ -498,8 +498,8 @@
                         <span id="base-name-error" class="error"></span>
                     </div>
                     <div id="timeout-control">
-                        <label data-i18n="cdc.timeout">Timeout: </label>
-                        <input type="checkbox" id="inf-timeout" data-i18n-hint="hint.inf_timeout" data-hint="Keep reading with no time limit until you press Stop"><span style="font-weight: bold;" data-i18n="cdc.infinite">Infinite</span></input>
+                        <label for="timeout" data-i18n="cdc.timeout">Timeout: </label>
+                        <input type="checkbox" id="inf-timeout" data-i18n-hint="hint.inf_timeout" data-hint="Keep reading with no time limit until you press Stop"><label for="inf-timeout" style="font-weight: bold;" data-i18n="cdc.infinite">Infinite</label></input>
                         <input type="number" id="timeout" data-i18n-aria="a11y.field.timeout" aria-label="Timeout value" value="" min="0" style="width: 5em;"></input>
                         <select id="timeout-unit" data-i18n-aria="a11y.field.timeout_unit" aria-label="Timeout unit">
                             {% for unit in range_input.units %}
@@ -508,7 +508,7 @@
                         </select>
                     </div>
                     <div id="interval-control">
-                        <label data-i18n="cdc.interval">Interval: </label>
+                        <label for="interval" data-i18n="cdc.interval">Interval: </label>
                         <input type="number" id="interval" data-i18n-aria="a11y.field.interval" aria-label="Interval value" value="" min="0" style="width: 5em;"></input>
                         <select id="interval-unit" data-i18n-aria="a11y.field.interval_unit" aria-label="Interval unit">
                             {% for unit in range_input.units %}
@@ -520,7 +520,7 @@
                     <div id="cdc-axis-control">
                         <input type="checkbox" id="cdc-axis-turn" onchange="onCdcAxisChange()"
                             data-i18n-hint="hint.cdc_axis_turn"
-                            data-hint="Record the first column as a Turn index (1, 2, 3 …) for point mode instead of a Timestamp in seconds. Remembered as your default."><span data-i18n="cdc.axis_turn">Record as Turns (1, 2, 3 …) instead of Timestamp</span></input>
+                            data-hint="Record the first column as a Turn index (1, 2, 3 …) for point mode instead of a Timestamp in seconds. Remembered as your default."><label for="cdc-axis-turn" data-i18n="cdc.axis_turn">Record as Turns (1, 2, 3 …) instead of Timestamp</label></input>
                     </div>
                     <div id="cdc-run-mode-control" class="hidden">
                         <label style="font-weight: bold;" data-i18n="cdc.run_mode">Run mode: </label>
@@ -529,7 +529,7 @@
                         <label data-i18n-hint="hint.run_mode_manual"
                             data-hint="Device stays idle; each press of &quot;Measure now&quot; records one Turn on demand. Runs until you press Stop."><input type="radio" name="cdc-run-mode" value="manual" onchange="onCdcRunModeChange()"><span data-i18n="cdc.run_mode_manual">Manual</span></label>
                     </div>
-                    <input type="checkbox" id="notify-me" data-i18n-hint="hint.notify_done" data-hint="Show a desktop notification when the reading finishes" checked><span data-i18n="cdc.notify_done">Notify me when Done</span></input>
+                    <input type="checkbox" id="notify-me" data-i18n-hint="hint.notify_done" data-hint="Show a desktop notification when the reading finishes" checked><label for="notify-me" data-i18n="cdc.notify_done">Notify me when Done</label></input>
                     <br />
                     <button id="run-script-btn" onclick="runScript()" class="blinking"
                         data-i18n="cdc.start_reading" data-i18n-hint="hint.start_reading"

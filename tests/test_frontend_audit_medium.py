@@ -1099,3 +1099,16 @@ def test_music_queue_title_plays_on_enter_and_transport_is_named():
         tag = src[src.index(f'id="{hid}"'):]
         tag = tag[:tag.index('>')]
         assert 'aria-label="${_escape(_t(' in tag, hid
+
+
+# ---------------------------------------------------------------------------
+# templates/index.html:532 (also 502, 519, 501, 510) — #notify-me,
+# #inf-timeout and #cdc-axis-turn sat beside a <span> with no <label>, and the
+# Timeout / Interval <label>s had no for=, so the text neither toggled nor
+# named its control.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('control', ['notify-me', 'inf-timeout', 'cdc-axis-turn', 'timeout', 'interval'])
+def test_reading_setup_controls_have_a_label(control):
+    html = (REPO / 'templates' / 'index.html').read_text(encoding='utf-8')
+    assert html.count(f'<label for="{control}"') == 1
