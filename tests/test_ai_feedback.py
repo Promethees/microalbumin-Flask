@@ -70,29 +70,29 @@ def test_thumbs_up_raises_weight_and_records_terms(feedback_dir):
 
 
 def test_thumbs_down_lowers_weight(feedback_dir):
-    ai_feedback.record_feedback('up', source='guide', guide_id='g', query='alpha bravo')
-    w = ai_feedback.record_feedback('down', source='guide', guide_id='g', query='alpha bravo')
+    ai_feedback.record_feedback('up', source='guide', guide_id='view_chart', query='alpha bravo')
+    w = ai_feedback.record_feedback('down', source='guide', guide_id='view_chart', query='alpha bravo')
     assert w == pytest.approx(ai_feedback._UP_STEP - ai_feedback._DOWN_STEP)
-    # A down-vote must not erase reinforced vocabulary.
-    assert 'alpha' in ai_feedback.learned_terms('g')
+    # B4: a down-vote forgets the vocabulary THAT query contributed.
+    assert 'alpha' not in ai_feedback.learned_terms('view_chart')
 
 
 def test_weight_is_clamped(feedback_dir):
     for _ in range(20):
-        ai_feedback.record_feedback('up', source='guide', guide_id='g', query='x')
-    assert ai_feedback.learned_bonus('g') == pytest.approx(ai_feedback._MAX_WEIGHT)
+        ai_feedback.record_feedback('up', source='guide', guide_id='view_chart', query='x')
+    assert ai_feedback.learned_bonus('view_chart') == pytest.approx(ai_feedback._MAX_WEIGHT)
     for _ in range(40):
-        ai_feedback.record_feedback('down', source='guide', guide_id='g', query='x')
-    assert ai_feedback.learned_bonus('g') == pytest.approx(ai_feedback._MIN_WEIGHT)
+        ai_feedback.record_feedback('down', source='guide', guide_id='view_chart', query='x')
+    assert ai_feedback.learned_bonus('view_chart') == pytest.approx(ai_feedback._MIN_WEIGHT)
 
 
 def test_weights_persist_to_disk(feedback_dir):
-    ai_feedback.record_feedback('up', source='guide', guide_id='g', query='persisted')
+    ai_feedback.record_feedback('up', source='guide', guide_id='view_chart', query='persisted')
     path = os.path.join(str(feedback_dir), 'ai_guide_weights.json')
     assert os.path.exists(path)
     with open(path, encoding='utf-8') as f:
         data = json.load(f)
-    assert data['g']['weight'] == pytest.approx(ai_feedback._UP_STEP)
+    assert data['view_chart']['weight'] == pytest.approx(ai_feedback._UP_STEP)
 
 
 # ── Matcher integration ──────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ def test_disabling_feedback_ignores_learned_weights(feedback_dir):
 # ── Stats / clear ────────────────────────────────────────────────────────────
 
 def test_stats_counts(feedback_dir):
-    ai_feedback.record_feedback('up', source='guide', guide_id='g1', query='alpha beta')
+    ai_feedback.record_feedback('up', source='guide', guide_id='export_data', query='alpha beta')
     ai_feedback.record_feedback('down', source='llm', query='x')
     s = ai_feedback.stats()
     assert s['ratings'] == 2 and s['up'] == 1 and s['down'] == 1
@@ -166,13 +166,13 @@ def test_stats_counts(feedback_dir):
 
 
 def test_clear_removes_both_files(feedback_dir):
-    ai_feedback.record_feedback('up', source='guide', guide_id='g', query='persisted word')
+    ai_feedback.record_feedback('up', source='guide', guide_id='view_chart', query='persisted word')
     log = os.path.join(str(feedback_dir), 'ai_feedback.jsonl')
     weights = os.path.join(str(feedback_dir), 'ai_guide_weights.json')
     assert os.path.exists(log) and os.path.exists(weights)
     ai_feedback.clear()
     assert not os.path.exists(log) and not os.path.exists(weights)
-    assert ai_feedback.learned_bonus('g') == 0.0
+    assert ai_feedback.learned_bonus('view_chart') == 0.0
     assert ai_feedback.stats()['ratings'] == 0
 
 
@@ -222,7 +222,7 @@ def test_feedback_stats_route(client):
 
 def test_feedback_reset_route(client, tmp_path):
     client.post('/ai/feedback', json={
-        'rating': 'up', 'source': 'guide', 'guide_id': 'g', 'query': 'word here'})
+        'rating': 'up', 'source': 'guide', 'guide_id': 'view_chart', 'query': 'word here'})
     assert os.path.exists(os.path.join(str(tmp_path), 'ai_guide_weights.json'))
     rv = client.post('/ai/feedback/reset')
     assert rv.status_code == 200
@@ -240,9 +240,57 @@ def test_feedback_route_respects_opt_out(client, tmp_path):
     with open(os.path.join(str(tmp_path), 'user_settings.json'), 'w', encoding='utf-8') as f:
         json.dump({'ai_feedback_enabled': False}, f)
     rv = client.post('/ai/feedback', json={
-        'rating': 'up', 'source': 'guide', 'guide_id': 'g', 'query': 'x'})
+        'rating': 'up', 'source': 'guide', 'guide_id': 'view_chart', 'query': 'x'})
     assert rv.status_code == 200
     assert rv.get_json().get('recorded') is False
     # Nothing was written.
     assert not os.path.exists(os.path.join(str(tmp_path), 'ai_guide_weights.json'))
     assert not os.path.exists(os.path.join(str(tmp_path), 'ai_feedback.jsonl'))
+
+
+
+# ── B4: learning cannot drift or hijack ──────────────────────────────────────
+
+def test_down_vote_keeps_terms_from_other_queries(feedback_dir):
+    ai_feedback.record_feedback('up', source='guide', guide_id='view_chart', query='zoom graph')
+    ai_feedback.record_feedback('up', source='guide', guide_id='view_chart', query='plot window')
+    ai_feedback.record_feedback('down', source='guide', guide_id='view_chart', query='plot window')
+    terms = ai_feedback.learned_terms('view_chart')
+    assert 'zoom' in terms and 'graph' in terms
+    assert 'plot' not in terms and 'window' not in terms
+
+
+@pytest.mark.parametrize("raw, expected", [
+    (1e9, 2.0), (-1e9, -3.0), (float('nan'), 0.0), (float('inf'), 0.0), ("junk", 0.0), (0.5, 0.5),
+])
+def test_learned_bonus_is_clamped_on_read(feedback_dir, raw, expected):
+    with open(os.path.join(str(feedback_dir), 'ai_guide_weights.json'), 'w', encoding='utf-8') as f:
+        f.write(json.dumps({'view_chart': {'weight': raw, 'terms': []}}, allow_nan=True))
+    ai_feedback.reload()
+    assert ai_feedback.learned_bonus('view_chart') == pytest.approx(expected)
+
+
+def test_unicode_terms_are_kept_whole(feedback_dir):
+    ai_feedback.record_feedback('up', source='guide', guide_id='export_data', query='exporter les données')
+    terms = ai_feedback.learned_terms('export_data')
+    assert 'exporter' in terms and 'données' in terms
+    assert 'donn' not in terms and 'les' not in terms
+
+
+def test_unknown_guide_id_changes_nothing(feedback_dir):
+    w = ai_feedback.record_feedback('up', source='guide', guide_id='no_such_guide', query='anything here')
+    assert w is None
+    assert ai_feedback.learned_bonus('no_such_guide') == 0.0
+    assert not os.path.exists(os.path.join(str(feedback_dir), 'ai_guide_weights.json'))
+
+
+def test_learned_terms_alone_cannot_pass_the_gate(feedback_dir, monkeypatch):
+    import ai_assistant
+    monkeypatch.setattr(ai_feedback, 'is_enabled', lambda: True)
+    with open(os.path.join(str(feedback_dir), 'ai_guide_weights.json'), 'w', encoding='utf-8') as f:
+        json.dump({'merge_files': {'weight': 2.0, 'terms': ['chart']}}, f)
+    ai_feedback.reload()
+    ctx = {'mode': 'kinetics', 'data_loaded': True, 'app_started': True}
+    best, _score = ai_assistant._match_guide_example('zoom the chart', ctx, 'en')
+    assert best is None or best['id'] != 'merge_files'
+    assert ai_assistant.resolve_guide('zoom the chart', ctx, 'en')[0] != 'merge_files'

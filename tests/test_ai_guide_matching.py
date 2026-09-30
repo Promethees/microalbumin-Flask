@@ -697,3 +697,39 @@ def test_ai_match_route_empty_object_body_defers(client):
     data = resp.get_json()
     assert data['status'] == 'success'
     assert data['fires'] is False
+
+
+# ── B3: shared scoring (identical code on online) ────────────────────────────
+
+def test_same_content_keywords_count_once():
+    q = "concentration please"
+    qc = ai_assistant._content_words(q)
+    one = ai_assistant._score_guide_keywords(["get concentration"], q, qc)[0]
+    many = ai_assistant._score_guide_keywords(
+        ["get concentration", "find concentration", "show concentration", "how to get concentration"], q, qc)[0]
+    assert one == many > 0
+
+
+def test_mode_bonus_needs_a_baseline_hit():
+    _best, score, _ = ai_assistant._match_guide_detail(
+        "how do I change the concentration unit", KIN_DATA, "en")
+    assert score < ai_assistant._NAV_LAUNCH_SCORE + 2   # no +2 kinetics bonus on a 0.8 graze
+
+
+@pytest.mark.parametrize("kw, query, hit", [
+    ("merge", "how to merge files", True),
+    ("merge", "how to unmerge files", False),
+    ("merge", "how to un-merge files", False),
+    ("export", "re-export data", False),
+    ("select", "deselect the file", False),
+    ("calibrat", "calibration mode", True),
+    ("mode", "model fitting", False),
+    ("校准", "如何校准", True),
+])
+def test_phrase_hit_boundaries(kw, query, hit):
+    assert ai_assistant._phrase_hit(kw, query) is hit
+
+
+def test_strong_launch_needs_a_multi_word_hit():
+    assert ai_assistant._should_launch_guide("switch to point mode", 9.0, strong_hit=False) is False
+    assert ai_assistant._should_launch_guide("switch to point mode", 1.6, strong_hit=True) is True

@@ -3,6 +3,7 @@ from __future__ import annotations
 import difflib
 import json
 import os
+import re
 from file_path import DATA_ROOT, validate_in_data_root, validate_in_json_root
 from file import get_file_list
 import state
@@ -136,7 +137,8 @@ def _guide_vocabulary(examples: list) -> frozenset:
     vocab = set()
     for ex in examples:
         for kw in ex.get("queries", []):
-            vocab |= _content_words(kw)
+            if isinstance(kw, str):
+                vocab |= _content_words(kw)
     return frozenset(vocab)
 
 
@@ -157,83 +159,206 @@ def _canonicalize_content(content: frozenset, vocab: frozenset) -> frozenset:
     return frozenset(_nearest_keyword_word(w, vocab) for w in content)
 
 
-def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
-    kw_lower = kw.lower()
+# ── Keyword scoring (shared verbatim by main and online — keep in lockstep) ───
+# Work-list items A6/A7 (online) and B3 (main). Three rules stop the score
+# inflation that let an unrelated statement launch a guide at 6.0:
+#
+#   1. A direct phrase hit must sit on word boundaries and be a real word
+#      (>= 4 chars, >= 2 for CJK, not a stop-word). Plain substring matching let
+#      overlay keywords such as "le"/"de" hit inside "coefficient"/"mode", and
+#      "merge" hit inside "unmerge". The leading boundary also refuses a
+#      hyphenated negation/derivation prefix ("un-merge", "re-export", "de-select");
+#      short keywords (< 6 chars) must end on a boundary too, longer ones may
+#      continue as a stem ("calibrat" → "calibration").
+#   2. Each distinct set of content words counts ONCE per guide
+#      (_score_guide_keywords), so ten paraphrases of "concentration" no
+#      longer sum to 8.
+#   3. The mode bonus is added only on top of a solid baseline (see the matcher).
+
+def _phrase_hit(kw_lower: str, q_lower: str) -> bool:
+    """True when kw_lower occurs in q_lower as a phrase on word boundaries."""
+    if _is_cjk(kw_lower):
+        return kw_lower in q_lower
+    pattern = r"(?<![\w-])" + re.escape(kw_lower)
+    if len(kw_lower) < 6:
+        pattern += r"(?!\w)"
+    return re.search(pattern, q_lower) is not None
+
+
+def _phrase_tokens(text: str) -> frozenset:
+    """Non-stop-word tokens of >= 2 chars (a CJK run counts as one token).
+
+    Unlike _content_words (a 4-char floor, for fuzzy matching), short real
+    words such as 'app', 'log' or 'csv' count here: they make a phrase more
+    specific ('app settings' vs 'settings', 'log data' vs 'data').
+    """
+    out = set()
+    for w in text.lower().split():
+        w = w.strip(_EDGE_PUNCT)
+        if len(w) >= 2 and w not in _STOPWORDS:
+            out.add(w)
+    return frozenset(out)
+
+
+def _same_word(a: str, b: str) -> bool:
+    """Equal, or equal up to an English plural 's' ('file' / 'files')."""
+    return a == b or a == b + "s" or b == a + "s"
+
+
+def _same_token_set(a: frozenset, b: frozenset) -> bool:
+    return all(any(_same_word(x, y) for y in b) for x in a) and all(
+        any(_same_word(x, y) for x in a) for y in b
+    )
+
+
+def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset):
+    """(score, dedup_key, strong) for one keyword against the query."""
+    kw_lower = kw.lower().strip()
     min_len = 2 if _is_cjk(kw_lower) else 4
     kw_content = _content_words(kw_lower)
-    # Exact contiguous phrase match — weighted by specificity (content-word
-    # count) so one long, specific phrase ('export data to report') outranks a
-    # pile of short generic keywords summed from a less-relevant example.
-    if kw_lower in q_lower and len(kw_lower) >= min_len and kw_lower not in _STOPWORDS:
-        return 1.0 + 0.8 * max(0, len(kw_content) - 1)
+    kw_tokens = _phrase_tokens(kw_lower)
+    specificity = 1.0 + 0.8 * max(0, len(kw_tokens) - 1)
+    # 1. Exact phrase on word boundaries — weighted by specificity so one long,
+    #    specific phrase ('export data to report') outranks a pile of short
+    #    generic keywords.
+    if len(kw_lower) >= min_len and kw_lower not in _STOPWORDS and _phrase_hit(kw_lower, q_lower):
+        key = kw_tokens or frozenset([kw_lower])
+        return specificity, key, len(kw_tokens) >= 2 or _is_cjk(kw_lower)
+    # 2. Full coverage: the query says exactly what the keyword says, stop-words
+    #    and plurals aside ('how to calibrate' vs the keyword 'how calibrate').
+    #    A query that says MORE ('change the concentration unit' vs 'get
+    #    concentration') falls through to the partial scores below.
+    if kw_tokens and q_tokens and _same_token_set(kw_tokens, q_tokens):
+        return specificity, kw_tokens, len(kw_tokens) >= 2
     if not kw_content:
-        return 0.0
+        return 0.0, None, False
+    # 3. Partial (fuzzy, prefix-aware) content-word matches.
     if len(kw_content) == 1:
         word = next(iter(kw_content))
         if len(word) < 5:
-            return 0.0
-        return 0.8 if any(_token_match(word, qw) for qw in q_content) else 0.0
-    if all(
-        any(_token_match(kw_word, qw) for qw in q_content)
-        for kw_word in kw_content
-    ):
-        return 0.8
+            return 0.0, None, False
+        if any(_token_match(word, qw) for qw in q_content):
+            return 0.8, kw_content, False
+        return 0.0, None, False
+    if all(any(_token_match(kw_word, qw) for qw in q_content) for kw_word in kw_content):
+        return 0.8, kw_content, True
+    return 0.0, None, False
+
+
+def _score_keyword(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset = None) -> float:
+    if q_tokens is None:
+        q_tokens = _phrase_tokens(q_lower)
+    return _keyword_hit(kw, q_lower, q_content, q_tokens)[0]
+
+
+def _score_guide_keywords(keywords, q_lower: str, q_content: frozenset,
+                          q_tokens: frozenset = None) -> tuple[float, bool, int]:
+    """Sum a guide's keyword scores, counting each distinct word set once.
+
+    Returns (score, strong_hit, hits). ``strong_hit`` is True when at least one
+    hit came from a multi-word keyword (exact phrase, full coverage, or all its
+    content words present) or a CJK phrase — the evidence a no-"how do I"
+    launch needs (see _should_launch_guide); a single generic word
+    ("concentration", "chart") never counts as strong on its own. ``hits`` (the
+    raw number of matching keywords) only breaks ties between guides.
+    """
+    if q_tokens is None:
+        q_tokens = _phrase_tokens(q_lower)
+    best: dict = {}
+    strong = False
+    hits = 0
+    for kw in keywords or ():
+        if not isinstance(kw, str) or not kw.strip():
+            continue
+        sc, key, is_strong = _keyword_hit(kw, q_lower, q_content, q_tokens)
+        if sc <= 0:
+            continue
+        hits += 1
+        strong = strong or is_strong
+        if sc > best.get(key, 0.0):
+            best[key] = sc
+    return sum(best.values()), strong, hits
+
+
+def _condition_excludes(conditions: dict, mode: str) -> bool:
+    """True when a guide's hard ``conditions`` rule it out in ``mode``."""
+    if conditions.get("mode") and mode != conditions["mode"]:
+        return True
+    if conditions.get("mode_not") and mode == conditions["mode_not"]:
+        return True
+    if conditions.get("mode_in") is not None and mode not in conditions["mode_in"]:
+        return True
+    if conditions.get("mode_not_in") and mode in conditions["mode_not_in"]:
+        return True
+    return False
+
+
+def _mode_bonus(conditions: dict, mode: str) -> float:
+    if conditions.get("mode") and mode == conditions["mode"]:
+        return 2.0
+    if conditions.get("mode_in") and mode in conditions["mode_in"]:
+        return 2.0
+    if conditions.get("mode_not"):
+        return 1.0
     return 0.0
 
+def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
+    """Best guide for ``query`` as (example, score, strong_hit), or (None, 0, False).
 
-def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tuple[dict, float] | tuple[None, float]:
+    The relevance gate (baseline >= 0.1) and the mode bonus look at the
+    BASELINE keyword score only (B3/B4): neither a guide's mode condition nor
+    its learned 👍 vocabulary/weight can lift a guide the query never
+    mentions. Learned terms and the (clamped) learned weight are added only
+    after the gate.
+    """
     examples = _load_guide_examples(lang)
     if not examples:
-        return None, 0
+        return None, 0, False
 
-    q_lower = query.lower()
-    q_content = _canonicalize_content(_content_words(q_lower), _guide_vocabulary(examples))
+    q_lower = (query or "").lower()
+    vocab = _guide_vocabulary(examples)
+    q_content = _canonicalize_content(_content_words(q_lower), vocab)
+    q_tokens = _canonicalize_content(_phrase_tokens(q_lower), vocab)
     mode = (ui_context or {}).get("mode", "")
     best_score: float = 0
+    best_hits = 0
     best = None
+    best_strong = False
     # Learned feedback weights apply only while the opt-out toggle is on. Read it
     # once here, never inside the per-guide loop below.
     fb_on = ai_feedback.is_enabled()
 
     for ex in examples:
-        conditions = ex.get("conditions", {})
-        if conditions.get("mode") and mode != conditions["mode"]:
+        conditions = ex.get("conditions") or {}
+        if _condition_excludes(conditions, mode):
             continue
-        if conditions.get("mode_not") and mode == conditions["mode_not"]:
-            continue
-        if conditions.get("mode_in") is not None and mode not in conditions["mode_in"]:
-            continue
-
         ex_id = ex.get("id", "")
-        keywords = ex.get("queries", [])
-        score: float = sum(_score_keyword(kw, q_lower, q_content) for kw in keywords)
-        # Reinforced vocabulary from user 👍 feedback adds to the baseline signal,
-        # so phrasings the user confirmed for this guide score higher next time.
+        baseline, strong, hits = _score_guide_keywords(ex.get("queries", []), q_lower, q_content, q_tokens)
+        if baseline < 0.1:
+            continue
+        score = baseline
+        if baseline >= _NAV_LAUNCH_SCORE:
+            score += _mode_bonus(conditions, mode)
         if fb_on:
             learned = ai_feedback.learned_terms(ex_id)
             if learned:
-                score += sum(_score_keyword(kw, q_lower, q_content) for kw in learned)
-        if score < 0.1:
-            continue
-        if conditions.get("mode") and mode == conditions["mode"]:
-            score += 2
-        elif conditions.get("mode_in") and mode in conditions["mode_in"]:
-            score += 2
-        elif conditions.get("mode_not"):
-            score += 1
-
-        # Learned coefficient: 👍 lifts this guide, 👎 suppresses it. Applied AFTER
-        # the baseline-relevance gate so a positive weight can never make an
-        # unrelated guide (zero keyword signal) fire; a negative weight can push a
-        # genuine match below the launch threshold (effectively un-firing it).
-        if fb_on:
+                learned_score, _, _ = _score_guide_keywords(learned, q_lower, q_content, q_tokens)
+                score += learned_score
+            # 👍 lifts this guide, 👎 suppresses it (clamped in ai_feedback); a
+            # negative weight can push a genuine match below the launch gate.
             score += ai_feedback.learned_bonus(ex_id)
 
-        if score > best_score:
-            best_score = score
-            best = ex
+        # Ties go to the guide with more matching keywords (breadth of
+        # evidence) — dedup no longer lets that breadth inflate the score.
+        if (score, hits) > (best_score, best_hits):
+            best_score, best_hits, best, best_strong = score, hits, ex, strong
 
-    return (best, best_score) if best_score >= 0.1 else (None, 0)
+    return (best, best_score, best_strong) if best_score >= 0.1 else (None, 0, False)
+
+
+def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tuple[dict, float] | tuple[None, float]:
+    best, score, _strong = _match_guide_detail(query, ui_context, lang)
+    return best, score
 
 
 _FILE_SELECT_STEP = {
@@ -1742,6 +1867,9 @@ _IN_SCOPE_KEYWORDS = {
     "how does this", "introduction", "guide me", "show me how",
     "setting", "language", "concenunit", "data folder", "data root", "subfolder",
     "rename", "feedback",
+    # App vocabulary that used to be refused because an out-of-scope word hid
+    # inside it ("selection" ⊃ "election") or shared a word ("stock solution").
+    "selection", "select", "time point", "source",
     # Multilingual inclusions
     "hiệu chuẩn", "động học", "báo cáo", "nồng độ", "kết quả", # vi
     "校准", "动力学", "测量", "报告", "浓度", # zh
@@ -1752,19 +1880,31 @@ _IN_SCOPE_KEYWORDS = {
 
 # Keywords that strongly indicate off-topic content
 _OUT_OF_SCOPE_KEYWORDS = {
-    "recipe", "cooking", "weather", "stock", "bitcoin", "crypto", "football",
+    "recipe", "cooking", "weather", "stock market", "stock price", "bitcoin", "crypto", "football",
     "movie", "music", "song", "game", "politics", "election", "president",
     "write a poem", "tell me a joke", "tell a story", "translate this",
     "who is", "what is the capital", "how old is", "population of",
 }
 
 
+def _scope_kw_hit(kw: str, q: str) -> bool:
+    """A scope keyword occurs in q starting on a word boundary (CJK: anywhere).
+
+    Only the START is anchored: in-scope entries include stems ("calibrat") and
+    plurals must still hit ("movies"), but a keyword may no longer match from the
+    middle of a word ("election" inside "selection"). Same code as online.
+    """
+    if _is_cjk(kw):
+        return kw in q
+    return re.search(r"(?<!\w)" + re.escape(kw), q) is not None
+
+
 def _is_out_of_scope(query: str) -> bool:
     """Fast keyword pre-filter. Returns True only for clearly off-topic queries."""
-    q = query.lower()
-    if any(kw in q for kw in _IN_SCOPE_KEYWORDS):
+    q = (query or "").lower()
+    if any(_scope_kw_hit(kw, q) for kw in _IN_SCOPE_KEYWORDS):
         return False
-    if any(kw in q for kw in _OUT_OF_SCOPE_KEYWORDS):
+    if any(_scope_kw_hit(kw, q) for kw in _OUT_OF_SCOPE_KEYWORDS):
         return True
     return False
 
@@ -1880,13 +2020,17 @@ def _is_tour_request(query: str) -> bool:
     return any(marker in q for marker in _TOUR_MARKERS)
 
 
-def _should_launch_guide(query: str, score: float) -> bool:
+def _should_launch_guide(query: str, score: float, strong_hit: bool = True) -> bool:
     """Decide whether a matched guide example should be short-circuited to the UI.
 
     Fires on (a) an explicit full-tour request with any usable match, (b) a
     navigation/how-to phrasing backed by at least one solid keyword hit, or
-    (c) a strong keyword match that is not a conceptual question. Conceptual
-    questions always fall through to the LLM.
+    (c) a strong keyword match that is not a conceptual question AND rests on
+    at least one multi-word / phrase hit (``strong_hit``, from
+    _score_guide_keywords). Without (c)'s phrase requirement a statement such as
+    "my concentration results look too high" launched a guide on the single
+    word "concentration" plus the mode bonus. Conceptual questions always fall
+    through to the LLM.
 
     Tour and nav intent are checked before the conceptual gate so that precise
     phrasings like "how do i" take priority over the broader "how do" conceptual
@@ -1898,7 +2042,7 @@ def _should_launch_guide(query: str, score: float) -> bool:
         return True
     if _is_conceptual(query):
         return False
-    return score >= _STRONG_MATCH_SCORE
+    return score >= _STRONG_MATCH_SCORE and strong_hit
 
 
 def resolve_guide(query: str, ui_context: dict = None, language: str = "en"):
@@ -1930,8 +2074,8 @@ def resolve_guide(query: str, ui_context: dict = None, language: str = "en"):
         return None, None
     if not query or _is_greeting(query) or _is_out_of_scope(query):
         return None, None
-    matched, score = _match_guide_example(query, ui_context, language)
-    if not matched or not _should_launch_guide(query, score):
+    matched, score, strong = _match_guide_detail(query, ui_context, language)
+    if not matched or not _should_launch_guide(query, score, strong):
         return None, None
     steps = _format_fewshot_hint(matched, ui_context, language, steps_only=True)
     return matched["id"], steps
@@ -2028,8 +2172,8 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
         if parts:
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
 
-    matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
-    if matched and _should_launch_guide(last_user_query, match_score):
+    matched, match_score, strong = _match_guide_detail(last_user_query, ui_context or {}, language)
+    if matched and _should_launch_guide(last_user_query, match_score, strong):
         steps = _format_fewshot_hint(matched, ui_context or {}, language, steps_only=True)
         yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
         yield {"type": "guide", "guide_action": {"custom_steps": steps}}

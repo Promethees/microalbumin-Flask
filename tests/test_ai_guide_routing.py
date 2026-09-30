@@ -117,52 +117,14 @@ def context_for(example: dict) -> dict:
 # keyword lists or thresholds. "loses to X" means X outscored the guide that
 # lists the query; "loses to None" means nothing cleared the 0.1 baseline gate.
 KNOWN_MISROUTES = {
-    ("stop_device", "end measurement"):
-        "loses to measurement_guide (1.6): 'measurement' is that guide's own keyword and 'end' is not a stop_device keyword",
-    ("view_log", "log"):
-        "loses to None (0.0): 'log' is 3 chars, under the 4-char content-word floor in _content_words",
-    ("view_log", "measurement log"):
-        "loses to measurement_guide (1.6): the 'measurement' half outweighs the 3-char 'log'",
-    ("calibrate_kinetics_workflow", "calibrate kinetics"):
-        "loses to nav_calibrate_mode (2.6): its mode_not:calibrate boost (+1) beats the workflow guide",
-    ("calibrate_point_workflow", "calibrate point"):
-        "loses to nav_calibrate_mode (2.6): same mode_not:calibrate boost",
-    ("build_turn_calibration", "calibrate turns"):
-        "loses to nav_calibrate_mode (2.6): same mode_not:calibrate boost",
-    ("build_turn_calibration", "concentration per turn"):
-        "loses to concentration_calc_generic (4.0): 'concentration' is that guide's core keyword",
-    ("create_calibration_curve_workflow", "how to create calibrated curve"):
-        "loses to nav_calibrate_mode (2.6): same mode_not:calibrate boost",
-    ("create_calibration_curve_workflow", "how to calibrate from data"):
-        "loses to nav_calibrate_mode (2.6): same mode_not:calibrate boost",
     ("measurement_guide", "start measuring data"):
         "loses to start_device (2.6): 'start' phrases are start_device's specialty",
-    ("generate_report_dialog", "what to enter in the report window"):
-        "loses to window_size (2.8): the incidental word 'window' matches the analysis-window guide",
-    ("split_sources", "separate chart"):
-        "loses to view_chart (1.8): 'chart' is view_chart's core keyword",
-    ("set_analysis_range", "time window"):
-        "loses to set_timeout (2.4): 'time' matches the recording-timeout guide",
-    ("set_analysis_range", "start time"):
-        "loses to set_timeout (2.4): same 'time' collision",
-    ("set_analysis_range", "end time"):
-        "loses to set_timeout (2.4): same 'time' collision",
     ("live_view_inactive", "browse data folder"):
         "loses to navigate_directory (2.6): 'folder'/'browse' are the directory guide's keywords",
     ("live_view_inactive", "open data folder"):
         "loses to navigate_directory (2.6): same folder-navigation collision",
-    ("clear_logs", "delete log"):
-        "loses to delete_file (1.6): 'delete' outweighs the 3-char 'log'",
-    ("deselect_file", "unselect file"):
-        "loses to select_file (1.8): _token_match deliberately refuses the 'un-' prefix, leaving only 'file'",
-    ("deselect_file", "unload file"):
-        "loses to select_file (1.8): same, only the generic 'file' scores",
     ("expand_collapse_analyses", "show all charts"):
         "loses to view_chart (1.8): 'charts' is view_chart's core keyword",
-    ("app_settings", "default timeout setting"):
-        "loses to set_timeout (4.4): the feature guide outranks the settings-panel guide for its own noun",
-    ("app_settings", "default split sources"):
-        "loses to split_sources (2.6): same feature-vs-settings collision",
     ("save_range_csv", "cut data to range"):
         "loses to set_analysis_range (1.8): 'cut data' is that guide's own keyword",
 
@@ -196,12 +158,10 @@ KNOWN_MISROUTES = {
         "loses to concentration_calc_kinetics (6.2): same mode-variant boost",
     ("concentration_calc_generic", "show concentration"):
         "loses to concentration_calc_kinetics (6.2): same mode-variant boost",
-    ("app_settings", "concentration unit setting"):
-        "loses to concentration_calc_kinetics (6.0): 'concentration' is that guide's core keyword in every real mode",
     ("app_settings", "change window size default"):
         "loses to window_size (7.2) in kinetics: the feature guide outranks the settings panel for its own noun (app_settings wins at 3.4 in the other three modes)",
-    ("save_range_csv", "save time window"):
-        "loses to window_size (2.8) in kinetics: 'window' pulls to the analysis-window guide (save_range_csv wins at 2.6 in the other three modes)",
+    ("create_calibration_curve_workflow", "build calibration from kinetics"):
+        "loses to calibrate_kinetics_workflow (2.6): 'kinetics' + 'calibration' is that guide's own phrase once duplicate keywords stop summing (B3)",
 }
 
 
@@ -324,17 +284,27 @@ def _route(query, ctx=NAV_CTX):
 def test_learned_weights_can_re_route_when_enabled(monkeypatch):
     """The isolation fixture is load-bearing: prove feedback CAN move routing.
 
-    Simulates a machine where the user thumbed 'stop measuring' up on the app
-    tour: reinforced terms give app_introduction a baseline score and the learned
-    coefficient carries it past the real guide. Without the module fixture this
-    is what a developer's own ai_guide_weights.json could do to these tests.
+    Simulates a machine where the user thumbed "end measurement" up on the
+    measurement guide: both guides have a baseline keyword hit for the query,
+    and the learned coefficient carries measurement_guide past stop_device.
+    Without the module fixture this is what a developer's own
+    ai_guide_weights.json could do to these tests.
     """
+    monkeypatch.setattr(ai_feedback, "is_enabled", lambda: True)
+    monkeypatch.setattr(ai_feedback, "learned_bonus",
+                        lambda gid: 2.0 if gid == "measurement_guide" else 0.0)
+    assert _route("end measurement") == "measurement_guide"
+
+
+def test_learned_terms_cannot_create_a_baseline(monkeypatch):
+    """B4: learned vocabulary alone never lifts a guide the query does not
+    mention — a 👍 on 'stop measuring' for the app tour cannot hijack it."""
     monkeypatch.setattr(ai_feedback, "is_enabled", lambda: True)
     monkeypatch.setattr(ai_feedback, "learned_terms",
                         lambda gid: ["stop measuring"] if gid == "app_introduction" else [])
     monkeypatch.setattr(ai_feedback, "learned_bonus",
                         lambda gid: 3.0 if gid == "app_introduction" else 0.0)
-    assert _route("stop measuring") == "app_introduction"
+    assert _route("stop measuring") == "stop_device"
 
 
 def test_routing_ignores_learned_weights(monkeypatch):
@@ -355,3 +325,38 @@ def test_weights_file_is_never_read_during_routing(monkeypatch):
     monkeypatch.setattr(ai_feedback, "learned_terms", _boom)
     monkeypatch.setattr(ai_feedback, "learned_bonus", _boom)
     assert _route("stop measuring") == "stop_device"
+
+
+# ── B3: statements and look-alike words must not launch a guide ──────────────
+# (query, context, allowed guide ids — empty means "no launch").
+
+KIN_DATA = {"mode": "kinetics", "data_loaded": True, "app_started": True}
+REPORT_CTX = {"mode": "report", "data_loaded": False, "app_started": True}
+
+NEGATIVE_PROBES = [
+    ("my concentration results look too high", KIN_DATA, set()),
+    ("concentration is negative for source 2", KIN_DATA, set()),
+    ("my chart is empty", KIN_DATA, set()),
+    ("how to unmerge files", KIN_DATA, set()),
+    ("how to un-merge files", KIN_DATA, set()),
+    ("how to unexport data", KIN_DATA, set()),
+    ("how do I change the concentration unit", KIN_DATA, {"app_settings"}),
+    ("how do I delete a report subject", KIN_DATA, {"report_subject_management"}),
+]
+
+
+@pytest.mark.parametrize("query, ctx, allowed", NEGATIVE_PROBES,
+                         ids=[p[0] for p in NEGATIVE_PROBES])
+def test_negative_probes_do_not_launch_the_wrong_guide(query, ctx, allowed):
+    gid, _steps = ai_assistant.resolve_guide(query, ctx, "en")
+    assert gid is None or gid in allowed, f"{query!r} launched {gid!r}"
+
+
+def test_delete_report_subject_in_report_mode_reaches_its_guide():
+    gid, _ = ai_assistant.resolve_guide("how do I delete a report subject", REPORT_CTX, "en")
+    assert gid == "report_subject_management"
+
+
+@pytest.mark.parametrize("query", ["how to calibrate", "how do I export?", "switch to point mode", "app settings"])
+def test_positive_probes_still_launch(query):
+    assert ai_assistant.resolve_guide(query, KIN_DATA, "en")[0]

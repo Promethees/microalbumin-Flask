@@ -20,6 +20,7 @@ preserved across in-app updates (see `update_service._PRESERVE`).
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import threading
@@ -43,10 +44,10 @@ _MAX_WEIGHT = 2.0
 _MIN_WEIGHT = -3.0
 _MAX_TERMS = 12
 
-# Reinforced-vocabulary extraction: keep reasonably specific content words only,
-# so a 👍 doesn't teach a guide to fire on filler. CJK queries yield no ASCII
-# tokens here (the weight nudge still applies to them).
-_TOKEN_RE = re.compile(r"[a-z0-9]+")
+# Reinforced-vocabulary extraction: the matcher's own tokenizer
+# (ai_assistant._content_words — Unicode-aware, multilingual stop-words), plus
+# a few extra filler words, so a 👍 doesn't teach a guide to fire on filler and
+# French/Vietnamese/CJK words are kept whole ("données", not "donn").
 _TERM_STOPWORDS = frozenset({
     "please", "could", "would", "should", "about", "using", "there", "thing",
     "stuff", "where", "which", "these", "those", "their", "every", "again",
@@ -146,18 +147,30 @@ def _save_weights_unlocked(data: dict) -> None:
 
 # ── Public read API (consumed by the matcher) ────────────────────────────────
 
+def _clamp_weight(value) -> float:
+    """A stored weight as a finite float inside [_MIN_WEIGHT, _MAX_WEIGHT].
+
+    The file is user data and may have been hand-edited or written by an older
+    build: 1e9, NaN or inf must not decide routing.
+    """
+    try:
+        w = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(w):
+        return 0.0
+    return max(_MIN_WEIGHT, min(_MAX_WEIGHT, w))
+
+
 def learned_bonus(guide_id: str) -> float:
-    """Learned additive coefficient for a guide (0.0 when unrated)."""
+    """Learned additive coefficient for a guide (0.0 when unrated), clamped."""
     if not guide_id:
         return 0.0
     with _lock:
         rec = _load_weights_unlocked().get(guide_id)
     if not isinstance(rec, dict):
         return 0.0
-    try:
-        return float(rec.get("weight", 0.0))
-    except (TypeError, ValueError):
-        return 0.0
+    return _clamp_weight(rec.get("weight", 0.0))
 
 
 def learned_terms(guide_id: str) -> list:
@@ -175,13 +188,25 @@ def learned_terms(guide_id: str) -> list:
 # ── Recording feedback ───────────────────────────────────────────────────────
 
 def _content_terms(text: str) -> list:
-    words = _TOKEN_RE.findall((text or "").lower())
+    """Content words of a query, in order, via the matcher's own tokenizer.
+
+    Imported lazily: ai_assistant imports this module at load time.
+    """
+    import ai_assistant
+    content = ai_assistant._content_words(text or "")
     seen, out = set(), []
-    for w in words:
-        if len(w) >= 5 and w not in _TERM_STOPWORDS and w not in seen:
+    for w in (text or "").lower().split():
+        w = w.strip(ai_assistant._EDGE_PUNCT)
+        if w in content and w not in _TERM_STOPWORDS and w not in seen:
             seen.add(w)
             out.append(w)
     return out
+
+
+def _known_guide_ids() -> frozenset:
+    """Ids in guide_training.json; feedback for anything else changes nothing."""
+    import ai_assistant
+    return frozenset(e.get("id") for e in ai_assistant._load_guide_examples("en") if e.get("id"))
 
 
 def _is_up(rating) -> bool:
@@ -204,22 +229,24 @@ def _append_log_unlocked(entry: dict) -> None:
 def _adjust_weight_unlocked(guide_id: str, query: str, up: bool) -> float:
     data = _load_weights_unlocked()
     rec = data.get(guide_id) if isinstance(data.get(guide_id), dict) else {}
-    try:
-        weight = float(rec.get("weight", 0.0))
-    except (TypeError, ValueError):
-        weight = 0.0
-    terms = [t for t in rec.get("terms", []) if isinstance(t, str)]
+    weight = _clamp_weight(rec.get("weight", 0.0))
+    raw_terms = rec.get("terms", [])
+    terms = [t for t in raw_terms if isinstance(t, str)] if isinstance(raw_terms, list) else []
+    query_terms = _content_terms(query)
 
     if up:
         weight = min(_MAX_WEIGHT, weight + _UP_STEP)
-        for t in _content_terms(query):
+        for t in query_terms:
             if t not in terms:
                 terms.append(t)
         if len(terms) > _MAX_TERMS:
             terms = terms[-_MAX_TERMS:]
     else:
-        # A down-vote lowers the weight but does not erase reinforced vocabulary.
+        # A down-vote lowers the weight AND forgets the vocabulary this query
+        # contributed — otherwise a wrongly learned word keeps pulling queries
+        # to the guide the user just rejected.
         weight = max(_MIN_WEIGHT, weight - _DOWN_STEP)
+        terms = [t for t in terms if t not in query_terms]
 
     data[guide_id] = {"weight": round(weight, 4), "terms": terms}
     _save_weights_unlocked(data)
@@ -248,7 +275,7 @@ def record_feedback(rating, *, source: str = "", guide_id: str = "",
     with _lock:
         _append_log_unlocked(entry)
         new_weight = None
-        if source == "guide" and guide_id:
+        if source == "guide" and guide_id and guide_id in _known_guide_ids():
             new_weight = _adjust_weight_unlocked(guide_id, query, up)
     return new_weight
 
