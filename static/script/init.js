@@ -1089,7 +1089,13 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
 
     // Update the live USER_SETTINGS object — then overlay what the server
     // actually kept, so a clamped value is the one applied below.
-    Object.assign(USER_SETTINGS, formValues, (saved && saved.settings) || {});
+    // Overlay only the keys this form saved, using the server's stored (clamped)
+    // values. Other keys (e.g. music volume, saved on a debounce) may be newer
+    // on the page than in this response and must not be rolled back.
+    const stored = (saved && saved.settings) || {};
+    Object.keys(formValues).forEach(k => {
+        USER_SETTINGS[k] = (k in stored) ? stored[k] : formValues[k];
+    });
 
     // The UI language is applied by re-rendering the page in the new language
     // (the server injects the matching catalog on the next load). Reload now so

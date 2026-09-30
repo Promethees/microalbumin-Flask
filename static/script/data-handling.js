@@ -1234,6 +1234,7 @@ async function confirmSwalItemDelete(btn) {
         const config = window.ReportItemConfig?.[filename];
         if (config) {
             if (config.chart) config.chart.destroy();
+            if (config.pointChart) config.pointChart.destroy();
             if (config.charts) Object.values(config.charts).forEach(c => c.destroy());
             delete window.ReportItemConfig[filename];
         }
@@ -2061,7 +2062,9 @@ function renderTurnCalTable() {
     const n = AppState.numSources || 1;
     const concenUnit = (typeof getMetaConcenUnit === 'function') ? getMetaConcenUnit(AppState.metaData) : 'ng/µL';
     const fileKey = AppState.currentFile || 'turn-cal';
-    const isVal = v => !(v === undefined || v === null || v === 'NONE' || v === '');
+    // Same test as the export: a sentinel (OVFL/INF) is shown as a dash, since
+    // the export skips it and a concentration typed against it would be lost.
+    const isVal = v => measNumber(v) !== null;
 
     let html = `<thead><tr><th>${t('export.turn_col_turn', 'Turn')}</th>`;
     for (let s = 1; s <= n; s++) {

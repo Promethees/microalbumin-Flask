@@ -2024,7 +2024,7 @@ async function finalizeReport() {
                             <div style="page-break-inside: avoid; break-inside: avoid;">
                                 <img src="${img}" style="width:100%; border:1px solid #eee;"/>
                                 <p style="font-size:0.8rem; color:#666; margin-top:5px;">Mode: ${_escHtml(config.metadata.mode || 'N/A')} | Calibration: ${_escHtml(calFile || 'None')}</p>
-                                ${calFile ? `<div class="report-cal-meta" style="background:#f0f7ff; padding:10px; border-left:4px solid #3498db; font-size:0.8rem;">[Applied Calibration: ${calFile}]</div>` : ''}
+                                ${calFile ? `<div class="report-cal-meta" style="background:#f0f7ff; padding:10px; border-left:4px solid #3498db; font-size:0.8rem;">[Applied Calibration: ${_escHtml(calFile)}]</div>` : ''}
                             </div>
                             ${derivedHtml}
                             ${analysisHtml}

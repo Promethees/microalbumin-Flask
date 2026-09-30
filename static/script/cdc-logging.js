@@ -36,8 +36,9 @@ let _prevDataPointCount = 0;
    Session strip (#session-strip) — the live run drawn across the top of the page.
 
    One thin polyline per source, in the same `--ramp-*` steps as the main chart,
-   redrawn from AppState.responseData (which both the SSE push and the fallback
-   poll already keep current — so this adds no fetching of its own). The pen
+   redrawn from the live session's own pushed rows while the SSE stream carries
+   the run (liveStripSource in live-stream.js), and from AppState.responseData on
+   the polling fallback — so this adds no fetching of its own. The pen
    advances left to right across the session rather than scrolling a window: the
    shape of the run so far is the useful thing, and a fixed left edge means the
    trace does not appear to move when nothing is happening.

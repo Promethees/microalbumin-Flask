@@ -1114,3 +1114,32 @@ def test_music_queue_title_plays_on_enter_and_transport_is_named():
 def test_reading_setup_controls_have_a_label(control):
     html = (REPO / 'templates' / 'index.html').read_text(encoding='utf-8')
     assert html.count(f'<label for="{control}"') == 1
+
+
+# ---------------------------------------------------------------------------
+# Gaps found by the correctness review of this branch.
+# ---------------------------------------------------------------------------
+
+def test_saved_report_escapes_the_applied_calibration_name():
+    src = (REPO / 'static' / 'script' / 'report.js').read_text(encoding='utf-8')
+    assert '[Applied Calibration: ${calFile}]' not in src
+    assert '[Applied Calibration: ${_escHtml(calFile)}]' in src
+
+
+def test_console_item_delete_also_frees_the_point_chart():
+    src = (REPO / 'static' / 'script' / 'data-handling.js').read_text(encoding='utf-8')
+    body = src[src.index('async function confirmSwalItemDelete'):]
+    body = body[:body.index('\n}\n')]
+    assert 'config.pointChart.destroy()' in body
+
+
+def test_turn_cal_table_shows_sentinels_as_a_dash():
+    src = (REPO / 'static' / 'script' / 'data-handling.js').read_text(encoding='utf-8')
+    assert "v === 'NONE' || v === ''" not in src
+
+
+def test_settings_save_overlays_only_the_saved_keys():
+    """A debounced music-volume save must not be rolled back by App Settings."""
+    src = (REPO / 'static' / 'script' / 'init.js').read_text(encoding='utf-8')
+    assert 'Object.assign(USER_SETTINGS, formValues, (saved && saved.settings)' not in src
+    assert 'Object.keys(formValues).forEach' in src
