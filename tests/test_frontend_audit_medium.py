@@ -349,3 +349,33 @@ OUT({ left: [...store.keys()] });
 
 def test_new_file_clears_every_source_not_just_the_previous_count():
     assert _node(CLEAR_PER_SOURCE)['left'] == ['theme']
+
+
+# ---------------------------------------------------------------------------
+# edit-file.js:439 / :1017 — text mode put the raw file into <textarea> via
+# innerHTML (RCDATA: `</textarea>` escaped it, `&amp;` was decoded and saved
+# back as `&`); the filename input and the title were unescaped, and a mode
+# toggle re-rendered without restoring the name, so `std "A".csv` was saved
+# as `std .csv`. (renderContent is a closure inside editFile, so these are
+# source checks.)
+# ---------------------------------------------------------------------------
+
+def test_editor_never_puts_raw_content_or_filename_into_markup():
+    src = _src('edit-file.js')
+    assert '${content.content}</textarea>' not in src
+    assert 'value="${fileName}"' not in src
+    assert src.count('value="${_attr(fileName)}"') == 3
+    assert 'title: `Edit ${nameToShow}`' not in src
+    assert 'titleText: `Edit ${nameToShow}`' in src
+
+
+def test_editor_mode_toggle_restores_name_and_text_as_dom_values():
+    src = _src('edit-file.js')
+    toggle = src[src.index("toggleButton.addEventListener('click'"):]
+    toggle = toggle[:toggle.index('preConfirm')]
+    render = toggle.index('renderContent({ content: originalContent })')
+    fill = toggle.index('fillRawFields(originalContent, nameToShow)')
+    assert fill > render
+    body = src[src.index('function fillRawFields'):]
+    body = body[:body.index('\n            }\n')]
+    assert "nameInput.value = name" in body and "textArea.value = content" in body

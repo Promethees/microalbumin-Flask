@@ -423,20 +423,20 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             if (tableSelector === '#json-table' && editMode === 'graphic') {
                 let parsed;
                 try { parsed = JSON.parse(content.content); } catch (e) {
-                    return `<p style="color:red;">Invalid JSON: ${e.message}</p>`;
+                    return `<p style="color:red;">Invalid JSON: ${_escHtml(e.message)}</p>`;
                 }
 
                 return `
                     <input type="text" id="swal-input-filename" class="swal2-input"
-                        value="${fileName}" placeholder="Enter new filename">
+                        value="${_attr(fileName)}" placeholder="Enter new filename">
                     <div class="json-graphic-container" style="margin-top:12px; max-height:500px; overflow-y:auto;">
                         ${buildGraphicUI(parsed)}
                     </div>`;
             }
             if (editMode === 'text') {
                 html = `
-                    <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
-                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px; font-family: monospace;">${content.content}</textarea>
+                    <input type="text" id="swal-input-filename" class="swal2-input" value="${_attr(fileName)}" placeholder="Enter new filename">
+                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px; font-family: monospace;"></textarea>
                 `;
             } else {
                 const lines = content.content.trim().split('\n');
@@ -530,7 +530,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
                 // Build data table
                 html = `
-                    <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    <input type="text" id="swal-input-filename" class="swal2-input" value="${_attr(fileName)}" placeholder="Enter new filename">
                     ${metadataHtml}
                     <div style="display: flex; justify-content: space-between; margin: 10px 0;">
                         <div>
@@ -971,9 +971,22 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
             // --- End functions ---
 
+            // renderContent() is HTML, so the two raw strings never go through
+            // it: the textarea is RCDATA (a file holding `</textarea>` escaped
+            // it and ran script; `&amp;` was decoded and saved back as `&`),
+            // and a filename with `"` was cut short and renamed on Save. Both
+            // are set as DOM values after every render, including a mode toggle.
+            function fillRawFields(content, name) {
+                const nameInput = document.getElementById('swal-input-filename');
+                if (nameInput) nameInput.value = name;
+                const textArea = document.getElementById('swal-input-content');
+                if (textArea) textArea.value = content;
+            }
+
             function showModal(contentToShow, nameToShow) {
                 Swal.fire({
-                    title: `Edit ${nameToShow}`,
+                    // titleText, not title: a filename is not markup (Rule.md §2.39).
+                    titleText: `Edit ${nameToShow}`,
                     width: '800px',
                     html: renderContent({ content: contentToShow }),
                     footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px;">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
@@ -982,9 +995,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     confirmButtonText: 'Save Changes',
                     cancelButtonText: 'Cancel',
                     didOpen: () => {
-                        // Restore filename
-                        const nameInput = document.getElementById('swal-input-filename');
-                        if (nameInput) nameInput.value = nameToShow;
+                        // Restore filename (and the text-mode content)
+                        fillRawFields(contentToShow, nameToShow);
 
                         // -----------------------------------------------------------------
                         //  CSS for the graphic UI
@@ -1015,6 +1027,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 editMode = editMode === 'text' ? (tableSelector === '#file-table' ? 'table' : 'graphic') : 'text';
                                 toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? (tableSelector === "#file-table" ? 'Table' : 'Graphic') : 'Text') + ' Mode';
                                 Swal.getHtmlContainer().innerHTML = renderContent({ content: originalContent });
+                                fillRawFields(originalContent, nameToShow);
                                 if (editMode === 'table') {
                                     setTimeout(() => { setupTableEvents(); setupMetaNoneToggles(); }, 50);
                                 } else if (editMode === 'graphic') {
