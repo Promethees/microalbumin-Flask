@@ -163,8 +163,8 @@ devtools/                  ← DEV ONLY: the --monitor performance monitor; neve
 - **Tokens first.** Every colour/font/radius/shadow comes from the token block at the
   top of `static/style.css` — never a raw hex or a gradient in a rule. Multi-source
   series use the sequential ramp `sourceRamp(n)`, never a cycled rainbow. The **session
-  strip** is the recording indicator and reads `AppState.responseData` rather than
-  fetching. Setting: `session_strip_enabled`. **§2.33**
+  strip** is the recording indicator and reads the stream's pushed rows (fallback:
+  `AppState.responseData`) rather than fetching. Setting: `session_strip_enabled`. **§2.33**
 - **The redesign is switchable.** `ui_style` = `instrument` (default) or `classic`;
   classic is a **generated** override layer in `style.css` (`tools/gen_classic_style.py`),
   not a second stylesheet. `isClassicUI()` gates the two JS differences. Standalone

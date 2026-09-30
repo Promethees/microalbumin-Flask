@@ -161,6 +161,18 @@ function liveFileIsSelected() {
     return norm(AppState.currentDirectory) === norm(_liveMeta.dir);
 }
 
+// The session strip's data while the stream carries the run: this session's
+// own pushed rows, whatever file the user has open and without waiting for the
+// 200 ms coalesced chart render. Null on the polling fallback.
+function liveStripSource() {
+    if (!_liveStreamCarrying || !_liveRows.length) return null;
+    return {
+        rows: _liveRows,
+        numSources: (_liveMeta && _liveMeta.num_sources) || 1,
+        xAxis: _liveMeta && _liveMeta.x_axis,
+    };
+}
+
 // Re-render the chart from the rows pushed so far.
 //
 // Deliberately reuses processResponse() rather than appending to the Chart.js

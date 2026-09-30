@@ -102,13 +102,18 @@ function hideSessionStrip() {
 /* Redraw from the rows the session has produced so far. */
 function drawSessionStrip() {
     const svgGroup = document.getElementById('strip-traces');
+    // With the stream carrying the run, draw this session's pushed rows: the
+    // chart's AppState.responseData is whatever file is open (another CSV's
+    // trace under "Recording") and lags a pushed row by the render coalescing
+    // (the Turn just taken was missing). Nothing is fetched either way (§2.33).
+    const live = (typeof liveStripSource === 'function') ? liveStripSource() : null;
     // AppState.responseData is the row array itself (see processResponse); the
     // `.data` shape is what a raw /get_data payload looks like, so accept both.
-    const raw = AppState.responseData;
+    const raw = live ? live.rows : AppState.responseData;
     const rows = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.data) ? raw.data : []);
     if (!svgGroup || !rows.length) return;
 
-    const n = Math.max(1, AppState.numSources || 1);
+    const n = Math.max(1, (live ? live.numSources : AppState.numSources) || 1);
     const colors = sourceRamp(Math.max(2, n));
     const xs = rows.map(r => Number(r.Timestamp));
     // The x scale is the session so far, so the pen sits at the right edge as
@@ -149,7 +154,7 @@ function drawSessionStrip() {
 
     const scale = document.getElementById('strip-scale');
     if (scale) {
-        const axis = AppState.xAxis === 'turn' ? 'turns' : 's';
+        const axis = ((live && live.xAxis) || AppState.xAxis) === 'turn' ? 'turns' : 's';
         scale.textContent = `${rows.length} rows \u00b7 ${n} src \u00b7 ${xMax.toFixed(0)} ${axis} \u00b7 ${lo.toFixed(2)}\u2013${hi.toFixed(2)}`;
     }
 

@@ -25,7 +25,9 @@ def _node(harness, **env):
     out = subprocess.run(
         [node, '-e', harness],
         env={**os.environ, 'EOK_JS': str(JS), **{k: json.dumps(v) for k, v in env.items()}},
-        capture_output=True, text=True, timeout=60, check=True)
+        capture_output=True, text=True, timeout=60)
+    if out.returncode:
+        pytest.fail('node harness failed:\n' + out.stderr[-2000:], pytrace=False)
     return json.loads(out.stdout)
 
 
@@ -572,3 +574,41 @@ def test_post_settings_echoes_what_was_stored(tmp_path, monkeypatch):
     # 100 ms is below the floor, so the stored (default) value comes back.
     assert body['settings']['device_state_poll_ms'] == 1500
     assert body['settings']['device_link_enabled'] is False
+
+
+# ---------------------------------------------------------------------------
+# cdc-logging.js:247 — the session strip drew AppState.responseData: another
+# open CSV's trace under "Recording", or (live file open) one row behind, so a
+# manual Turn just taken was missing. With the stream carrying the run it now
+# draws the session's own pushed rows.
+# ---------------------------------------------------------------------------
+
+STRIP_SOURCE = PRELUDE + FAKE_DOM + r"""
+for (const id of ['strip-traces', 'strip-scale', 'strip-latest', 'strip-latest-label']) {
+    const e = new El('div'); e.id = id; DOC.body.appendChild(e);
+}
+const other = Array.from({ length: 10 }, (_, i) => ({ Timestamp: i, 'Value:1': '9', 'Value:2': '9' }));
+const ctx = {
+    document: DOC, window: {}, t: (k, f) => f, sourceRamp: n => Array(n).fill('#000'),
+    AppState: { responseData: other, numSources: 2, xAxis: 'time' },
+    STRIP_W: 900, STRIP_H: 64,
+};
+vm.createContext(ctx);
+LOAD(ctx, 'short-hands.js');
+const src = FN('cdc-logging.js', 'drawSessionStrip');
+vm.runInContext('const STRIP_W = 900, STRIP_H = 64;' + src, ctx);
+const hasLive = /function liveStripSource/.test(fs.readFileSync(path.join(process.env.EOK_JS, 'live-stream.js'), 'utf8'));
+if (hasLive) {
+    vm.runInContext('let _liveStreamCarrying = true, _liveMeta = { num_sources: 1, x_axis: "turn" }, _liveRows = [' +
+        '{ Timestamp: 1, "Value:1": "0.1" }, { Timestamp: 2, "Value:1": "0.2" }, { Timestamp: 3, "Value:1": "0.3" }];' +
+        FN('live-stream.js', 'liveStripSource'), ctx);
+}
+ctx.drawSessionStrip();
+OUT({ scale: DOC.getElementById('strip-scale').textContent, latest: DOC.getElementById('strip-latest').textContent });
+"""
+
+
+def test_session_strip_draws_the_live_session_not_the_open_file():
+    r = _node(STRIP_SOURCE)
+    assert r['scale'].startswith('3 rows') and 'turns' in r['scale']
+    assert r['latest'] == '0.300'
