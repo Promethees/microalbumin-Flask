@@ -1250,8 +1250,25 @@ function updateReportDerivedQuantity(filename, value) {
     config.derivedQuantity = value || 'maxrate';
 }
 
+// Every preview chart the console owns: Chart.js keeps an instance registered
+// until destroy(), so replacing the cards alone leaked one set per subject switch.
+function destroyReportCharts() {
+    Object.values(window.ReportItemConfig || {}).forEach(config => {
+        if (!config) return;
+        const charts = [config.chart, config.pointChart, ...Object.values(config.charts || {})];
+        charts.forEach(c => { try { if (c) c.destroy(); } catch (e) { /* already gone */ } });
+    });
+}
+
+// Bumped by every load and clear. A load that finds it changed after an await
+// is stale (the user picked another subject meanwhile) and must not append its
+// cards into the newer view.
+let _reportLoadSeq = 0;
+
 async function loadReportItems(subject) {
+    const seq = ++_reportLoadSeq;
     const container = document.getElementById('report-items-container');
+    destroyReportCharts();
     container.innerHTML = '<p>Loading items...</p>';
     window.ReportItemConfig = {}; // reset
 
@@ -1264,6 +1281,7 @@ async function loadReportItems(subject) {
         const result = await itemsRes.json();
         const kinJson = await kinJsonRes.json();
         const pointJson = await pointJsonRes.json();
+        if (seq !== _reportLoadSeq) return;
 
         if (result.status === 'success') {
             if (result.items.length === 0) {
@@ -1291,6 +1309,7 @@ async function loadReportItems(subject) {
             // does not fetch a second time.
             const itemResponses = await Promise.all(dataFiles.map(it =>
                 $.get('/get_data', { file: it.path }).then(r => r).catch(() => null)));
+            if (seq !== _reportLoadSeq) return;
 
             for (let _i = 0; _i < dataFiles.length; _i++) {
                 const item = dataFiles[_i];
@@ -1490,6 +1509,7 @@ async function loadReportItems(subject) {
             container.innerHTML = `<p style="color: red;">Error: ${_escHtml(result.message)}</p>`;
         }
     } catch (e) {
+        if (seq !== _reportLoadSeq) return;
         container.innerHTML = `<p style="color: red;">Failed to load items: ${_escHtml(e.message)}</p>`;
     }
 }
@@ -2348,6 +2368,9 @@ function buildKineticsAnalysisForReport(renderData, traceIndices, unit, windowSi
 function clearReportSubject() {
     AppState.currentReportSubject = null;
     document.getElementById('report-console-section').classList.add('hidden');
+    // Drop any load still in flight, then free the preview charts.
+    _reportLoadSeq++;
+    destroyReportCharts();
     document.getElementById('report-items-container').innerHTML = '';
     // Also clear any stored configurations
     window.ReportItemConfig = {};
@@ -2408,6 +2431,7 @@ async function deleteReportItem(btn) {
         if (config) {
             if (config.chart) config.chart.destroy();
             if (config.charts) Object.values(config.charts).forEach(c => c.destroy());
+            if (config.pointChart) config.pointChart.destroy();
             delete window.ReportItemConfig[filename];
         }
         document.getElementById(cardId)?.remove();

@@ -857,3 +857,67 @@ def test_preview_normalization_selector_uses_css_escape():
     fn = src[src.index('function refreshPreviewNormalization'):]
     fn = fn[:fn.index('\n}\n')]
     assert 'data-filename="${CSS.escape(filename)}"' in fn
+
+
+# ---------------------------------------------------------------------------
+# report.js:1256 — loadReportItems() / clearReportSubject() reset
+# ReportItemConfig without destroying its Chart.js instances (and the delete
+# path skipped pointChart), and a slow subject load could append its cards
+# into the subject picked after it.
+# ---------------------------------------------------------------------------
+
+REPORT_LIFECYCLE = PRELUDE + FAKE_DOM + r"""
+const container = new El('div'); container.id = 'report-items-container'; DOC.body.appendChild(container);
+const section = new El('div'); section.id = 'report-console-section'; DOC.body.appendChild(section);
+const gates = {};
+const ctx = {
+    document: DOC, window: {}, console, CSS: { escape: s => s }, AppState: {},
+    fetch: (u) => {
+        const subj = (u.match(/subject=([^&]*)/) || [])[1];
+        const body = subj ? { status: 'success', items: [{ filename: subj + '.csv', path: '/r/' + subj, metadata: { mode: 'kinetics' } }] }
+                          : { status: 'success', items: [] };
+        const p = new Promise(r => { const go = () => r({ json: async () => body }); if (subj) gates[subj] = go; else go(); });
+        return p;
+    },
+    $: { get: () => Promise.resolve({ data: [{ Timestamp: 0 }] }) },
+    initItemPreview: () => {},
+};
+vm.createContext(ctx);
+const src = fs.readFileSync(path.join(process.env.EOK_JS, 'report.js'), 'utf8');
+const algo = src.match(/^const REPORT_ALGO_CHOICES = \[[\s\S]*?\n\];/m)[0];
+const extra = /^function destroyReportCharts/m.test(src)
+    ? FN('report.js', 'destroyReportCharts') + '\nlet _reportLoadSeq = 0;\n' : '';
+vm.runInContext(HELPERS + '\n' + algo + extra + FN('report.js', '_fullPointTpEntryHtml') + FN('report.js', 'loadReportItems')
+    + FN('report.js', 'clearReportSubject'), ctx);
+const tick = () => new Promise(r => setImmediate(r));
+(async () => {
+    // Charts left from a previous subject.
+    let destroyed = 0;
+    const chart = () => ({ destroy: () => destroyed++ });
+    ctx.window.ReportItemConfig = { 'old.csv': { chart: chart(), charts: { Slope: chart() }, pointChart: chart() } };
+    const a = ctx.loadReportItems('A');
+    const destroyedOnLoad = destroyed;
+    const b = ctx.loadReportItems('B');
+    await tick(); gates.B(); await b; await tick();
+    gates.A(); await a; await tick();
+    const cards = container.children.map(c => c.dataset.filename);
+    ctx.window.ReportItemConfig = { 'x.csv': { chart: chart(), pointChart: chart() } };
+    destroyed = 0;
+    ctx.clearReportSubject();
+    OUT({ destroyedOnLoad, cards, destroyedOnClear: destroyed });
+})();
+"""
+
+
+def test_report_subject_switch_frees_charts_and_ignores_stale_loads():
+    r = _node(REPORT_LIFECYCLE)
+    assert r['destroyedOnLoad'] == 3
+    assert r['cards'] == ['B.csv']
+    assert r['destroyedOnClear'] == 2
+
+
+def test_report_item_delete_also_frees_the_point_chart():
+    src = _src('report.js')
+    fn = src[src.index('async function deleteReportItem'):]
+    fn = fn[:fn.index('\n}\n')]
+    assert 'config.pointChart.destroy()' in fn
