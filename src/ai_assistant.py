@@ -16,7 +16,42 @@ import ai_feedback
 _GUIDE_TRAINING_PATH = os.path.join(state.bundle_dir, "guide_training.json")
 _GUIDE_TRANSLATIONS_DIR = os.path.join(state.bundle_dir, "guide_translations")
 
-VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru', 'ko'}
+# One language list (Rule.md §2.22): the supported-language registry.
+import user_settings as _user_settings  # noqa: E402
+
+VALID_LANGS = frozenset(_user_settings.SUPPORTED_LANGUAGES)
+
+
+def _overlay_step_translations(ex_steps: list, translated: list) -> list:
+    """Per-step {description, title} translations for one guide (B8 / A15).
+
+    Overlay steps come in two shapes, and one guide may use either:
+      * ``{"target": …, "description": …, "title": …}`` — matched by TARGET, so
+        inserting or reordering a step in guide_training.json can never shift a
+        translation onto the wrong element. A target used more than once in a
+        guide is matched in order of appearance.
+      * a plain string — the legacy positional form (description only).
+    Returns one dict per EN step (empty when there is no translation).
+    """
+    keyed: dict = {}
+    for t in translated:
+        if isinstance(t, dict) and isinstance(t.get("target"), str):
+            keyed.setdefault(t["target"], []).append(t)
+    used: dict = {}
+    out = []
+    for i, step in enumerate(ex_steps):
+        target = step.get("target")
+        entry = {}
+        if keyed:
+            candidates = keyed.get(target, [])
+            k = used.get(target, 0)
+            if k < len(candidates):
+                entry = candidates[k]
+                used[target] = k + 1
+        elif i < len(translated) and isinstance(translated[i], str):
+            entry = {"description": translated[i]}
+        out.append(entry)
+    return out
 
 
 def _apply_overlay(examples: list, lang: str) -> list:
@@ -28,21 +63,21 @@ def _apply_overlay(examples: list, lang: str) -> list:
             overlay = json.load(f)
     except Exception:
         return examples
-    index = {item["id"]: item for item in overlay}
+    index = {item["id"]: item for item in overlay if isinstance(item, dict) and "id" in item}
     result = []
     for ex in examples:
         item = index.get(ex["id"])
         if not item:
             result.append(ex)
             continue
-        translated_steps = item.get("steps", [])
         new_steps = []
-        for i, step in enumerate(ex["steps"]):
-            desc = translated_steps[i] if i < len(translated_steps) and translated_steps[i] else step["description"]
-            new_steps.append({**step, "description": desc})
-        extra_queries = [q for q in item.get("queries", []) if q]
-        new_queries = ex["queries"] + extra_queries
-        result.append({**ex, "steps": new_steps, "queries": new_queries})
+        for step, tr in zip(ex["steps"], _overlay_step_translations(ex["steps"], item.get("steps", []))):
+            new_step = {**step, "description": tr.get("description") or step["description"]}
+            if tr.get("title"):
+                new_step["title"] = tr["title"]
+            new_steps.append(new_step)
+        extra_queries = [q for q in item.get("queries", []) if isinstance(q, str) and q]
+        result.append({**ex, "steps": new_steps, "queries": ex["queries"] + extra_queries})
     return result
 
 

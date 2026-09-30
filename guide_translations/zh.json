@@ -2,23 +2,74 @@
   {
     "id": "app_introduction",
     "steps": [
-      "Easy OKAPI 有 4 种模式：Kinetics（时间序列）、Point（单时间点）、Calibrate（标准曲线创建）和 Report（数据导出）。我们从 Kinetics 模式开始。",
-      "此面板控制 PyBadge 比色计的数据记录。在本教程中，我们将使用示例数据而非实际设备。",
-      "此按钮开始从比色计实时记录吸光度。现在，只需记住其位置——我们接下来将使用示例文件。",
-      "设置每次记录的持续时间。'Infinite' 将一直记录直到您点击停止。",
-      "设置每次读取之间的时间间隔。0 表示尽可能快地获取数据。",
-      "选择一个动力学 CSV 文件来探索应用程序。示例文件位于 sample_data 文件夹中——选择任意一个继续。",
-      "您的测量数据以时间序列图的形式在此处可视化，显示随时间变化的吸光度。",
-      "选择要导出以进行校准的测量源（通道）。",
-      "输入已知分析物浓度作为参考点，设置文件名，然后点击\"Export Data\"创建校准 CSV。",
-      "导航到刚刚保存校准 CSV 的目录，以便您可以在下一步中选择它。",
-      "找到您导出的校准 CSV。点击\"Edit\"验证其内容，然后选择它。",
-      "切换到 Calibrate 模式以设置回归并生成标准曲线系数。",
-      "选择用于校准曲线的动力学量（maxRate、Slope、Sat 或 Time to Sat）。",
-      "选择标准曲线的拟合算法：线性、多项式、对数、指数或 Michaelis-Menten。",
-      "输入名称并点击\"Export Coefficients\"将标准曲线保存为校准 JSON 文件。",
-      "切换回 Kinetics 模式，将校准应用于您的样品测量。",
-      "在此处选择您刚刚导出的校准 JSON。标准曲线现已应用——浓度将自动从您的动力学数据中计算得出。"
+      {
+        "target": "#meas-mode-section",
+        "description": "Easy OKAPI 有 4 种模式：Kinetics（时间序列）、Point（单时间点）、Calibrate（标准曲线创建）和 Report（数据导出）。我们从 Kinetics 模式开始。"
+      },
+      {
+        "target": "#log-cdc-data",
+        "description": "此面板控制 PyBadge 比色计的数据记录。在本教程中，我们将使用示例数据而非实际设备。"
+      },
+      {
+        "target": "#run-script-btn",
+        "description": "此按钮开始从比色计实时记录吸光度。现在，只需记住其位置——我们接下来将使用示例文件。"
+      },
+      {
+        "target": "#timeout-control",
+        "description": "设置每次记录的持续时间。'Infinite' 将一直记录直到您点击停止。"
+      },
+      {
+        "target": "#interval-control",
+        "description": "设置每次读取之间的时间间隔。0 表示尽可能快地获取数据。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择一个动力学 CSV 文件来探索应用程序。示例文件位于 sample_data 文件夹中——选择任意一个继续。"
+      },
+      {
+        "target": "#chart-container",
+        "description": "您的测量数据以时间序列图的形式在此处可视化，显示随时间变化的吸光度。"
+      },
+      {
+        "target": "#select-source-to-export",
+        "description": "选择要导出以进行校准的测量源（通道）。"
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "输入已知分析物浓度作为参考点，设置文件名，然后点击\"Export Data\"创建校准 CSV。"
+      },
+      {
+        "target": "#data-folder-list",
+        "description": "导航到刚刚保存校准 CSV 的目录，以便您可以在下一步中选择它。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "找到您导出的校准 CSV。点击\"Edit\"验证其内容，然后选择它。"
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "切换到 Calibrate 模式以设置回归并生成标准曲线系数。"
+      },
+      {
+        "target": "#select-quantity-section",
+        "description": "选择用于校准曲线的动力学量（maxRate、Slope、Sat 或 Time to Sat）。"
+      },
+      {
+        "target": "#select-regress-algo",
+        "description": "选择标准曲线的拟合算法：线性、多项式、对数、指数或 Michaelis-Menten。"
+      },
+      {
+        "target": "#export-coef",
+        "description": "输入名称并点击\"Export Coefficients\"将标准曲线保存为校准 JSON 文件。"
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "切换回 Kinetics 模式，将校准应用于您的样品测量。"
+      },
+      {
+        "target": "#cal-json-sel-section",
+        "description": "在此处选择您刚刚导出的校准 JSON。标准曲线现已应用——浓度将自动从您的动力学数据中计算得出。"
+      }
     ],
     "queries": [
       "这个应用是怎么工作的",
@@ -33,7 +84,10 @@
   {
     "id": "nav_calibrate_mode",
     "steps": [
-      "在此处找到测量模式选择器。点击选择\"Calibrate\"。"
+      {
+        "target": "#measurement-mode",
+        "description": "在此处找到测量模式选择器。点击选择\"Calibrate\"。"
+      }
     ],
     "queries": [
       "切换到校准模式",
@@ -46,7 +100,10 @@
   {
     "id": "nav_kinetics_mode",
     "steps": [
-      "在此处找到测量模式选择器。点击选择\"Kinetics\"。"
+      {
+        "target": "#measurement-mode",
+        "description": "在此处找到测量模式选择器。点击选择\"Kinetics\"。"
+      }
     ],
     "queries": [
       "切换到动力学模式",
@@ -59,7 +116,10 @@
   {
     "id": "nav_point_mode",
     "steps": [
-      "在此处找到测量模式选择器。点击选择\"Point\"。"
+      {
+        "target": "#measurement-mode",
+        "description": "在此处找到测量模式选择器。点击选择\"Point\"。"
+      }
     ],
     "queries": [
       "切换到点模式",
@@ -72,7 +132,10 @@
   {
     "id": "start_device",
     "steps": [
-      "点击此按钮开始从比色计记录数据。请确保设备已连接。"
+      {
+        "target": "#run-script-btn",
+        "description": "点击此按钮开始从比色计记录数据。请确保设备已连接。"
+      }
     ],
     "queries": [
       "开始测量",
@@ -85,7 +148,10 @@
   {
     "id": "stop_device",
     "steps": [
-      "点击此按钮手动停止记录过程。"
+      {
+        "target": "#terminate-script-btn",
+        "description": "点击此按钮手动停止记录过程。"
+      }
     ],
     "queries": [
       "停止测量",
@@ -97,7 +163,10 @@
   {
     "id": "select_file",
     "steps": [
-      "在此处选择要分析的 CSV 数据文件。点击打开文件选择器。"
+      {
+        "target": "#file-selection",
+        "description": "在此处选择要分析的 CSV 数据文件。点击打开文件选择器。"
+      }
     ],
     "queries": [
       "选择数据文件",
@@ -109,7 +178,16 @@
   {
     "id": "navigate_directory",
     "steps": [
-      "浏览并导航到包含数据文件的目录。"
+      {
+        "target": "#main-directory-section",
+        "title": "数据文件夹",
+        "description": "选择要使用的数据子文件夹。该文件夹中的所有 CSV 文件都会显示在文件列表中。"
+      },
+      {
+        "target": "#data-folder-list",
+        "title": "选择数据文件夹",
+        "description": "点击此列表中的任意文件夹即可浏览其中的文件。可用搜索框按名称筛选，添加文件夹后点击 ↻ 刷新。"
+      }
     ],
     "queries": [
       "更改目录",
@@ -121,7 +199,10 @@
   {
     "id": "load_calibration_json",
     "steps": [
-      "在此处选择校准标准曲线 JSON 文件以应用浓度转换。"
+      {
+        "target": "#cal-json-sel-section",
+        "description": "在此处选择校准标准曲线 JSON 文件以应用浓度转换。"
+      }
     ],
     "queries": [
       "加载校准文件",
@@ -134,7 +215,10 @@
   {
     "id": "set_timeout",
     "steps": [
-      "在此处设置每次测量记录的持续时间。设为无限则持续记录直到手动停止。"
+      {
+        "target": "#timeout-control",
+        "description": "在此处设置每次测量记录的持续时间。设为无限则持续记录直到手动停止。"
+      }
     ],
     "queries": [
       "设置超时",
@@ -147,7 +231,10 @@
   {
     "id": "set_interval",
     "steps": [
-      "设置每次测量读取之间的时间间隔。设为 0 以尽可能快地获取数据。"
+      {
+        "target": "#interval-control",
+        "description": "设置每次测量读取之间的时间间隔。设为 0 以尽可能快地获取数据。"
+      }
     ],
     "queries": [
       "设置间隔",
@@ -159,7 +246,10 @@
   {
     "id": "export_data",
     "steps": [
-      "在此处导出分析结果。设置参考点，输入文件名，然后点击 Export Data。"
+      {
+        "target": "#export-analysis",
+        "description": "在此处导出分析结果。设置参考点，输入文件名，然后点击 Export Data。"
+      }
     ],
     "queries": [
       "导出数据",
@@ -171,17 +261,50 @@
   {
     "id": "merge_files",
     "steps": [
-      "要从文件夹浏览器一次选择多个文件，请先打开该选项。点击 ⚙️ 齿轮打开 App Settings。",
-      "勾选此复选框（'Pick merge files from a folder browser'）以从文件夹浏览器显示多个要合并的文件。",
-      "点击 Save 应用。（若跳过，合并仍可用——只是需逐行添加文件。）",
-      "现在点击 'Merge Files' 开始合并 CSV 文件。",
-      "展开任意文件夹并勾选要合并的 CSV 文件——可从多个文件夹选取。所有文件的测量、模式和单位必须一致。",
-      "用 Select all / Clear 切换视图内全部；计数器显示已选文件数（至少需要两个）。",
-      "勾选至少两个文件后，点击 Next 进入排序。",
-      "每行是一个来源文件。用 ▲/▼ 按钮设置来源在合并文件中的顺序；✕ 删除某行。",
-      "需要更多？'+ Add File' 增加一行；从下拉菜单选择其文件夹和文件。",
-      "为合并文件输入名称，并在其下方选择目标文件夹。",
-      "点击 Merge 创建合并后的多源 CSV。对话框关闭后指南结束。"
+      {
+        "target": "#settingsBtn",
+        "description": "要从文件夹浏览器一次选择多个文件，请先打开该选项。点击 ⚙️ 齿轮打开 App Settings。"
+      },
+      {
+        "target": "#swal-merge-picker",
+        "description": "勾选此复选框（'Pick merge files from a folder browser'）以从文件夹浏览器显示多个要合并的文件。"
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "点击 Save 应用。（若跳过，合并仍可用——只是需逐行添加文件。）"
+      },
+      {
+        "target": "#merge-file-btn",
+        "description": "现在点击 'Merge Files' 开始合并 CSV 文件。"
+      },
+      {
+        "target": "#merge-pick-accordion",
+        "description": "展开任意文件夹并勾选要合并的 CSV 文件——可从多个文件夹选取。所有文件的测量、模式和单位必须一致。"
+      },
+      {
+        "target": "#merge-pick-toggle-all",
+        "description": "用 Select all / Clear 切换视图内全部；计数器显示已选文件数（至少需要两个）。"
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "勾选至少两个文件后，点击 Next 进入排序。"
+      },
+      {
+        "target": ".merge-file-row",
+        "description": "每行是一个来源文件。用 ▲/▼ 按钮设置来源在合并文件中的顺序；✕ 删除某行。"
+      },
+      {
+        "target": "#merge-add-btn",
+        "description": "需要更多？'+ Add File' 增加一行；从下拉菜单选择其文件夹和文件。"
+      },
+      {
+        "target": "#swal-output",
+        "description": "为合并文件输入名称，并在其下方选择目标文件夹。"
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "点击 Merge 创建合并后的多源 CSV。对话框关闭后指南结束。"
+      }
     ],
     "queries": [
       "合并文件",
@@ -196,7 +319,10 @@
   {
     "id": "export_to_report_subject",
     "steps": [
-      "点击此处的\"Export Data to Report\"将此分析快照保存到命名报告主题中，供后续汇编。"
+      {
+        "target": "#report-section",
+        "description": "点击此处的\"Export Data to Report\"将此分析快照保存到命名报告主题中，供后续汇编。"
+      }
     ],
     "queries": [
       "导出到报告",
@@ -208,7 +334,10 @@
   {
     "id": "view_chart",
     "steps": [
-      "您的测量数据在此以图表形式显示。"
+      {
+        "target": "#chart-container",
+        "description": "您的测量数据在此以图表形式显示。"
+      }
     ],
     "queries": [
       "查看图表",
@@ -220,7 +349,10 @@
   {
     "id": "select_regression",
     "steps": [
-      "为标准曲线选择回归算法：线性、多项式、对数、指数或 Michaelis-Menten。"
+      {
+        "target": "#select-regress-algo",
+        "description": "为标准曲线选择回归算法：线性、多项式、对数、指数或 Michaelis-Menten。"
+      }
     ],
     "queries": [
       "选择回归",
@@ -232,7 +364,10 @@
   {
     "id": "export_coefficients",
     "steps": [
-      "输入文件名并点击 Export Coefficients，将标准曲线数据保存为 JSON 文件。"
+      {
+        "target": "#export-coef",
+        "description": "输入文件名并点击 Export Coefficients，将标准曲线数据保存为 JSON 文件。"
+      }
     ],
     "queries": [
       "导出系数",
@@ -244,7 +379,10 @@
   {
     "id": "set_threshold",
     "steps": [
-      "在此处设置最低可接受的 R² 值。低于此阈值的拟合结果将不会导出。"
+      {
+        "target": "#threshold-value",
+        "description": "在此处设置最低可接受的 R² 值。低于此阈值的拟合结果将不会导出。"
+      }
     ],
     "queries": [
       "设置阈值",
@@ -256,7 +394,10 @@
   {
     "id": "window_size",
     "steps": [
-      "配置用于最大速率回归的滑动窗口大小。最少需要 3 个数据点。"
+      {
+        "target": "#window-size-section",
+        "description": "配置用于最大速率回归的滑动窗口大小。最少需要 3 个数据点。"
+      }
     ],
     "queries": [
       "窗口大小",
@@ -268,7 +409,10 @@
   {
     "id": "select_time_point",
     "steps": [
-      "选择用于点模式校准的时间点。"
+      {
+        "target": "#select-time-point",
+        "description": "选择用于点模式校准的时间点。"
+      }
     ],
     "queries": [
       "选择时间点",
@@ -280,7 +424,10 @@
   {
     "id": "view_log",
     "steps": [
-      "测量记录过程的实时日志。用于排查设备连接问题。"
+      {
+        "target": "#log-display",
+        "description": "测量记录过程的实时日志。用于排查设备连接问题。"
+      }
     ],
     "queries": [
       "查看日志",
@@ -291,12 +438,30 @@
   {
     "id": "calibrate_kinetics_workflow",
     "steps": [
-      "从测量模式选择器中选择\"Calibrate\"进入校准模式。",
-      "在校准类型选择器中，选择\"Kinetics\"。",
-      "选择包含浓度和动力学参数的导出 Kinetics CSV 文件。",
-      "选择用于校准的动力学量：maxRate、Slope、Sat 或 Time to Sat。",
-      "选择回归算法以拟合标准曲线。",
-      "输入名称并将标准曲线系数导出为 JSON 文件。"
+      {
+        "target": "#measurement-mode",
+        "description": "从测量模式选择器中选择\"Calibrate\"进入校准模式。"
+      },
+      {
+        "target": "#cal-mode-select",
+        "description": "在校准类型选择器中，选择\"Kinetics\"。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择包含浓度和动力学参数的导出 Kinetics CSV 文件。"
+      },
+      {
+        "target": "#select-quantity-section",
+        "description": "选择用于校准的动力学量：maxRate、Slope、Sat 或 Time to Sat。"
+      },
+      {
+        "target": "#select-regress-algo",
+        "description": "选择回归算法以拟合标准曲线。"
+      },
+      {
+        "target": "#export-coef",
+        "description": "输入名称并将标准曲线系数导出为 JSON 文件。"
+      }
     ],
     "queries": [
       "动力学校准流程",
@@ -308,12 +473,30 @@
   {
     "id": "calibrate_point_workflow",
     "steps": [
-      "从测量模式选择器中选择\"Calibrate\"。",
-      "在校准类型选择器中，选择\"Point\"。",
-      "选择包含浓度和吸光度值的导出 Point CSV 文件。",
-      "选择用于标准曲线的时间点。（Turn 校准文件会跳过此步——它没有时间轴，每个 Turn 已是一个标准品。）",
-      "选择回归算法以拟合标准曲线。",
-      "输入名称并将标准曲线系数导出为 JSON 文件。"
+      {
+        "target": "#measurement-mode",
+        "description": "从测量模式选择器中选择\"Calibrate\"。"
+      },
+      {
+        "target": "#cal-mode-select",
+        "description": "在校准类型选择器中，选择\"Point\"。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择包含浓度和吸光度值的导出 Point CSV 文件。"
+      },
+      {
+        "target": "#select-time-point",
+        "description": "选择用于标准曲线的时间点。（Turn 校准文件会跳过此步——它没有时间轴，每个 Turn 已是一个标准品。）"
+      },
+      {
+        "target": "#select-regress-algo",
+        "description": "选择回归算法以拟合标准曲线。"
+      },
+      {
+        "target": "#export-coef",
+        "description": "输入名称并将标准曲线系数导出为 JSON 文件。"
+      }
     ],
     "queries": [
       "点模式校准流程",
@@ -325,11 +508,26 @@
   {
     "id": "build_turn_calibration",
     "steps": [
-      "在测量模式选择器中选择 'Point'。",
-      "选择一个 Turn 数据文件（使用 'Record as Turns' 记录）。每个记录的 Turn 就是一个浓度标准品——时间点控件不适用。",
-      "为每个记录的 Turn 输入已知浓度。每个 Turn 成为标准曲线上的一个点；在同一浓度记录多个 Turn 可获得重复值（会取平均，并带误差棒）。",
-      "对于多源文件，选择要导出的源——每个所选源都会写成各自的标准曲线。",
-      "输入文件名并点击 Export Data 保存 Concentration,Value 校准表。然后切换到 Calibrate 模式拟合曲线并导出其系数。"
+      {
+        "target": "#measurement-mode",
+        "description": "在测量模式选择器中选择 'Point'。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择一个 Turn 数据文件（使用 'Record as Turns' 记录）。每个记录的 Turn 就是一个浓度标准品——时间点控件不适用。"
+      },
+      {
+        "target": "#turn-cal-section",
+        "description": "为每个记录的 Turn 输入已知浓度。每个 Turn 成为标准曲线上的一个点；在同一浓度记录多个 Turn 可获得重复值（会取平均，并带误差棒）。"
+      },
+      {
+        "target": "#select-source-to-export",
+        "description": "对于多源文件，选择要导出的源——每个所选源都会写成各自的标准曲线。"
+      },
+      {
+        "target": "#export-btn",
+        "description": "输入文件名并点击 Export Data 保存 Concentration,Value 校准表。然后切换到 Calibrate 模式拟合曲线并导出其系数。"
+      }
     ],
     "queries": [
       "turn 校准",
@@ -343,10 +541,22 @@
   {
     "id": "concentration_calc_kinetics",
     "steps": [
-      "在此处选择标准曲线 JSON 文件。这将应用回归系数将您的动力学测量值转换为分析物浓度。",
-      "选择要分析的 Kinetics CSV 数据文件。",
-      "已加载的标准曲线系数显示在此处（右上角）。这是用于将吸光度/动力学量转换为浓度的模型。",
-      "根据您的测量数据和所选标准曲线计算出的分析物浓度显示在此处。"
+      {
+        "target": "#cal-json-sel-section",
+        "description": "在此处选择标准曲线 JSON 文件。这将应用回归系数将您的动力学测量值转换为分析物浓度。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择要分析的 Kinetics CSV 数据文件。"
+      },
+      {
+        "target": "#json-display",
+        "description": "已加载的标准曲线系数显示在此处（右上角）。这是用于将吸光度/动力学量转换为浓度的模型。"
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "根据您的测量数据和所选标准曲线计算出的分析物浓度显示在此处。"
+      }
     ],
     "queries": [
       "从动力学计算浓度",
@@ -357,10 +567,22 @@
   {
     "id": "concentration_calc_point",
     "steps": [
-      "在此处选择标准曲线 JSON 文件。这将应用回归系数将您的点测量吸光度转换为分析物浓度。",
-      "选择要分析的 Point CSV 数据文件。",
-      "已加载的标准曲线系数显示在此处（右上角）。这是用于将吸光度转换为浓度的模型。",
-      "根据您的点测量和所选标准曲线计算出的分析物浓度显示在此处。"
+      {
+        "target": "#cal-json-sel-section",
+        "description": "在此处选择标准曲线 JSON 文件。这将应用回归系数将您的点测量吸光度转换为分析物浓度。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择要分析的 Point CSV 数据文件。"
+      },
+      {
+        "target": "#json-display",
+        "description": "已加载的标准曲线系数显示在此处（右上角）。这是用于将吸光度转换为浓度的模型。"
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "根据您的点测量和所选标准曲线计算出的分析物浓度显示在此处。"
+      }
     ],
     "queries": [
       "从点模式计算浓度",
@@ -371,11 +593,26 @@
   {
     "id": "concentration_calc_wrong_mode",
     "steps": [
-      "从样品计算浓度需要 Kinetics 或 Point 测量模式。请先在此处切换到其中一种模式。",
-      "切换模式后，在此处选择标准曲线 JSON 文件以应用校准系数。",
-      "选择要分析的 CSV 数据文件。",
-      "加载校准文件后，其标准曲线系数显示在此处右上角。",
-      "根据您的数据和标准曲线计算出的分析物浓度显示在此处。"
+      {
+        "target": "#measurement-mode",
+        "description": "从样品计算浓度需要 Kinetics 或 Point 测量模式。请先在此处切换到其中一种模式。"
+      },
+      {
+        "target": "#cal-json-sel-section",
+        "description": "切换模式后，在此处选择标准曲线 JSON 文件以应用校准系数。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择要分析的 CSV 数据文件。"
+      },
+      {
+        "target": "#json-display",
+        "description": "加载校准文件后，其标准曲线系数显示在此处右上角。"
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "根据您的数据和标准曲线计算出的分析物浓度显示在此处。"
+      }
     ],
     "queries": [
       "错误模式下计算浓度",
@@ -386,18 +623,54 @@
   {
     "id": "create_calibration_curve_workflow",
     "steps": [
-      "开始之前，确保此处已选择 Kinetics 模式。",
-      "选择包含要用于校准的样品数据的动力学测量 CSV 文件。",
-      "选择您想为校准曲线导出的测量源（通道）。",
-      "输入已知分析物浓度作为参考点，设置文件名，然后点击\"Export Data\"保存校准 CSV。",
-      "导航到刚刚保存校准 CSV 的目录，以便您可以找到并选择它。",
-      "找到您刚刚导出的校准 CSV。点击\"Edit\"验证其内容，然后选择它。",
-      "在此处切换到 Calibrate 模式以设置回归并生成标准曲线系数。",
-      "选择用于校准曲线的动力学量：maxRate、Slope、Sat 或 Time to Sat。",
-      "选择标准曲线的拟合算法：线性、多项式、对数、指数或 Michaelis-Menten。",
-      "输入文件名并点击\"Export Coefficients\"将标准曲线保存为校准 JSON 文件。",
-      "切换回 Kinetics 模式，将校准应用于您的样品测量。",
-      "在此处选择您刚刚导出的校准 JSON。标准曲线现在将用于计算您的动力学数据中的分析物浓度。"
+      {
+        "target": "#measurement-mode",
+        "description": "开始之前，确保此处已选择 Kinetics 模式。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择包含要用于校准的样品数据的动力学测量 CSV 文件。"
+      },
+      {
+        "target": "#select-source-to-export",
+        "description": "选择您想为校准曲线导出的测量源（通道）。"
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "输入已知分析物浓度作为参考点，设置文件名，然后点击\"Export Data\"保存校准 CSV。"
+      },
+      {
+        "target": "#data-folder-list",
+        "description": "导航到刚刚保存校准 CSV 的目录，以便您可以找到并选择它。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "找到您刚刚导出的校准 CSV。点击\"Edit\"验证其内容，然后选择它。"
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "在此处切换到 Calibrate 模式以设置回归并生成标准曲线系数。"
+      },
+      {
+        "target": "#select-quantity-section",
+        "description": "选择用于校准曲线的动力学量：maxRate、Slope、Sat 或 Time to Sat。"
+      },
+      {
+        "target": "#select-regress-algo",
+        "description": "选择标准曲线的拟合算法：线性、多项式、对数、指数或 Michaelis-Menten。"
+      },
+      {
+        "target": "#export-coef",
+        "description": "输入文件名并点击\"Export Coefficients\"将标准曲线保存为校准 JSON 文件。"
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "切换回 Kinetics 模式，将校准应用于您的样品测量。"
+      },
+      {
+        "target": "#cal-json-sel-section",
+        "description": "在此处选择您刚刚导出的校准 JSON。标准曲线现在将用于计算您的动力学数据中的分析物浓度。"
+      }
     ],
     "queries": [
       "创建校准曲线",
@@ -409,11 +682,26 @@
   {
     "id": "concentration_calc_generic",
     "steps": [
-      "浓度计算需要 Kinetics 或 Point 模式。确保在此处选择了正确的模式。",
-      "在此处选择标准曲线 JSON 文件以应用回归系数进行浓度转换。",
-      "选择要分析的 CSV 数据文件。",
-      "已加载的标准曲线系数显示在此处（右上角），显示用于浓度转换的模型。",
-      "根据您的数据和标准曲线计算出的分析物浓度显示在此处。"
+      {
+        "target": "#measurement-mode",
+        "description": "浓度计算需要 Kinetics 或 Point 模式。确保在此处选择了正确的模式。"
+      },
+      {
+        "target": "#cal-json-sel-section",
+        "description": "在此处选择标准曲线 JSON 文件以应用回归系数进行浓度转换。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "选择要分析的 CSV 数据文件。"
+      },
+      {
+        "target": "#json-display",
+        "description": "已加载的标准曲线系数显示在此处（右上角），显示用于浓度转换的模型。"
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "根据您的数据和标准曲线计算出的分析物浓度显示在此处。"
+      }
     ],
     "queries": [
       "计算浓度",
@@ -426,13 +714,34 @@
   {
     "id": "measurement_guide",
     "steps": [
-      "选择 Kinetics 模式开始时间序列比色计测量。",
-      "此控制台控制比色计设备。开始前请确保您的 PyBadge 已通过 USB 连接。",
-      "配置设备收集数据的时间。启用\"无限\"以持续运行直到手动停止。",
-      "设置比色计在测量过程中读取数据的频率。",
-      "点击\"Start reading\"开始从设备收集比色计数据。读数将出现在下方日志中。",
-      "传入的传感器读数实时显示在此处。每行是来自设备的带时间戳的测量值。",
-      "停止测量后，数据文件自动保存。在此处选择它以查看图表并运行分析。"
+      {
+        "target": "#measurement-mode",
+        "description": "选择 Kinetics 模式开始时间序列比色计测量。"
+      },
+      {
+        "target": "#log-cdc-data",
+        "description": "此控制台控制比色计设备。开始前请确保您的 PyBadge 已通过 USB 连接。"
+      },
+      {
+        "target": "#timeout-control",
+        "description": "配置设备收集数据的时间。启用\"无限\"以持续运行直到手动停止。"
+      },
+      {
+        "target": "#interval-control",
+        "description": "设置比色计在测量过程中读取数据的频率。"
+      },
+      {
+        "target": "#run-script-btn",
+        "description": "点击\"Start reading\"开始从设备收集比色计数据。读数将出现在下方日志中。"
+      },
+      {
+        "target": "#log-display",
+        "description": "传入的传感器读数实时显示在此处。每行是来自设备的带时间戳的测量值。"
+      },
+      {
+        "target": "#file-selection",
+        "description": "停止测量后，数据文件自动保存。在此处选择它以查看图表并运行分析。"
+      }
     ],
     "queries": [
       "如何测量",
@@ -444,11 +753,26 @@
   {
     "id": "report_full_from_data",
     "steps": [
-      "点击\"Export Data to Report\"将此分析快照保存到命名报告主题中，供后续汇编。",
-      "导出后，在此切换到报告模式以打开完整的报告管理界面。",
-      "在此管理已保存的分析快照。配置布局选项并设置报告标题。",
-      "所有已保存的快照都列在此处。在生成最终报告之前删除不需要的内容。",
-      "将所有项目编译为可打印的 HTML 报告。在浏览器中打开，然后使用打印 → 另存为 PDF。"
+      {
+        "target": "#report-section",
+        "description": "点击\"Export Data to Report\"将此分析快照保存到命名报告主题中，供后续汇编。"
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "导出后，在此切换到报告模式以打开完整的报告管理界面。"
+      },
+      {
+        "target": "#report-console-section",
+        "description": "在此管理已保存的分析快照。配置布局选项并设置报告标题。"
+      },
+      {
+        "target": "#report-items-container",
+        "description": "所有已保存的快照都列在此处。在生成最终报告之前删除不需要的内容。"
+      },
+      {
+        "target": "button[onclick=\"finalizeReport()\"]",
+        "description": "将所有项目编译为可打印的 HTML 报告。在浏览器中打开，然后使用打印 → 另存为 PDF。"
+      }
     ],
     "queries": [
       "完整报告",
@@ -459,14 +783,38 @@
   {
     "id": "report_full_in_report",
     "steps": [
-      "这是 Report Modification Console。我们将设置标题和布局选项、检查项目，然后以 Excel 或 PDF 生成报告。",
-      "在此设置报告标题——它是 PDF/HTML 报告的标题和 Excel 工作簿的名称（默认 'Colorimetric Analysis Report'）。",
-      "PDF/HTML 选项：勾选 'Include Watermark' 添加 CBBiotec 水印，勾选 'Include CBB Logo'（就在旁边）在页眉显示徽标。两者都取消勾选可获得干净、无品牌的报告。",
-      "Excel 选项：勾选可将每个 CSV 文件的数据放在各自的标签页/工作表上；取消勾选可将所有数据合并到一个工作表中。",
-      "Excel 选项：覆盖原生（可编辑）Excel 图表的 X 和 Y 轴标签。将 X 留空可按各文件的浓度单位自动标注，将 Y 留空可按其 metric 自动标注。",
-      "所有已保存的快照都列在这里。在生成之前删除不需要的快照。",
-      "将所有项目下载为带有嵌入图表的格式化 Excel 工作簿。",
-      "或者将所有项目编译为可打印的 HTML 报告。"
+      {
+        "target": "#report-console-section",
+        "description": "这是 Report Modification Console。我们将设置标题和布局选项、检查项目，然后以 Excel 或 PDF 生成报告。"
+      },
+      {
+        "target": "#console-title",
+        "description": "在此设置报告标题——它是 PDF/HTML 报告的标题和 Excel 工作簿的名称（默认 'Colorimetric Analysis Report'）。"
+      },
+      {
+        "target": "#console-watermark",
+        "description": "PDF/HTML 选项：勾选 'Include Watermark' 添加 CBBiotec 水印，勾选 'Include CBB Logo'（就在旁边）在页眉显示徽标。两者都取消勾选可获得干净、无品牌的报告。"
+      },
+      {
+        "target": "#console-split-sheets",
+        "description": "Excel 选项：勾选可将每个 CSV 文件的数据放在各自的标签页/工作表上；取消勾选可将所有数据合并到一个工作表中。"
+      },
+      {
+        "target": ".cal-xlabel-input",
+        "description": "Excel 选项：覆盖原生（可编辑）Excel 图表的 X 和 Y 轴标签。将 X 留空可按各文件的浓度单位自动标注，将 Y 留空可按其 metric 自动标注。"
+      },
+      {
+        "target": "#report-items-container",
+        "description": "所有已保存的快照都列在这里。在生成之前删除不需要的快照。"
+      },
+      {
+        "target": "button[onclick=\"finalizeReportExcel()\"]",
+        "description": "将所有项目下载为带有嵌入图表的格式化 Excel 工作簿。"
+      },
+      {
+        "target": "button[onclick=\"finalizeReport()\"]",
+        "description": "或者将所有项目编译为可打印的 HTML 报告。"
+      }
     ],
     "queries": [
       "在报告模式中生成完整报告",
@@ -476,7 +824,10 @@
   {
     "id": "normalize_data",
     "steps": [
-      "切换此项以从所有读数中减去基线吸光度（空白样品），得到相对于背景的净吸光度值。"
+      {
+        "target": "#normalize-mode",
+        "description": "切换此项以从所有读数中减去基线吸光度（空白样品），得到相对于背景的净吸光度值。"
+      }
     ],
     "queries": [
       "标准化数据",
@@ -487,7 +838,10 @@
   {
     "id": "split_sources",
     "steps": [
-      "切换此项以将每个测量源（通道）显示为独立图表，而不是叠加在同一图表上。"
+      {
+        "target": "#split-source",
+        "description": "切换此项以将每个测量源（通道）显示为独立图表，而不是叠加在同一图表上。"
+      }
     ],
     "queries": [
       "分离来源",
@@ -498,10 +852,22 @@
   {
     "id": "set_analysis_range",
     "steps": [
-      "此面板控制用于分析的数据时间窗口。调整开始和结束以专注于特定部分。",
-      "输入分析窗口的开始时间。此时间点之前的数据将被排除。",
-      "输入分析窗口的结束时间。此时间点之后的数据将被排除。",
-      "选择与您的范围值匹配的单位（秒、分钟或小时）。"
+      {
+        "target": "#range-display",
+        "description": "此面板控制用于分析的数据时间窗口。调整开始和结束以专注于特定部分。"
+      },
+      {
+        "target": "#range-value-start",
+        "description": "输入分析窗口的开始时间。此时间点之前的数据将被排除。"
+      },
+      {
+        "target": "#range-value-end",
+        "description": "输入分析窗口的结束时间。此时间点之后的数据将被排除。"
+      },
+      {
+        "target": "#time-unit",
+        "description": "选择与您的范围值匹配的单位（秒、分钟或小时）。"
+      }
     ],
     "queries": [
       "设置分析范围",
@@ -512,7 +878,10 @@
   {
     "id": "export_excel_in_report",
     "steps": [
-      "点击此处将所有报告项目下载为格式化的 Excel 工作簿，每个 CSV 一个标签页并嵌入图表。"
+      {
+        "target": "button[onclick=\"finalizeReportExcel()\"]",
+        "description": "点击此处将所有报告项目下载为格式化的 Excel 工作簿，每个 CSV 一个标签页并嵌入图表。"
+      }
     ],
     "queries": [
       "在报告中导出Excel",
@@ -523,8 +892,14 @@
   {
     "id": "export_excel_nav",
     "steps": [
-      "Excel 导出在报告模式下可用。先切换到此处，然后从其他模式使用\"Export Data to Report\"添加分析快照。",
-      "点击此处将所有报告项目下载为带有嵌入图表的格式化 Excel 工作簿。"
+      {
+        "target": "#measurement-mode",
+        "description": "Excel 导出在报告模式下可用。先切换到此处，然后从其他模式使用\"Export Data to Report\"添加分析快照。"
+      },
+      {
+        "target": "button[onclick=\"finalizeReportExcel()\"]",
+        "description": "点击此处将所有报告项目下载为带有嵌入图表的格式化 Excel 工作簿。"
+      }
     ],
     "queries": [
       "导出Excel",
@@ -535,7 +910,10 @@
   {
     "id": "live_view_active",
     "steps": [
-      "点击此处打开实时保存测量数据的文件夹。"
+      {
+        "target": "#go-to-btn",
+        "description": "点击此处打开实时保存测量数据的文件夹。"
+      }
     ],
     "queries": [
       "查看实时数据",
@@ -546,8 +924,14 @@
   {
     "id": "live_view_inactive",
     "steps": [
-      "\"View live data\"按钮仅在正在进行测量时才活跃。先在此处开始从设备读取。",
-      "测量运行后，此按钮变为活跃。点击它打开实时保存数据的文件夹。"
+      {
+        "target": "#run-script-btn",
+        "description": "\"View live data\"按钮仅在正在进行测量时才活跃。先在此处开始从设备读取。"
+      },
+      {
+        "target": "#go-to-btn",
+        "description": "测量运行后，此按钮变为活跃。点击它打开实时保存数据的文件夹。"
+      }
     ],
     "queries": [
       "实时数据",
@@ -558,7 +942,10 @@
   {
     "id": "shutdown_server",
     "steps": [
-      "点击此按钮停止 Flask 服务器并关闭应用程序。未保存的数据将丢失，请确保先导出所需内容。"
+      {
+        "target": "#shutdown-btn",
+        "description": "点击此按钮停止 Flask 服务器并关闭应用程序。未保存的数据将丢失，请确保先导出所需内容。"
+      }
     ],
     "queries": [
       "关闭服务器",
@@ -574,7 +961,10 @@
   {
     "id": "open_user_guide",
     "steps": [
-      "点击此处启动交互式逐步用户指南。它通过屏幕高亮引导您了解应用的主要功能。"
+      {
+        "target": "#user-guide-btn",
+        "description": "点击此处启动交互式逐步用户指南。它通过屏幕高亮引导您了解应用的主要功能。"
+      }
     ],
     "queries": [
       "打开用户指南",
@@ -586,7 +976,10 @@
   {
     "id": "base_name_input",
     "steps": [
-      "输入开始测量时将创建的 CSV 文件名。例如，输入\"sample1\"会将数据保存为\"sample1.csv\"。"
+      {
+        "target": "#base-name",
+        "description": "输入开始测量时将创建的 CSV 文件名。例如，输入\"sample1\"会将数据保存为\"sample1.csv\"。"
+      }
     ],
     "queries": [
       "文件基本名称",
@@ -597,8 +990,21 @@
   {
     "id": "saving_directory",
     "steps": [
-      "勾选后，测量文件将保存在当前浏览目录的同一文件夹中。取消勾选以指定自定义保存路径。",
-      "显示新 CSV 文件将保存的文件夹。取消上方复选框后，使用附近的\"Browse Saving Location\"更改。"
+      {
+        "target": "#cdc-save-section",
+        "title": "保存位置",
+        "description": "选择新的测量 CSV 文件的保存位置。选择 'Existing' 保存到现有的数据子文件夹，或选择 'New' 立即创建一个新的子文件夹。"
+      },
+      {
+        "target": "#cdc-subfolder-select",
+        "title": "选择保存的子文件夹",
+        "description": "选择 'Existing' 时，在此选择数据子文件夹。下拉列表会列出 data/ 目录中的所有子文件夹。添加文件夹后点击 ↻ 刷新。"
+      },
+      {
+        "target": "#cdc-new-folder-name",
+        "title": "新子文件夹名称",
+        "description": "选择 'New' 时，在此输入名称。系统会在 data/ 中创建新的子文件夹，并自动将文件保存到其中。"
+      }
     ],
     "queries": [
       "保存目录",
@@ -609,7 +1015,10 @@
   {
     "id": "notify_done",
     "steps": [
-      "勾选后，测量完成时应用会播放声音并显示弹出通知。当您离开设备运行时很有用。"
+      {
+        "target": "#notify-me",
+        "description": "勾选后，测量完成时应用会播放声音并显示弹出通知。当您离开设备运行时很有用。"
+      }
     ],
     "queries": [
       "完成时通知",
@@ -620,7 +1029,10 @@
   {
     "id": "clear_logs",
     "steps": [
-      "点击此处清除测量日志面板中的所有文本。仅清除显示内容 — 不删除已保存的 CSV 文件。"
+      {
+        "target": "#clear-logs-btn",
+        "description": "点击此处清除测量日志面板中的所有文本。仅清除显示内容 — 不删除已保存的 CSV 文件。"
+      }
     ],
     "queries": [
       "清除日志",
@@ -631,7 +1043,10 @@
   {
     "id": "disable_popups",
     "steps": [
-      "勾选此框以禁止整个应用中的确认和警告弹窗。熟悉工作流程后不再需要提示时很有用。"
+      {
+        "target": "#no-swal-checkbox",
+        "description": "勾选此框以禁止整个应用中的确认和警告弹窗。熟悉工作流程后不再需要提示时很有用。"
+      }
     ],
     "queries": [
       "禁用弹窗",
@@ -642,8 +1057,14 @@
   {
     "id": "filter_sources",
     "steps": [
-      "\"源\"是 CSV 文件中的一个测量通道 — 每个不同的样品或传感器读数。勾选此框仅显示包含特定源数量的文件。",
-      "选择文件必须具有多少个源（测量通道）才能出现在列表中。专注于单源或多源合并数据集时很有用。"
+      {
+        "target": "#filter-source",
+        "description": "\"源\"是 CSV 文件中的一个测量通道 — 每个不同的样品或传感器读数。勾选此框仅显示包含特定源数量的文件。"
+      },
+      {
+        "target": "#num-sources",
+        "description": "选择文件必须具有多少个源（测量通道）才能出现在列表中。专注于单源或多源合并数据集时很有用。"
+      }
     ],
     "queries": [
       "按来源筛选",
@@ -654,7 +1075,10 @@
   {
     "id": "delete_file",
     "steps": [
-      "在文件列表中找到要删除的文件。每行都有红色 ❌ 删除按钮。点击永久删除，此操作无法撤销。"
+      {
+        "target": "#file-selection",
+        "description": "在文件列表中找到要删除的文件。每行都有红色 ❌ 删除按钮。点击永久删除，此操作无法撤销。"
+      }
     ],
     "queries": [
       "删除数据文件",
@@ -665,7 +1089,10 @@
   {
     "id": "copy_file",
     "steps": [
-      "点击此处在同一目录中创建当前选定 CSV 文件的副本。副本以\"_copy\"为后缀命名。便于实验而不修改原始文件。"
+      {
+        "target": "#copy-file-btn",
+        "description": "点击此处在同一目录中创建当前选定 CSV 文件的副本。副本以\"_copy\"为后缀命名。便于实验而不修改原始文件。"
+      }
     ],
     "queries": [
       "复制数据文件",
@@ -676,7 +1103,10 @@
   {
     "id": "deselect_file",
     "steps": [
-      "点击此处卸载当前选定的数据文件。图表和分析面板将清空。文件不会被删除 — 您可以随时从列表中重新选择。"
+      {
+        "target": "#deselect-btn",
+        "description": "点击此处卸载当前选定的数据文件。图表和分析面板将清空。文件不会被删除 — 您可以随时从列表中重新选择。"
+      }
     ],
     "queries": [
       "取消选择文件",
@@ -687,7 +1117,10 @@
   {
     "id": "select_quantity",
     "steps": [
-      "选择要在标准曲线中与浓度对应的衍生量：\n• maxRate — 线性阶段的最快吸光度变化速率（ΔAbs/s）；最常用于酶动力学。\n• Slope — 整个数据集的总线性斜率。\n• Sat — 饱和（平台）吸光度值。\n• Time To Sat — 信号达到平台所需时间（分钟）。"
+      {
+        "target": "#regressed-quantity",
+        "description": "选择要在标准曲线中与浓度对应的衍生量：\n• maxRate — 线性阶段的最快吸光度变化速率（ΔAbs/s）；最常用于酶动力学。\n• Slope — 整个数据集的总线性斜率。\n• Sat — 饱和（平台）吸光度值。\n• Time To Sat — 信号达到平台所需时间（分钟）。"
+      }
     ],
     "queries": [
       "选择动力学量",
@@ -699,7 +1132,10 @@
   {
     "id": "expand_collapse_analyses",
     "steps": [
-      "切换此复选框以一次性展开或折叠所有分析部分。便于快速扫描多源文件中的所有源。"
+      {
+        "target": "#open-all-analysis",
+        "description": "切换此复选框以一次性展开或折叠所有分析部分。便于快速扫描多源文件中的所有源。"
+      }
     ],
     "queries": [
       "展开分析",
@@ -710,8 +1146,14 @@
   {
     "id": "export_saving_directory",
     "steps": [
-      "勾选后，导出文件（校准数据或系数 JSON）保存在当前加载数据文件的同一文件夹中。取消勾选以选择其他目标位置。",
-      "点击此按钮打开文件夹选择器，选择导出文件的保存位置。所选路径将用于后续所有导出，直到更改为止。"
+      {
+        "target": "#same-dir-as-data",
+        "description": "勾选后，导出文件（校准数据或系数 JSON）保存在当前加载数据文件的同一文件夹中。取消勾选以选择其他目标位置。"
+      },
+      {
+        "target": "#go-to-exp-btn",
+        "description": "点击此按钮打开文件夹选择器，选择导出文件的保存位置。所选路径将用于后续所有导出，直到更改为止。"
+      }
     ],
     "queries": [
       "导出保存目录",
@@ -722,7 +1164,10 @@
   {
     "id": "rsquared_threshold",
     "steps": [
-      "R² 衡量回归曲线与标准曲线数据的拟合程度 — 1.0 为完美拟合，0.0 为无拟合。在此设置最低 R²；只有达到或超过此值的结果才用于浓度计算。建议 0.99 以获得可靠校准。"
+      {
+        "target": "#threshold-value",
+        "description": "R² 衡量回归曲线与标准曲线数据的拟合程度 — 1.0 为完美拟合，0.0 为无拟合。在此设置最低 R²；只有达到或超过此值的结果才用于浓度计算。建议 0.99 以获得可靠校准。"
+      }
     ],
     "queries": [
       "R平方阈值",
@@ -733,9 +1178,18 @@
   {
     "id": "report_layout_options",
     "steps": [
-      "勾选以在生成的 HTML 报告中添加 CBBiotec 水印。取消勾选以获得无品牌的简洁报告。",
-      "勾选以在报告标题中包含 CBBiotec 徽标。",
-      "导出 Excel 时，勾选以将每个 CSV 文件的数据放在单独的标签页/工作表上。取消勾选以将所有数据合并到一个工作表。"
+      {
+        "target": "#console-watermark",
+        "description": "勾选以在生成的 HTML 报告中添加 CBBiotec 水印。取消勾选以获得无品牌的简洁报告。"
+      },
+      {
+        "target": "#console-logo",
+        "description": "勾选以在报告标题中包含 CBBiotec 徽标。"
+      },
+      {
+        "target": "#console-split-sheets",
+        "description": "导出 Excel 时，勾选以将每个 CSV 文件的数据放在单独的标签页/工作表上。取消勾选以将所有数据合并到一个工作表。"
+      }
     ],
     "queries": [
       "报告布局选项",
@@ -746,9 +1200,18 @@
   {
     "id": "report_subject_management",
     "steps": [
-      "\"报告主题\"是将相关分析快照分组的命名文件夹。在导出数据前，在此输入主题名称（如\"患者 A\"、\"批次 1\"）。",
-      "导出到当前主题的所有快照都列在此处。在生成最终报告之前，您可以查看并删除单个项目。",
-      "点击此处删除当前选定主题文件夹中的所有项目。主题文件夹本身将从磁盘中删除，此操作无法撤销。"
+      {
+        "target": "#report-subject-name",
+        "description": "\"报告主题\"是将相关分析快照分组的命名文件夹。在导出数据前，在此输入主题名称（如\"患者 A\"、\"批次 1\"）。"
+      },
+      {
+        "target": "#report-items-container",
+        "description": "导出到当前主题的所有快照都列在此处。在生成最终报告之前，您可以查看并删除单个项目。"
+      },
+      {
+        "target": "button[onclick=\"clearReportSubject()\"]",
+        "description": "点击此处删除当前选定主题文件夹中的所有项目。主题文件夹本身将从磁盘中删除，此操作无法撤销。"
+      }
     ],
     "queries": [
       "管理报告主题",
@@ -759,8 +1222,14 @@
   {
     "id": "save_linearity_range",
     "steps": [
-      "点击 +/− 开关展开某个来源的 kinetics 分析面板。当数据中自动检测到线性阶段时，Save Linearity Range 按钮会出现在此处。",
-      "点击「📐 Save Linearity Range」，仅将该来源检测到的线性阶段内的数据行导出到新的 CSV 文件。文件名会根据当前文件和来源索引自动预填。此子集是构建校准标准曲线的理想输入。"
+      {
+        "target": "#plot-button-source-0",
+        "description": "点击 +/− 开关展开某个来源的 kinetics 分析面板。当数据中自动检测到线性阶段时，Save Linearity Range 按钮会出现在此处。"
+      },
+      {
+        "target": "button[data-hint=\"Save the linearity range rows for this source to a new CSV file\"]",
+        "description": "点击「📐 Save Linearity Range」，仅将该来源检测到的线性阶段内的数据行导出到新的 CSV 文件。文件名会根据当前文件和来源索引自动预填。此子集是构建校准标准曲线的理想输入。"
+      }
     ],
     "queries": [
       "保存线性范围",
@@ -773,10 +1242,22 @@
   {
     "id": "edit_file",
     "steps": [
-      "点击任意文件旁的 ✏️ Edit 按钮打开编辑器——本列表中的数据文件，或上方「Select Coefficients」中的校准曲线。",
-      "这是文件名字段。修改它可将编辑另存为新名称，保持不变则覆盖原文件。",
-      "编辑器将文件显示为表格（CSV）或表单（calibration JSON）。在上方区域编辑数值；点击此按钮可切换到原始 Text 模式，或切回，哪种方便用哪种。",
-      "点击「Save Changes」写入您的编辑（或点击 Cancel 放弃）。对话框关闭后指南结束。"
+      {
+        "target": "#file-selection",
+        "description": "点击任意文件旁的 ✏️ Edit 按钮打开编辑器——本列表中的数据文件，或上方「Select Coefficients」中的校准曲线。"
+      },
+      {
+        "target": "#swal-input-filename",
+        "description": "这是文件名字段。修改它可将编辑另存为新名称，保持不变则覆盖原文件。"
+      },
+      {
+        "target": "#toggle-mode",
+        "description": "编辑器将文件显示为表格（CSV）或表单（calibration JSON）。在上方区域编辑数值；点击此按钮可切换到原始 Text 模式，或切回，哪种方便用哪种。"
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "点击「Save Changes」写入您的编辑（或点击 Cancel 放弃）。对话框关闭后指南结束。"
+      }
     ],
     "queries": [
       "编辑文件",
@@ -793,10 +1274,22 @@
   {
     "id": "edit_calibration_curve",
     "steps": [
-      "校准曲线是「Select Coefficients」下保存的 JSON 文件。点击要修改的曲线旁的 ✏️ Edit 按钮打开编辑器。",
-      "这是文件名字段。修改它可将曲线另存为新名称，保持不变则覆盖原文件。",
-      "曲线以表单形式打开，显示其算法和拟合系数。在上方编辑数值；如需直接编辑 JSON，点击此按钮切换到原始 Text 模式。",
-      "点击「Save Changes」保存更新后的标准曲线（或 Cancel 放弃）。对话框关闭后指南结束。"
+      {
+        "target": "#cal-json-sel-section",
+        "description": "校准曲线是「Select Coefficients」下保存的 JSON 文件。点击要修改的曲线旁的 ✏️ Edit 按钮打开编辑器。"
+      },
+      {
+        "target": "#swal-input-filename",
+        "description": "这是文件名字段。修改它可将曲线另存为新名称，保持不变则覆盖原文件。"
+      },
+      {
+        "target": "#toggle-mode",
+        "description": "曲线以表单形式打开，显示其算法和拟合系数。在上方编辑数值；如需直接编辑 JSON，点击此按钮切换到原始 Text 模式。"
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "点击「Save Changes」保存更新后的标准曲线（或 Cancel 放弃）。对话框关闭后指南结束。"
+      }
     ],
     "queries": [
       "编辑校准曲线",
@@ -816,15 +1309,42 @@
   {
     "id": "app_settings",
     "steps": [
-      "点击 ⚙️ 齿轮打开 App Settings 对话框。它把所有偏好分组为多个部分——我们将逐一介绍主要部分。",
-      "常规设置。这是界面 Language（7 种语言）；其下方是命名录制文件时使用的时间戳格式。",
-      "外观——在 Light、Dark 或 Auto（跟随系统）主题之间切换。",
-      "测量默认值：应用打开时的模式（kinetics / point / calibrate），旁边是默认浓度单位（ng/µL、nM 或 %）。",
-      "File Selection——文件列表的排序方式（按日期或名称），以及列表滚动前显示多少 CSV / JSON 行。",
-      "应用于新录制的比色计读取默认值：timeout（时长）、每次读取的间隔、完成时通知开关，以及日志面板高度。",
-      "数据显示默认值：图表高度、数据是否归一化并按来源拆分，以及哪些分析面板默认展开。",
-      "AI Assistant——切换是否收集您的 👍/👎 回答评分以改进本地指南匹配。您也可以在此导出或重置该学习数据。",
-      "点击 Save 应用更改。Cancel 放弃，'Revert to defaults' 重置所有设置。对话框关闭后指南结束。"
+      {
+        "target": "#settingsBtn",
+        "description": "点击 ⚙️ 齿轮打开 App Settings 对话框。它把所有偏好分组为多个部分——我们将逐一介绍主要部分。"
+      },
+      {
+        "target": "#swal-ui-language",
+        "description": "常规设置。这是界面 Language（7 种语言）；其下方是命名录制文件时使用的时间戳格式。"
+      },
+      {
+        "target": "#swal-theme",
+        "description": "外观——在 Light、Dark 或 Auto（跟随系统）主题之间切换。"
+      },
+      {
+        "target": "#swal-mode",
+        "description": "测量默认值：应用打开时的模式（kinetics / point / calibrate），旁边是默认浓度单位（ng/µL、nM 或 %）。"
+      },
+      {
+        "target": "#swal-file-sort",
+        "description": "File Selection——文件列表的排序方式（按日期或名称），以及列表滚动前显示多少 CSV / JSON 行。"
+      },
+      {
+        "target": "#swal-log-timeout",
+        "description": "应用于新录制的比色计读取默认值：timeout（时长）、每次读取的间隔、完成时通知开关，以及日志面板高度。"
+      },
+      {
+        "target": "#swal-chart-height",
+        "description": "数据显示默认值：图表高度、数据是否归一化并按来源拆分，以及哪些分析面板默认展开。"
+      },
+      {
+        "target": "#swal-ai-feedback-enabled",
+        "description": "AI Assistant——切换是否收集您的 👍/👎 回答评分以改进本地指南匹配。您也可以在此导出或重置该学习数据。"
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "点击 Save 应用更改。Cancel 放弃，'Revert to defaults' 重置所有设置。对话框关闭后指南结束。"
+      }
     ],
     "queries": [
       "应用设置",
@@ -844,13 +1364,34 @@
   {
     "id": "generate_report_dialog",
     "steps": [
-      "点击 'Generate quick Report' 打开 Report Details 对话框，在生成报告前设置标题、选择要绘制的内容并选择导出格式。",
-      "输入显示在报告顶部的标题（默认 'Colorimetric Analysis Report'）。对于普通的 Kinetics/Point 快照，这是唯一显示的字段——Calibrate 模式会在下方增加额外选项。",
-      "仅 Calibration (Kinetics)：勾选要绘制的 metric，并为每个 metric 勾选一个或多个拟合算法。取消勾选某个 metric 会禁用其拟合；无法求解的拟合将被跳过并给出警告。",
-      "仅 Calibration (Point)：选择一个时间点并为其勾选一个或多个拟合。使用 '+ Add time point' 添加更多条目——每个时间点 × 拟合生成一条标准曲线。",
-      "仅 Calibration：覆盖原生 Excel 图表的 X 和 Y 轴标签。将 Y 留空可按各图表的 metric 自动标注。这些标签之后也可在 Excel 中编辑。",
-      "选择 PDF（可打印的 HTML 报告——打开后使用 Print → Save as PDF）或 Excel（带嵌入图表的 .xlsx 工作簿）。",
-      "点击 OK 以所选格式生成报告。对话框关闭时向导结束。"
+      {
+        "target": "#generate-report-btn",
+        "description": "点击 'Generate quick Report' 打开 Report Details 对话框，在生成报告前设置标题、选择要绘制的内容并选择导出格式。"
+      },
+      {
+        "target": "#swal-input1",
+        "description": "输入显示在报告顶部的标题（默认 'Colorimetric Analysis Report'）。对于普通的 Kinetics/Point 快照，这是唯一显示的字段——Calibrate 模式会在下方增加额外选项。"
+      },
+      {
+        "target": "#swal-metrics",
+        "description": "仅 Calibration (Kinetics)：勾选要绘制的 metric，并为每个 metric 勾选一个或多个拟合算法。取消勾选某个 metric 会禁用其拟合；无法求解的拟合将被跳过并给出警告。"
+      },
+      {
+        "target": "#swal-timepoints",
+        "description": "仅 Calibration (Point)：选择一个时间点并为其勾选一个或多个拟合。使用 '+ Add time point' 添加更多条目——每个时间点 × 拟合生成一条标准曲线。"
+      },
+      {
+        "target": "#swal-xlabel",
+        "description": "仅 Calibration：覆盖原生 Excel 图表的 X 和 Y 轴标签。将 Y 留空可按各图表的 metric 自动标注。这些标签之后也可在 Excel 中编辑。"
+      },
+      {
+        "target": "input[name=\"swal-fmt\"]",
+        "description": "选择 PDF（可打印的 HTML 报告——打开后使用 Print → Save as PDF）或 Excel（带嵌入图表的 .xlsx 工作簿）。"
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "点击 OK 以所选格式生成报告。对话框关闭时向导结束。"
+      }
     ],
     "queries": [
       "报告对话框",
@@ -861,6 +1402,26 @@
       "报告坐标轴标签",
       "报告窗口",
       "pdf 还是 excel"
+    ]
+  },
+  {
+    "id": "save_range_csv",
+    "steps": [
+      {
+        "target": "#range-display",
+        "title": "设置时间范围",
+        "description": "先把 From 和 To 设置为要保存的时间窗口，并选择对应的时间单位（秒、分钟或小时）。"
+      },
+      {
+        "target": "#save-range-btn",
+        "title": "将范围保存为 CSV",
+        "description": "点击 '💾 Save Range'，仅将当前显示窗口内的数据行导出为新的 CSV 文件。保存前会提示您输入文件名。"
+      }
+    ],
+    "queries": [
+      "保存范围",
+      "导出时间范围",
+      "保存部分数据"
     ]
   }
 ]

@@ -2,23 +2,74 @@
   {
     "id": "app_introduction",
     "steps": [
-      "Easy OKAPI a 4 modes : Kinetics (série temporelle), Point (point temporel unique), Calibrate (création de courbe étalon) et Report (export de données). Nous démarrons en mode Kinetics.",
-      "Ce panneau contrôle l'enregistrement des données depuis le colorimètre PyBadge. Dans ce tutoriel, nous utiliserons des données d'exemple plutôt qu'un appareil réel.",
-      "Ce bouton démarre l'enregistrement en direct de l'absorbance depuis le colorimètre. Pour l'instant, notez simplement son emplacement — nous utiliserons un fichier d'exemple ensuite.",
-      "Définissez la durée de chaque enregistrement. 'Infinite' enregistre jusqu'à ce que vous cliquiez sur Arrêt.",
-      "Définissez l'intervalle entre chaque lecture. 0 récupère les données aussi vite que possible.",
-      "Sélectionnez un fichier CSV cinétique pour explorer l'application. Des fichiers d'exemple sont disponibles dans le dossier sample_data — choisissez-en un pour continuer.",
-      "Vos données de mesure sont visualisées ici sous forme d'un graphique temporel montrant l'absorbance en fonction du temps.",
-      "Choisissez la source de mesure (canal) à exporter pour la calibration.",
-      "Entrez la concentration connue de l'analyte comme point de référence, définissez un nom de fichier et cliquez sur 'Export Data' pour créer un CSV de calibration.",
-      "Naviguez jusqu'au répertoire où le CSV de calibration vient d'être sauvegardé pour le sélectionner à l'étape suivante.",
-      "Trouvez le CSV de calibration que vous avez exporté. Cliquez sur 'Edit' pour vérifier son contenu, puis sélectionnez-le.",
-      "Passez en mode Calibrate pour configurer la régression et générer les coefficients de la courbe étalon.",
-      "Choisissez quelle grandeur cinétique (maxRate, Slope, Sat ou Time to Sat) utiliser pour la courbe étalon.",
-      "Sélectionnez l'algorithme d'ajustement pour votre courbe étalon : linéaire, polynomial, logarithmique, exponentiel ou Michaelis-Menten.",
-      "Entrez un nom et cliquez sur 'Export Coefficients' pour enregistrer la courbe étalon en tant que fichier JSON de calibration.",
-      "Revenez en mode Kinetics pour appliquer la calibration à vos mesures d'échantillon.",
-      "Sélectionnez ici le JSON de calibration que vous venez d'exporter. La courbe étalon est maintenant appliquée — la concentration sera calculée automatiquement depuis vos données cinétiques."
+      {
+        "target": "#meas-mode-section",
+        "description": "Easy OKAPI a 4 modes : Kinetics (série temporelle), Point (point temporel unique), Calibrate (création de courbe étalon) et Report (export de données). Nous démarrons en mode Kinetics."
+      },
+      {
+        "target": "#log-cdc-data",
+        "description": "Ce panneau contrôle l'enregistrement des données depuis le colorimètre PyBadge. Dans ce tutoriel, nous utiliserons des données d'exemple plutôt qu'un appareil réel."
+      },
+      {
+        "target": "#run-script-btn",
+        "description": "Ce bouton démarre l'enregistrement en direct de l'absorbance depuis le colorimètre. Pour l'instant, notez simplement son emplacement — nous utiliserons un fichier d'exemple ensuite."
+      },
+      {
+        "target": "#timeout-control",
+        "description": "Définissez la durée de chaque enregistrement. 'Infinite' enregistre jusqu'à ce que vous cliquiez sur Arrêt."
+      },
+      {
+        "target": "#interval-control",
+        "description": "Définissez l'intervalle entre chaque lecture. 0 récupère les données aussi vite que possible."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Sélectionnez un fichier CSV cinétique pour explorer l'application. Des fichiers d'exemple sont disponibles dans le dossier sample_data — choisissez-en un pour continuer."
+      },
+      {
+        "target": "#chart-container",
+        "description": "Vos données de mesure sont visualisées ici sous forme d'un graphique temporel montrant l'absorbance en fonction du temps."
+      },
+      {
+        "target": "#select-source-to-export",
+        "description": "Choisissez la source de mesure (canal) à exporter pour la calibration."
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "Entrez la concentration connue de l'analyte comme point de référence, définissez un nom de fichier et cliquez sur 'Export Data' pour créer un CSV de calibration."
+      },
+      {
+        "target": "#data-folder-list",
+        "description": "Naviguez jusqu'au répertoire où le CSV de calibration vient d'être sauvegardé pour le sélectionner à l'étape suivante."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Trouvez le CSV de calibration que vous avez exporté. Cliquez sur 'Edit' pour vérifier son contenu, puis sélectionnez-le."
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "Passez en mode Calibrate pour configurer la régression et générer les coefficients de la courbe étalon."
+      },
+      {
+        "target": "#select-quantity-section",
+        "description": "Choisissez quelle grandeur cinétique (maxRate, Slope, Sat ou Time to Sat) utiliser pour la courbe étalon."
+      },
+      {
+        "target": "#select-regress-algo",
+        "description": "Sélectionnez l'algorithme d'ajustement pour votre courbe étalon : linéaire, polynomial, logarithmique, exponentiel ou Michaelis-Menten."
+      },
+      {
+        "target": "#export-coef",
+        "description": "Entrez un nom et cliquez sur 'Export Coefficients' pour enregistrer la courbe étalon en tant que fichier JSON de calibration."
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "Revenez en mode Kinetics pour appliquer la calibration à vos mesures d'échantillon."
+      },
+      {
+        "target": "#cal-json-sel-section",
+        "description": "Sélectionnez ici le JSON de calibration que vous venez d'exporter. La courbe étalon est maintenant appliquée — la concentration sera calculée automatiquement depuis vos données cinétiques."
+      }
     ],
     "queries": [
       "comment fonctionne cette application",
@@ -35,7 +86,10 @@
   {
     "id": "nav_calibrate_mode",
     "steps": [
-      "Trouvez le sélecteur de mode ici. Cliquez pour sélectionner 'Calibrate'."
+      {
+        "target": "#measurement-mode",
+        "description": "Trouvez le sélecteur de mode ici. Cliquez pour sélectionner 'Calibrate'."
+      }
     ],
     "queries": [
       "mode calibration",
@@ -49,7 +103,10 @@
   {
     "id": "nav_kinetics_mode",
     "steps": [
-      "Trouvez le sélecteur de mode ici. Cliquez pour sélectionner 'Kinetics'."
+      {
+        "target": "#measurement-mode",
+        "description": "Trouvez le sélecteur de mode ici. Cliquez pour sélectionner 'Kinetics'."
+      }
     ],
     "queries": [
       "mode cinétique",
@@ -63,7 +120,10 @@
   {
     "id": "nav_point_mode",
     "steps": [
-      "Trouvez le sélecteur de mode ici. Cliquez pour sélectionner 'Point'."
+      {
+        "target": "#measurement-mode",
+        "description": "Trouvez le sélecteur de mode ici. Cliquez pour sélectionner 'Point'."
+      }
     ],
     "queries": [
       "mode point",
@@ -76,7 +136,10 @@
   {
     "id": "start_device",
     "steps": [
-      "Cliquez sur ce bouton pour commencer l'enregistrement depuis le colorimètre. Assurez-vous que l'appareil est connecté."
+      {
+        "target": "#run-script-btn",
+        "description": "Cliquez sur ce bouton pour commencer l'enregistrement depuis le colorimètre. Assurez-vous que l'appareil est connecté."
+      }
     ],
     "queries": [
       "démarrer la mesure",
@@ -90,7 +153,10 @@
   {
     "id": "stop_device",
     "steps": [
-      "Cliquez sur ce bouton pour arrêter manuellement l'enregistrement."
+      {
+        "target": "#terminate-script-btn",
+        "description": "Cliquez sur ce bouton pour arrêter manuellement l'enregistrement."
+      }
     ],
     "queries": [
       "arrêter la mesure",
@@ -102,7 +168,10 @@
   {
     "id": "select_file",
     "steps": [
-      "Sélectionnez ici un fichier CSV à analyser. Cliquez pour ouvrir le sélecteur de fichier."
+      {
+        "target": "#file-selection",
+        "description": "Sélectionnez ici un fichier CSV à analyser. Cliquez pour ouvrir le sélecteur de fichier."
+      }
     ],
     "queries": [
       "sélectionner un fichier",
@@ -114,7 +183,16 @@
   {
     "id": "navigate_directory",
     "steps": [
-      "Parcourez et naviguez jusqu'au répertoire contenant vos fichiers de données."
+      {
+        "target": "#main-directory-section",
+        "title": "Dossier de données",
+        "description": "Choisissez le sous-dossier de données avec lequel travailler. Tous les fichiers CSV de ce dossier apparaissent dans la liste des fichiers."
+      },
+      {
+        "target": "#data-folder-list",
+        "title": "Choisir un dossier de données",
+        "description": "Cliquez sur un dossier de cette liste pour parcourir ses fichiers. Utilisez la zone de recherche pour filtrer par nom, ou ↻ pour actualiser après avoir ajouté des dossiers."
+      }
     ],
     "queries": [
       "changer de répertoire",
@@ -127,7 +205,10 @@
   {
     "id": "load_calibration_json",
     "steps": [
-      "Sélectionnez ici un fichier JSON de courbe étalon pour appliquer la conversion de concentration."
+      {
+        "target": "#cal-json-sel-section",
+        "description": "Sélectionnez ici un fichier JSON de courbe étalon pour appliquer la conversion de concentration."
+      }
     ],
     "queries": [
       "charger la calibration",
@@ -140,7 +221,10 @@
   {
     "id": "set_timeout",
     "steps": [
-      "Définissez ici la durée de chaque enregistrement. Réglez sur Infini pour enregistrer jusqu'à l'arrêt manuel."
+      {
+        "target": "#timeout-control",
+        "description": "Définissez ici la durée de chaque enregistrement. Réglez sur Infini pour enregistrer jusqu'à l'arrêt manuel."
+      }
     ],
     "queries": [
       "configurer le délai",
@@ -153,7 +237,10 @@
   {
     "id": "set_interval",
     "steps": [
-      "Définissez l'intervalle de temps entre les lectures. Réglez sur 0 pour récupérer les données aussi vite que possible."
+      {
+        "target": "#interval-control",
+        "description": "Définissez l'intervalle de temps entre les lectures. Réglez sur 0 pour récupérer les données aussi vite que possible."
+      }
     ],
     "queries": [
       "configurer l'intervalle",
@@ -166,7 +253,10 @@
   {
     "id": "export_data",
     "steps": [
-      "Exportez vos résultats d'analyse ici. Définissez un point de référence, entrez un nom de fichier et cliquez sur Export Data."
+      {
+        "target": "#export-analysis",
+        "description": "Exportez vos résultats d'analyse ici. Définissez un point de référence, entrez un nom de fichier et cliquez sur Export Data."
+      }
     ],
     "queries": [
       "exporter les données",
@@ -179,17 +269,50 @@
   {
     "id": "merge_files",
     "steps": [
-      "Pour sélectionner plusieurs fichiers d'un coup depuis un navigateur de dossiers, activez d'abord cette option. Cliquez sur l'engrenage ⚙️ pour ouvrir App Settings.",
-      "Cochez cette case ('Pick merge files from a folder browser') pour afficher plusieurs fichiers à fusionner depuis un navigateur de dossiers.",
-      "Cliquez sur Save pour appliquer. (Si vous ignorez ceci, la fusion fonctionne quand même — vous ajouterez les fichiers ligne par ligne.)",
-      "Cliquez maintenant sur 'Merge Files' pour commencer à combiner les fichiers CSV.",
-      "Développez un dossier et cochez les fichiers CSV à fusionner — vous pouvez en prendre dans plusieurs dossiers. Tous doivent partager la même mesure, le même mode et les mêmes unités.",
-      "Utilisez Select all / Clear pour tout basculer dans la vue ; le compteur indique combien de fichiers sont sélectionnés (au moins deux).",
-      "Une fois au moins deux fichiers cochés, cliquez sur Next pour passer à l'ordonnancement.",
-      "Chaque ligne est un fichier source. Utilisez les boutons ▲/▼ pour définir l'ordre des sources dans le fichier fusionné ; ✕ supprime une ligne.",
-      "Besoin de plus ? '+ Add File' ajoute une ligne ; choisissez son dossier et son fichier dans les menus déroulants.",
-      "Saisissez un nom pour le fichier fusionné et choisissez le dossier de destination juste en dessous.",
-      "Cliquez sur Merge pour créer le CSV multi-sources fusionné. Le guide se termine à la fermeture de la boîte de dialogue."
+      {
+        "target": "#settingsBtn",
+        "description": "Pour sélectionner plusieurs fichiers d'un coup depuis un navigateur de dossiers, activez d'abord cette option. Cliquez sur l'engrenage ⚙️ pour ouvrir App Settings."
+      },
+      {
+        "target": "#swal-merge-picker",
+        "description": "Cochez cette case ('Pick merge files from a folder browser') pour afficher plusieurs fichiers à fusionner depuis un navigateur de dossiers."
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "Cliquez sur Save pour appliquer. (Si vous ignorez ceci, la fusion fonctionne quand même — vous ajouterez les fichiers ligne par ligne.)"
+      },
+      {
+        "target": "#merge-file-btn",
+        "description": "Cliquez maintenant sur 'Merge Files' pour commencer à combiner les fichiers CSV."
+      },
+      {
+        "target": "#merge-pick-accordion",
+        "description": "Développez un dossier et cochez les fichiers CSV à fusionner — vous pouvez en prendre dans plusieurs dossiers. Tous doivent partager la même mesure, le même mode et les mêmes unités."
+      },
+      {
+        "target": "#merge-pick-toggle-all",
+        "description": "Utilisez Select all / Clear pour tout basculer dans la vue ; le compteur indique combien de fichiers sont sélectionnés (au moins deux)."
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "Une fois au moins deux fichiers cochés, cliquez sur Next pour passer à l'ordonnancement."
+      },
+      {
+        "target": ".merge-file-row",
+        "description": "Chaque ligne est un fichier source. Utilisez les boutons ▲/▼ pour définir l'ordre des sources dans le fichier fusionné ; ✕ supprime une ligne."
+      },
+      {
+        "target": "#merge-add-btn",
+        "description": "Besoin de plus ? '+ Add File' ajoute une ligne ; choisissez son dossier et son fichier dans les menus déroulants."
+      },
+      {
+        "target": "#swal-output",
+        "description": "Saisissez un nom pour le fichier fusionné et choisissez le dossier de destination juste en dessous."
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "Cliquez sur Merge pour créer le CSV multi-sources fusionné. Le guide se termine à la fermeture de la boîte de dialogue."
+      }
     ],
     "queries": [
       "fusionner des fichiers",
@@ -204,7 +327,10 @@
   {
     "id": "export_to_report_subject",
     "steps": [
-      "Cliquez sur 'Export Data to Report' ici pour sauvegarder ce snapshot d'analyse dans un sujet de rapport nommé."
+      {
+        "target": "#report-section",
+        "description": "Cliquez sur 'Export Data to Report' ici pour sauvegarder ce snapshot d'analyse dans un sujet de rapport nommé."
+      }
     ],
     "queries": [
       "exporter vers le rapport",
@@ -217,7 +343,10 @@
   {
     "id": "view_chart",
     "steps": [
-      "Vos données de mesure sont visualisées sous forme de graphique ici."
+      {
+        "target": "#chart-container",
+        "description": "Vos données de mesure sont visualisées sous forme de graphique ici."
+      }
     ],
     "queries": [
       "voir le graphique",
@@ -230,7 +359,10 @@
   {
     "id": "select_regression",
     "steps": [
-      "Choisissez l'algorithme de régression pour votre courbe étalon : linéaire, polynomial, logarithmique, exponentiel ou Michaelis-Menten."
+      {
+        "target": "#select-regress-algo",
+        "description": "Choisissez l'algorithme de régression pour votre courbe étalon : linéaire, polynomial, logarithmique, exponentiel ou Michaelis-Menten."
+      }
     ],
     "queries": [
       "sélectionner la régression",
@@ -243,7 +375,10 @@
   {
     "id": "export_coefficients",
     "steps": [
-      "Entrez un nom de fichier et cliquez sur Export Coefficients pour sauvegarder votre courbe étalon en JSON."
+      {
+        "target": "#export-coef",
+        "description": "Entrez un nom de fichier et cliquez sur Export Coefficients pour sauvegarder votre courbe étalon en JSON."
+      }
     ],
     "queries": [
       "exporter les coefficients",
@@ -256,7 +391,10 @@
   {
     "id": "set_threshold",
     "steps": [
-      "Définissez ici la valeur R² minimale acceptée. Les ajustements en dessous de ce seuil ne seront pas exportés."
+      {
+        "target": "#threshold-value",
+        "description": "Définissez ici la valeur R² minimale acceptée. Les ajustements en dessous de ce seuil ne seront pas exportés."
+      }
     ],
     "queries": [
       "configurer le seuil",
@@ -269,7 +407,10 @@
   {
     "id": "window_size",
     "steps": [
-      "Configurez la taille de la fenêtre glissante pour la régression du taux maximal. Minimum 3 points de données."
+      {
+        "target": "#window-size-section",
+        "description": "Configurez la taille de la fenêtre glissante pour la régression du taux maximal. Minimum 3 points de données."
+      }
     ],
     "queries": [
       "taille de la fenêtre",
@@ -282,7 +423,10 @@
   {
     "id": "select_time_point",
     "steps": [
-      "Choisissez le point de temps à utiliser pour la calibration en mode Point."
+      {
+        "target": "#select-time-point",
+        "description": "Choisissez le point de temps à utiliser pour la calibration en mode Point."
+      }
     ],
     "queries": [
       "sélectionner le point de temps",
@@ -295,7 +439,10 @@
   {
     "id": "view_log",
     "steps": [
-      "Journal en temps réel du processus d'enregistrement. Utile pour diagnostiquer les problèmes de connexion."
+      {
+        "target": "#log-display",
+        "description": "Journal en temps réel du processus d'enregistrement. Utile pour diagnostiquer les problèmes de connexion."
+      }
     ],
     "queries": [
       "voir le journal",
@@ -307,12 +454,30 @@
   {
     "id": "calibrate_kinetics_workflow",
     "steps": [
-      "Sélectionnez 'Calibrate' dans le sélecteur de mode pour entrer en mode calibration.",
-      "Dans le sélecteur de type de calibration, choisissez 'Kinetics'.",
-      "Sélectionnez le fichier CSV Kinetics exporté contenant les concentrations et paramètres cinétiques.",
-      "Choisissez la quantité cinétique pour la calibration : maxRate, Slope, Sat ou Time to Sat.",
-      "Sélectionnez un algorithme de régression pour ajuster votre courbe étalon.",
-      "Entrez un nom et exportez les coefficients de la courbe étalon en fichier JSON."
+      {
+        "target": "#measurement-mode",
+        "description": "Sélectionnez 'Calibrate' dans le sélecteur de mode pour entrer en mode calibration."
+      },
+      {
+        "target": "#cal-mode-select",
+        "description": "Dans le sélecteur de type de calibration, choisissez 'Kinetics'."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Sélectionnez le fichier CSV Kinetics exporté contenant les concentrations et paramètres cinétiques."
+      },
+      {
+        "target": "#select-quantity-section",
+        "description": "Choisissez la quantité cinétique pour la calibration : maxRate, Slope, Sat ou Time to Sat."
+      },
+      {
+        "target": "#select-regress-algo",
+        "description": "Sélectionnez un algorithme de régression pour ajuster votre courbe étalon."
+      },
+      {
+        "target": "#export-coef",
+        "description": "Entrez un nom et exportez les coefficients de la courbe étalon en fichier JSON."
+      }
     ],
     "queries": [
       "flux de calibration cinétique",
@@ -325,12 +490,30 @@
   {
     "id": "calibrate_point_workflow",
     "steps": [
-      "Sélectionnez 'Calibrate' dans le sélecteur de mode de mesure.",
-      "Dans le sélecteur de type de calibration, choisissez 'Point'.",
-      "Sélectionnez le CSV Point exporté contenant les concentrations et les valeurs d'absorbance.",
-      "Choisissez le point temporel pour votre courbe d'étalonnage. (Ignoré pour un fichier d'étalonnage Turn — pas d'axe temporel ; chaque Turn est déjà un étalon.)",
-      "Sélectionnez un algorithme de régression pour ajuster votre courbe étalon.",
-      "Entrez un nom et exportez les coefficients de la courbe étalon en fichier JSON."
+      {
+        "target": "#measurement-mode",
+        "description": "Sélectionnez 'Calibrate' dans le sélecteur de mode de mesure."
+      },
+      {
+        "target": "#cal-mode-select",
+        "description": "Dans le sélecteur de type de calibration, choisissez 'Point'."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Sélectionnez le CSV Point exporté contenant les concentrations et les valeurs d'absorbance."
+      },
+      {
+        "target": "#select-time-point",
+        "description": "Choisissez le point temporel pour votre courbe d'étalonnage. (Ignoré pour un fichier d'étalonnage Turn — pas d'axe temporel ; chaque Turn est déjà un étalon.)"
+      },
+      {
+        "target": "#select-regress-algo",
+        "description": "Sélectionnez un algorithme de régression pour ajuster votre courbe étalon."
+      },
+      {
+        "target": "#export-coef",
+        "description": "Entrez un nom et exportez les coefficients de la courbe étalon en fichier JSON."
+      }
     ],
     "queries": [
       "flux de calibration point",
@@ -343,11 +526,26 @@
   {
     "id": "build_turn_calibration",
     "steps": [
-      "Sélectionnez 'Point' dans le sélecteur de mode de mesure.",
-      "Sélectionnez un fichier de données Turn (enregistré avec 'Record as Turns'). Chaque Turn enregistré est un étalon de concentration — les contrôles de point temporel ne s'appliquent pas.",
-      "Saisissez la concentration connue pour chaque Turn enregistré. Chaque Turn devient un point de la courbe d'étalonnage ; enregistrez plusieurs Turns à une même concentration pour obtenir des réplicats (moyennés, avec barres d'erreur).",
-      "Pour un fichier multi-sources, choisissez les sources à exporter — chaque source sélectionnée est écrite comme sa propre courbe d'étalonnage.",
-      "Saisissez un nom de fichier et cliquez sur Export Data pour enregistrer la table d'étalonnage Concentration,Value. Passez ensuite en mode Calibrate pour ajuster la courbe et exporter ses coefficients."
+      {
+        "target": "#measurement-mode",
+        "description": "Sélectionnez 'Point' dans le sélecteur de mode de mesure."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Sélectionnez un fichier de données Turn (enregistré avec 'Record as Turns'). Chaque Turn enregistré est un étalon de concentration — les contrôles de point temporel ne s'appliquent pas."
+      },
+      {
+        "target": "#turn-cal-section",
+        "description": "Saisissez la concentration connue pour chaque Turn enregistré. Chaque Turn devient un point de la courbe d'étalonnage ; enregistrez plusieurs Turns à une même concentration pour obtenir des réplicats (moyennés, avec barres d'erreur)."
+      },
+      {
+        "target": "#select-source-to-export",
+        "description": "Pour un fichier multi-sources, choisissez les sources à exporter — chaque source sélectionnée est écrite comme sa propre courbe d'étalonnage."
+      },
+      {
+        "target": "#export-btn",
+        "description": "Saisissez un nom de fichier et cliquez sur Export Data pour enregistrer la table d'étalonnage Concentration,Value. Passez ensuite en mode Calibrate pour ajuster la courbe et exporter ses coefficients."
+      }
     ],
     "queries": [
       "étalonnage turn",
@@ -361,10 +559,22 @@
   {
     "id": "concentration_calc_kinetics",
     "steps": [
-      "Sélectionnez ici un JSON de courbe étalon. Cela applique les coefficients de régression pour convertir vos mesures cinétiques en concentration.",
-      "Choisissez le fichier CSV Kinetics que vous voulez analyser.",
-      "Les coefficients de la courbe étalon chargée sont affichés ici (en haut à droite). C'est le modèle utilisé pour convertir l'absorbance/quantités cinétiques en concentration.",
-      "La concentration de l'analyte calculée à partir de vos données et de la courbe étalon sélectionnée est affichée ici."
+      {
+        "target": "#cal-json-sel-section",
+        "description": "Sélectionnez ici un JSON de courbe étalon. Cela applique les coefficients de régression pour convertir vos mesures cinétiques en concentration."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Choisissez le fichier CSV Kinetics que vous voulez analyser."
+      },
+      {
+        "target": "#json-display",
+        "description": "Les coefficients de la courbe étalon chargée sont affichés ici (en haut à droite). C'est le modèle utilisé pour convertir l'absorbance/quantités cinétiques en concentration."
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "La concentration de l'analyte calculée à partir de vos données et de la courbe étalon sélectionnée est affichée ici."
+      }
     ],
     "queries": [
       "calculer la concentration depuis kinetics",
@@ -375,10 +585,22 @@
   {
     "id": "concentration_calc_point",
     "steps": [
-      "Sélectionnez ici un JSON de courbe étalon pour convertir l'absorbance de vos mesures de point en concentration.",
-      "Choisissez le fichier CSV Point que vous voulez analyser.",
-      "Les coefficients de la courbe étalon sont affichés ici (en haut à droite). C'est le modèle de conversion de l'absorbance en concentration.",
-      "La concentration calculée à partir de votre mesure de point et de la courbe étalon est affichée ici."
+      {
+        "target": "#cal-json-sel-section",
+        "description": "Sélectionnez ici un JSON de courbe étalon pour convertir l'absorbance de vos mesures de point en concentration."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Choisissez le fichier CSV Point que vous voulez analyser."
+      },
+      {
+        "target": "#json-display",
+        "description": "Les coefficients de la courbe étalon sont affichés ici (en haut à droite). C'est le modèle de conversion de l'absorbance en concentration."
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "La concentration calculée à partir de votre mesure de point et de la courbe étalon est affichée ici."
+      }
     ],
     "queries": [
       "calculer la concentration depuis point",
@@ -389,11 +611,26 @@
   {
     "id": "concentration_calc_wrong_mode",
     "steps": [
-      "Le calcul de concentration depuis un échantillon nécessite le mode Kinetics ou Point. Basculez d'abord ici.",
-      "Après avoir changé de mode, sélectionnez ici un JSON de courbe étalon pour appliquer les coefficients.",
-      "Choisissez le fichier CSV que vous voulez analyser.",
-      "Une fois un fichier de calibration chargé, ses coefficients de courbe étalon s'affichent ici en haut à droite.",
-      "La concentration de l'analyte calculée à partir de vos données et de la courbe étalon est affichée ici."
+      {
+        "target": "#measurement-mode",
+        "description": "Le calcul de concentration depuis un échantillon nécessite le mode Kinetics ou Point. Basculez d'abord ici."
+      },
+      {
+        "target": "#cal-json-sel-section",
+        "description": "Après avoir changé de mode, sélectionnez ici un JSON de courbe étalon pour appliquer les coefficients."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Choisissez le fichier CSV que vous voulez analyser."
+      },
+      {
+        "target": "#json-display",
+        "description": "Une fois un fichier de calibration chargé, ses coefficients de courbe étalon s'affichent ici en haut à droite."
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "La concentration de l'analyte calculée à partir de vos données et de la courbe étalon est affichée ici."
+      }
     ],
     "queries": [
       "calcul de concentration mauvais mode",
@@ -404,18 +641,54 @@
   {
     "id": "create_calibration_curve_workflow",
     "steps": [
-      "Assurez-vous que le mode Kinetics est sélectionné ici avant de commencer.",
-      "Sélectionnez un fichier CSV de mesure cinétique contenant les données d'échantillon à utiliser pour la calibration.",
-      "Choisissez la source de mesure (canal) à exporter pour la courbe étalon.",
-      "Entrez la concentration connue de l'analyte comme point de référence, définissez un nom de fichier et cliquez sur 'Export Data' pour enregistrer un CSV de calibration.",
-      "Naviguez jusqu'au répertoire où le CSV de calibration vient d'être sauvegardé pour le trouver et le sélectionner.",
-      "Trouvez le CSV de calibration que vous venez d'exporter. Cliquez sur 'Edit' pour vérifier son contenu, puis sélectionnez-le.",
-      "Passez en mode Calibrate ici pour configurer la régression et générer les coefficients de la courbe étalon.",
-      "Choisissez quelle grandeur cinétique utiliser pour la courbe étalon : maxRate, Slope, Sat ou Time to Sat.",
-      "Sélectionnez l'algorithme d'ajustement pour votre courbe étalon : linéaire, polynomial, logarithmique, exponentiel ou Michaelis-Menten.",
-      "Entrez un nom de fichier et cliquez sur 'Export Coefficients' pour enregistrer la courbe étalon en tant que JSON de calibration.",
-      "Revenez en mode Kinetics pour appliquer la calibration à vos mesures d'échantillon.",
-      "Sélectionnez ici le JSON de calibration que vous venez d'exporter. La courbe étalon sera maintenant appliquée pour calculer la concentration de l'analyte depuis vos données cinétiques."
+      {
+        "target": "#measurement-mode",
+        "description": "Assurez-vous que le mode Kinetics est sélectionné ici avant de commencer."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Sélectionnez un fichier CSV de mesure cinétique contenant les données d'échantillon à utiliser pour la calibration."
+      },
+      {
+        "target": "#select-source-to-export",
+        "description": "Choisissez la source de mesure (canal) à exporter pour la courbe étalon."
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "Entrez la concentration connue de l'analyte comme point de référence, définissez un nom de fichier et cliquez sur 'Export Data' pour enregistrer un CSV de calibration."
+      },
+      {
+        "target": "#data-folder-list",
+        "description": "Naviguez jusqu'au répertoire où le CSV de calibration vient d'être sauvegardé pour le trouver et le sélectionner."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Trouvez le CSV de calibration que vous venez d'exporter. Cliquez sur 'Edit' pour vérifier son contenu, puis sélectionnez-le."
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "Passez en mode Calibrate ici pour configurer la régression et générer les coefficients de la courbe étalon."
+      },
+      {
+        "target": "#select-quantity-section",
+        "description": "Choisissez quelle grandeur cinétique utiliser pour la courbe étalon : maxRate, Slope, Sat ou Time to Sat."
+      },
+      {
+        "target": "#select-regress-algo",
+        "description": "Sélectionnez l'algorithme d'ajustement pour votre courbe étalon : linéaire, polynomial, logarithmique, exponentiel ou Michaelis-Menten."
+      },
+      {
+        "target": "#export-coef",
+        "description": "Entrez un nom de fichier et cliquez sur 'Export Coefficients' pour enregistrer la courbe étalon en tant que JSON de calibration."
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "Revenez en mode Kinetics pour appliquer la calibration à vos mesures d'échantillon."
+      },
+      {
+        "target": "#cal-json-sel-section",
+        "description": "Sélectionnez ici le JSON de calibration que vous venez d'exporter. La courbe étalon sera maintenant appliquée pour calculer la concentration de l'analyte depuis vos données cinétiques."
+      }
     ],
     "queries": [
       "créer une courbe d'étalonnage",
@@ -428,11 +701,26 @@
   {
     "id": "concentration_calc_generic",
     "steps": [
-      "Le calcul de concentration nécessite le mode Kinetics ou Point. Assurez-vous du bon mode ici.",
-      "Sélectionnez ici un JSON de courbe étalon pour appliquer les coefficients de régression à la conversion.",
-      "Choisissez le fichier CSV que vous voulez analyser.",
-      "Les coefficients de la courbe étalon sont affichés ici (en haut à droite), indiquant le modèle de conversion.",
-      "La concentration de l'analyte calculée à partir de vos données et de la courbe étalon est affichée ici."
+      {
+        "target": "#measurement-mode",
+        "description": "Le calcul de concentration nécessite le mode Kinetics ou Point. Assurez-vous du bon mode ici."
+      },
+      {
+        "target": "#cal-json-sel-section",
+        "description": "Sélectionnez ici un JSON de courbe étalon pour appliquer les coefficients de régression à la conversion."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Choisissez le fichier CSV que vous voulez analyser."
+      },
+      {
+        "target": "#json-display",
+        "description": "Les coefficients de la courbe étalon sont affichés ici (en haut à droite), indiquant le modèle de conversion."
+      },
+      {
+        "target": "#con-value-read-source-0",
+        "description": "La concentration de l'analyte calculée à partir de vos données et de la courbe étalon est affichée ici."
+      }
     ],
     "queries": [
       "calculer la concentration",
@@ -444,13 +732,34 @@
   {
     "id": "measurement_guide",
     "steps": [
-      "Sélectionnez le mode Kinetics pour démarrer une mesure colorimétrique en série temporelle.",
-      "Cette console contrôle le colorimètre. Assurez-vous que votre PyBadge est connecté via USB avant de démarrer.",
-      "Configurez la durée de collecte. Activez 'Infini' pour continuer jusqu'à l'arrêt manuel.",
-      "Définissez la fréquence à laquelle le colorimètre prend une lecture pendant la mesure.",
-      "Cliquez sur 'Start reading' pour commencer la collecte depuis le colorimètre. Les lectures apparaîtront dans le log ci-dessous.",
-      "Les lectures du capteur apparaissent ici en temps réel. Chaque ligne est une mesure horodatée de l'appareil.",
-      "Après l'arrêt, votre fichier est automatiquement sauvegardé. Sélectionnez-le ici pour voir les graphiques et lancer l'analyse."
+      {
+        "target": "#measurement-mode",
+        "description": "Sélectionnez le mode Kinetics pour démarrer une mesure colorimétrique en série temporelle."
+      },
+      {
+        "target": "#log-cdc-data",
+        "description": "Cette console contrôle le colorimètre. Assurez-vous que votre PyBadge est connecté via USB avant de démarrer."
+      },
+      {
+        "target": "#timeout-control",
+        "description": "Configurez la durée de collecte. Activez 'Infini' pour continuer jusqu'à l'arrêt manuel."
+      },
+      {
+        "target": "#interval-control",
+        "description": "Définissez la fréquence à laquelle le colorimètre prend une lecture pendant la mesure."
+      },
+      {
+        "target": "#run-script-btn",
+        "description": "Cliquez sur 'Start reading' pour commencer la collecte depuis le colorimètre. Les lectures apparaîtront dans le log ci-dessous."
+      },
+      {
+        "target": "#log-display",
+        "description": "Les lectures du capteur apparaissent ici en temps réel. Chaque ligne est une mesure horodatée de l'appareil."
+      },
+      {
+        "target": "#file-selection",
+        "description": "Après l'arrêt, votre fichier est automatiquement sauvegardé. Sélectionnez-le ici pour voir les graphiques et lancer l'analyse."
+      }
     ],
     "queries": [
       "comment mesurer",
@@ -462,11 +771,26 @@
   {
     "id": "report_full_from_data",
     "steps": [
-      "Cliquez sur 'Export Data to Report' pour sauvegarder ce snapshot dans un sujet de rapport nommé.",
-      "Après l'export, basculez en mode Report ici pour accéder à l'interface complète de gestion des rapports.",
-      "Gérez ici vos snapshots d'analyse sauvegardés. Configurez les options de mise en page et définissez un titre.",
-      "Tous les snapshots sauvegardés sont listés ici. Supprimez ceux dont vous ne voulez pas avant de générer le rapport.",
-      "Compilez tous les éléments en rapport HTML imprimable. Ouvrez dans votre navigateur puis Imprimer → Enregistrer en PDF."
+      {
+        "target": "#report-section",
+        "description": "Cliquez sur 'Export Data to Report' pour sauvegarder ce snapshot dans un sujet de rapport nommé."
+      },
+      {
+        "target": "#measurement-mode",
+        "description": "Après l'export, basculez en mode Report ici pour accéder à l'interface complète de gestion des rapports."
+      },
+      {
+        "target": "#report-console-section",
+        "description": "Gérez ici vos snapshots d'analyse sauvegardés. Configurez les options de mise en page et définissez un titre."
+      },
+      {
+        "target": "#report-items-container",
+        "description": "Tous les snapshots sauvegardés sont listés ici. Supprimez ceux dont vous ne voulez pas avant de générer le rapport."
+      },
+      {
+        "target": "button[onclick=\"finalizeReport()\"]",
+        "description": "Compilez tous les éléments en rapport HTML imprimable. Ouvrez dans votre navigateur puis Imprimer → Enregistrer en PDF."
+      }
     ],
     "queries": [
       "rapport complet",
@@ -477,14 +801,38 @@
   {
     "id": "report_full_in_report",
     "steps": [
-      "Voici la Report Modification Console. Nous allons définir le titre et les options de mise en page, vérifier les éléments, puis générer le rapport en Excel ou PDF.",
-      "Définissez le titre du rapport ici — c'est l'en-tête du rapport PDF/HTML et le nom du classeur Excel (par défaut 'Colorimetric Analysis Report').",
-      "Options PDF/HTML : cochez 'Include Watermark' pour un filigrane CBBiotec, et 'Include CBB Logo' (juste à côté) pour afficher le logo dans l'en-tête. Décochez les deux pour un rapport propre, sans marque.",
-      "Option Excel : cochez pour placer les données de chaque fichier CSV sur son propre onglet/feuille ; décochez pour tout combiner dans une seule feuille.",
-      "Option Excel : remplacez les libellés des axes X et Y des graphiques Excel natifs (modifiables). Laissez X vide pour étiqueter automatiquement avec l'unité de concentration de chaque fichier, et Y vide pour son metric.",
-      "Tous les snapshots sauvegardés sont listés ici. Supprimez-en avant de générer.",
-      "Téléchargez tous les éléments sous forme de classeur Excel formaté avec graphiques intégrés.",
-      "Ou compilez tous les éléments en rapport HTML imprimable."
+      {
+        "target": "#report-console-section",
+        "description": "Voici la Report Modification Console. Nous allons définir le titre et les options de mise en page, vérifier les éléments, puis générer le rapport en Excel ou PDF."
+      },
+      {
+        "target": "#console-title",
+        "description": "Définissez le titre du rapport ici — c'est l'en-tête du rapport PDF/HTML et le nom du classeur Excel (par défaut 'Colorimetric Analysis Report')."
+      },
+      {
+        "target": "#console-watermark",
+        "description": "Options PDF/HTML : cochez 'Include Watermark' pour un filigrane CBBiotec, et 'Include CBB Logo' (juste à côté) pour afficher le logo dans l'en-tête. Décochez les deux pour un rapport propre, sans marque."
+      },
+      {
+        "target": "#console-split-sheets",
+        "description": "Option Excel : cochez pour placer les données de chaque fichier CSV sur son propre onglet/feuille ; décochez pour tout combiner dans une seule feuille."
+      },
+      {
+        "target": ".cal-xlabel-input",
+        "description": "Option Excel : remplacez les libellés des axes X et Y des graphiques Excel natifs (modifiables). Laissez X vide pour étiqueter automatiquement avec l'unité de concentration de chaque fichier, et Y vide pour son metric."
+      },
+      {
+        "target": "#report-items-container",
+        "description": "Tous les snapshots sauvegardés sont listés ici. Supprimez-en avant de générer."
+      },
+      {
+        "target": "button[onclick=\"finalizeReportExcel()\"]",
+        "description": "Téléchargez tous les éléments sous forme de classeur Excel formaté avec graphiques intégrés."
+      },
+      {
+        "target": "button[onclick=\"finalizeReport()\"]",
+        "description": "Ou compilez tous les éléments en rapport HTML imprimable."
+      }
     ],
     "queries": [
       "rapport complet en mode rapport",
@@ -494,7 +842,10 @@
   {
     "id": "normalize_data",
     "steps": [
-      "Activez ceci pour soustraire l'absorbance de fond (blanc) de toutes les lectures, donnant les valeurs nettes."
+      {
+        "target": "#normalize-mode",
+        "description": "Activez ceci pour soustraire l'absorbance de fond (blanc) de toutes les lectures, donnant les valeurs nettes."
+      }
     ],
     "queries": [
       "normaliser les données",
@@ -506,7 +857,10 @@
   {
     "id": "split_sources",
     "steps": [
-      "Activez ceci pour afficher chaque source de mesure (canal) dans son propre graphique séparé."
+      {
+        "target": "#split-source",
+        "description": "Activez ceci pour afficher chaque source de mesure (canal) dans son propre graphique séparé."
+      }
     ],
     "queries": [
       "séparer les sources",
@@ -518,10 +872,22 @@
   {
     "id": "set_analysis_range",
     "steps": [
-      "Ce panneau contrôle la fenêtre temporelle utilisée pour l'analyse. Ajustez le début et la fin pour vous concentrer sur une portion spécifique.",
-      "Entrez le début de votre fenêtre d'analyse. Les données avant ce point seront exclues.",
-      "Entrez la fin de votre fenêtre d'analyse. Les données après ce point seront exclues.",
-      "Sélectionnez l'unité (secondes, minutes ou heures) correspondant à vos valeurs de plage."
+      {
+        "target": "#range-display",
+        "description": "Ce panneau contrôle la fenêtre temporelle utilisée pour l'analyse. Ajustez le début et la fin pour vous concentrer sur une portion spécifique."
+      },
+      {
+        "target": "#range-value-start",
+        "description": "Entrez le début de votre fenêtre d'analyse. Les données avant ce point seront exclues."
+      },
+      {
+        "target": "#range-value-end",
+        "description": "Entrez la fin de votre fenêtre d'analyse. Les données après ce point seront exclues."
+      },
+      {
+        "target": "#time-unit",
+        "description": "Sélectionnez l'unité (secondes, minutes ou heures) correspondant à vos valeurs de plage."
+      }
     ],
     "queries": [
       "définir la plage d'analyse",
@@ -533,7 +899,10 @@
   {
     "id": "export_excel_in_report",
     "steps": [
-      "Cliquez pour télécharger tous vos éléments de rapport en classeur Excel formaté avec un onglet par CSV et des graphiques intégrés."
+      {
+        "target": "button[onclick=\"finalizeReportExcel()\"]",
+        "description": "Cliquez pour télécharger tous vos éléments de rapport en classeur Excel formaté avec un onglet par CSV et des graphiques intégrés."
+      }
     ],
     "queries": [
       "exporter Excel depuis le rapport",
@@ -544,8 +913,14 @@
   {
     "id": "export_excel_nav",
     "steps": [
-      "L'export Excel est disponible en mode Report. Basculez ici d'abord, puis ajoutez vos snapshots via 'Export Data to Report' depuis les autres modes.",
-      "Cliquez ici pour télécharger tous les éléments de rapport en classeur Excel formaté avec graphiques intégrés."
+      {
+        "target": "#measurement-mode",
+        "description": "L'export Excel est disponible en mode Report. Basculez ici d'abord, puis ajoutez vos snapshots via 'Export Data to Report' depuis les autres modes."
+      },
+      {
+        "target": "button[onclick=\"finalizeReportExcel()\"]",
+        "description": "Cliquez ici pour télécharger tous les éléments de rapport en classeur Excel formaté avec graphiques intégrés."
+      }
     ],
     "queries": [
       "exporter Excel",
@@ -556,7 +931,10 @@
   {
     "id": "live_view_active",
     "steps": [
-      "Cliquez ici pour ouvrir le dossier où vos données sont sauvegardées en temps réel."
+      {
+        "target": "#go-to-btn",
+        "description": "Cliquez ici pour ouvrir le dossier où vos données sont sauvegardées en temps réel."
+      }
     ],
     "queries": [
       "vue en direct",
@@ -568,8 +946,14 @@
   {
     "id": "live_view_inactive",
     "steps": [
-      "Le bouton 'View live data' n'est actif que pendant une mesure en cours. Démarrez d'abord la lecture depuis votre appareil ici.",
-      "Une fois une mesure en cours, ce bouton s'active. Cliquez pour ouvrir le dossier de sauvegarde en temps réel."
+      {
+        "target": "#run-script-btn",
+        "description": "Le bouton 'View live data' n'est actif que pendant une mesure en cours. Démarrez d'abord la lecture depuis votre appareil ici."
+      },
+      {
+        "target": "#go-to-btn",
+        "description": "Une fois une mesure en cours, ce bouton s'active. Cliquez pour ouvrir le dossier de sauvegarde en temps réel."
+      }
     ],
     "queries": [
       "données en temps réel",
@@ -580,7 +964,10 @@
   {
     "id": "shutdown_server",
     "steps": [
-      "Cliquez pour arrêter le serveur Flask et fermer l'application. Les données non sauvegardées seront perdues."
+      {
+        "target": "#shutdown-btn",
+        "description": "Cliquez pour arrêter le serveur Flask et fermer l'application. Les données non sauvegardées seront perdues."
+      }
     ],
     "queries": [
       "arrêter le serveur",
@@ -595,7 +982,10 @@
   {
     "id": "open_user_guide",
     "steps": [
-      "Cliquez ici pour lancer le guide utilisateur interactif étape par étape avec des points de surbrillance à l'écran."
+      {
+        "target": "#user-guide-btn",
+        "description": "Cliquez ici pour lancer le guide utilisateur interactif étape par étape avec des points de surbrillance à l'écran."
+      }
     ],
     "queries": [
       "ouvrir le guide",
@@ -607,7 +997,10 @@
   {
     "id": "base_name_input",
     "steps": [
-      "Entrez le nom du fichier CSV qui sera créé au démarrage de la mesure. Ex : 'sample1' créera 'sample1.csv'."
+      {
+        "target": "#base-name",
+        "description": "Entrez le nom du fichier CSV qui sera créé au démarrage de la mesure. Ex : 'sample1' créera 'sample1.csv'."
+      }
     ],
     "queries": [
       "nom de base du fichier",
@@ -619,8 +1012,21 @@
   {
     "id": "saving_directory",
     "steps": [
-      "Coché, les fichiers sont sauvegardés dans le dossier actuellement parcouru. Décochez pour définir un chemin personnalisé.",
-      "Affiche le dossier où les nouveaux fichiers CSV seront sauvegardés. Utilisez 'Browse Saving Location' pour le modifier."
+      {
+        "target": "#cdc-save-section",
+        "title": "Emplacement d'enregistrement",
+        "description": "Choisissez où enregistrer les nouveaux fichiers CSV de mesure. Sélectionnez 'Existing' pour enregistrer dans un sous-dossier de données existant, ou 'New' pour créer un nouveau sous-dossier."
+      },
+      {
+        "target": "#cdc-subfolder-select",
+        "title": "Choisir le sous-dossier d'enregistrement",
+        "description": "Avec 'Existing', choisissez ici le sous-dossier de données. La liste affiche tous les sous-dossiers du répertoire data/. Utilisez ↻ pour actualiser après avoir ajouté des dossiers."
+      },
+      {
+        "target": "#cdc-new-folder-name",
+        "title": "Nom du nouveau sous-dossier",
+        "description": "Avec 'New', saisissez un nom ici. Un nouveau sous-dossier est créé dans data/ et vos fichiers y sont enregistrés automatiquement."
+      }
     ],
     "queries": [
       "répertoire de sauvegarde",
@@ -632,7 +1038,10 @@
   {
     "id": "notify_done",
     "steps": [
-      "Coché, l'app joue un son et affiche une notification dès la fin de la mesure. Utile si vous vous éloignez pendant l'enregistrement."
+      {
+        "target": "#notify-me",
+        "description": "Coché, l'app joue un son et affiche une notification dès la fin de la mesure. Utile si vous vous éloignez pendant l'enregistrement."
+      }
     ],
     "queries": [
       "notifier quand c'est terminé",
@@ -643,7 +1052,10 @@
   {
     "id": "clear_logs",
     "steps": [
-      "Cliquez ici pour effacer tout le texte du panneau de log. Cela efface uniquement l'affichage — aucun fichier CSV n'est supprimé."
+      {
+        "target": "#clear-logs-btn",
+        "description": "Cliquez ici pour effacer tout le texte du panneau de log. Cela efface uniquement l'affichage — aucun fichier CSV n'est supprimé."
+      }
     ],
     "queries": [
       "effacer les logs",
@@ -654,7 +1066,10 @@
   {
     "id": "disable_popups",
     "steps": [
-      "Cochez pour supprimer les popups de confirmation et d'alerte dans l'app. Utile une fois le flux de travail maîtrisé."
+      {
+        "target": "#no-swal-checkbox",
+        "description": "Cochez pour supprimer les popups de confirmation et d'alerte dans l'app. Utile une fois le flux de travail maîtrisé."
+      }
     ],
     "queries": [
       "désactiver les popups",
@@ -665,8 +1080,14 @@
   {
     "id": "filter_sources",
     "steps": [
-      "Une 'source' est un canal de mesure dans votre CSV. Cochez pour n'afficher que les fichiers ayant un nombre précis de sources.",
-      "Choisissez combien de sources un fichier doit avoir pour apparaître dans la liste. Utile pour filtrer par source unique ou multi-sources."
+      {
+        "target": "#filter-source",
+        "description": "Une 'source' est un canal de mesure dans votre CSV. Cochez pour n'afficher que les fichiers ayant un nombre précis de sources."
+      },
+      {
+        "target": "#num-sources",
+        "description": "Choisissez combien de sources un fichier doit avoir pour apparaître dans la liste. Utile pour filtrer par source unique ou multi-sources."
+      }
     ],
     "queries": [
       "filtrer par source",
@@ -677,7 +1098,10 @@
   {
     "id": "delete_file",
     "steps": [
-      "Trouvez le fichier dans la liste. Chaque ligne a un bouton ❌ Supprimer rouge. Cliquez pour supprimer définitivement — action irréversible."
+      {
+        "target": "#file-selection",
+        "description": "Trouvez le fichier dans la liste. Chaque ligne a un bouton ❌ Supprimer rouge. Cliquez pour supprimer définitivement — action irréversible."
+      }
     ],
     "queries": [
       "supprimer un fichier",
@@ -688,7 +1112,10 @@
   {
     "id": "copy_file",
     "steps": [
-      "Cliquez ici pour dupliquer le fichier CSV sélectionné dans le même dossier. La copie porte le suffixe '_copy'. Utile pour expérimenter sans modifier l'original."
+      {
+        "target": "#copy-file-btn",
+        "description": "Cliquez ici pour dupliquer le fichier CSV sélectionné dans le même dossier. La copie porte le suffixe '_copy'. Utile pour expérimenter sans modifier l'original."
+      }
     ],
     "queries": [
       "copier un fichier",
@@ -699,7 +1126,10 @@
   {
     "id": "deselect_file",
     "steps": [
-      "Cliquez pour décharger le fichier de données sélectionné. Le graphique et l'analyse seront effacés. Le fichier n'est pas supprimé."
+      {
+        "target": "#deselect-btn",
+        "description": "Cliquez pour décharger le fichier de données sélectionné. Le graphique et l'analyse seront effacés. Le fichier n'est pas supprimé."
+      }
     ],
     "queries": [
       "désélectionner un fichier",
@@ -710,7 +1140,10 @@
   {
     "id": "select_quantity",
     "steps": [
-      "Choisissez la quantité à associer à la concentration dans la courbe étalon :\n• maxRate — taux de variation d'absorbance le plus rapide (ΔAbs/s) en phase linéaire ; le plus courant en cinétique enzymatique.\n• Slope — pente linéaire globale sur l'ensemble des données.\n• Sat — valeur d'absorbance à saturation (plateau).\n• Time To Sat — temps (minutes) jusqu'au plateau du signal."
+      {
+        "target": "#regressed-quantity",
+        "description": "Choisissez la quantité à associer à la concentration dans la courbe étalon :\n• maxRate — taux de variation d'absorbance le plus rapide (ΔAbs/s) en phase linéaire ; le plus courant en cinétique enzymatique.\n• Slope — pente linéaire globale sur l'ensemble des données.\n• Sat — valeur d'absorbance à saturation (plateau).\n• Time To Sat — temps (minutes) jusqu'au plateau du signal."
+      }
     ],
     "queries": [
       "sélectionner la grandeur",
@@ -723,7 +1156,10 @@
   {
     "id": "expand_collapse_analyses",
     "steps": [
-      "Cochez/décochez pour développer ou réduire toutes les sections d'analyse en même temps. Utile pour parcourir rapidement tous les sources."
+      {
+        "target": "#open-all-analysis",
+        "description": "Cochez/décochez pour développer ou réduire toutes les sections d'analyse en même temps. Utile pour parcourir rapidement tous les sources."
+      }
     ],
     "queries": [
       "développer les analyses",
@@ -734,8 +1170,14 @@
   {
     "id": "export_saving_directory",
     "steps": [
-      "Coché, les fichiers exportés sont sauvegardés dans le même dossier que le fichier de données chargé. Décochez pour choisir une autre destination.",
-      "Cliquez ce bouton pour ouvrir un sélecteur de dossier et choisir où enregistrer les fichiers exportés. Le chemin sélectionné est utilisé pour tous les exports suivants jusqu'à modification."
+      {
+        "target": "#same-dir-as-data",
+        "description": "Coché, les fichiers exportés sont sauvegardés dans le même dossier que le fichier de données chargé. Décochez pour choisir une autre destination."
+      },
+      {
+        "target": "#go-to-exp-btn",
+        "description": "Cliquez ce bouton pour ouvrir un sélecteur de dossier et choisir où enregistrer les fichiers exportés. Le chemin sélectionné est utilisé pour tous les exports suivants jusqu'à modification."
+      }
     ],
     "queries": [
       "répertoire d'export",
@@ -746,7 +1188,10 @@
   {
     "id": "rsquared_threshold",
     "steps": [
-      "R² mesure la qualité d'ajustement — 1.0 est parfait, 0.0 ne convient pas. Fixez un R² minimal ici ; seuls les résultats au-dessus seront utilisés. Une valeur de 0.99 est recommandée."
+      {
+        "target": "#threshold-value",
+        "description": "R² mesure la qualité d'ajustement — 1.0 est parfait, 0.0 ne convient pas. Fixez un R² minimal ici ; seuls les résultats au-dessus seront utilisés. Une valeur de 0.99 est recommandée."
+      }
     ],
     "queries": [
       "seuil R carré",
@@ -758,9 +1203,18 @@
   {
     "id": "report_layout_options",
     "steps": [
-      "Cochez pour ajouter un filigrane CBBiotec au rapport HTML. Décochez pour un rapport sans branding.",
-      "Cochez pour inclure le logo CBBiotec dans l'en-tête du rapport.",
-      "Pour l'export Excel, cochez pour placer les données de chaque CSV dans un onglet séparé. Décochez pour tout regrouper."
+      {
+        "target": "#console-watermark",
+        "description": "Cochez pour ajouter un filigrane CBBiotec au rapport HTML. Décochez pour un rapport sans branding."
+      },
+      {
+        "target": "#console-logo",
+        "description": "Cochez pour inclure le logo CBBiotec dans l'en-tête du rapport."
+      },
+      {
+        "target": "#console-split-sheets",
+        "description": "Pour l'export Excel, cochez pour placer les données de chaque CSV dans un onglet séparé. Décochez pour tout regrouper."
+      }
     ],
     "queries": [
       "options de mise en page du rapport",
@@ -771,9 +1225,18 @@
   {
     "id": "report_subject_management",
     "steps": [
-      "Un 'sujet de rapport' est un dossier nommé regroupant des snapshots d'analyse liés. Entrez un nom (ex : 'Patient A', 'Lot 1') avant d'exporter.",
-      "Tous les snapshots exportés vers le sujet actuel sont listés ici. Vous pouvez les examiner et en supprimer avant de générer le rapport.",
-      "Cliquez pour supprimer tous les éléments du dossier sujet sélectionné. Le dossier est supprimé du disque — action irréversible."
+      {
+        "target": "#report-subject-name",
+        "description": "Un 'sujet de rapport' est un dossier nommé regroupant des snapshots d'analyse liés. Entrez un nom (ex : 'Patient A', 'Lot 1') avant d'exporter."
+      },
+      {
+        "target": "#report-items-container",
+        "description": "Tous les snapshots exportés vers le sujet actuel sont listés ici. Vous pouvez les examiner et en supprimer avant de générer le rapport."
+      },
+      {
+        "target": "button[onclick=\"clearReportSubject()\"]",
+        "description": "Cliquez pour supprimer tous les éléments du dossier sujet sélectionné. Le dossier est supprimé du disque — action irréversible."
+      }
     ],
     "queries": [
       "gérer les sujets de rapport",
@@ -784,8 +1247,14 @@
   {
     "id": "save_linearity_range",
     "steps": [
-      "Cliquez sur le bouton +/− pour développer le panneau d'analyse kinetics d'une source. Le bouton Save Linearity Range apparaît ici lorsqu'une phase linéaire est automatiquement détectée dans vos données.",
-      "Cliquez sur '📐 Save Linearity Range' pour exporter uniquement les lignes situées dans la phase linéaire détectée de cette source vers un nouveau fichier CSV. Le nom de fichier est pré-rempli à partir du fichier actuel et de l'indice de la source. Ce sous-ensemble constitue une entrée idéale pour construire une courbe d'étalonnage."
+      {
+        "target": "#plot-button-source-0",
+        "description": "Cliquez sur le bouton +/− pour développer le panneau d'analyse kinetics d'une source. Le bouton Save Linearity Range apparaît ici lorsqu'une phase linéaire est automatiquement détectée dans vos données."
+      },
+      {
+        "target": "button[data-hint=\"Save the linearity range rows for this source to a new CSV file\"]",
+        "description": "Cliquez sur '📐 Save Linearity Range' pour exporter uniquement les lignes situées dans la phase linéaire détectée de cette source vers un nouveau fichier CSV. Le nom de fichier est pré-rempli à partir du fichier actuel et de l'indice de la source. Ce sous-ensemble constitue une entrée idéale pour construire une courbe d'étalonnage."
+      }
     ],
     "queries": [
       "enregistrer la plage linéaire",
@@ -798,10 +1267,22 @@
   {
     "id": "edit_file",
     "steps": [
-      "Cliquez sur le bouton ✏️ Edit à côté de n'importe quel fichier pour ouvrir l'éditeur — un fichier de données de cette liste, ou une courbe d'étalonnage sous 'Select Coefficients' ci-dessus.",
-      "Voici le champ du nom de fichier. Modifiez-le pour enregistrer vos modifications sous un nouveau nom, ou laissez-le pour écraser le fichier d'origine.",
-      "L'éditeur affiche votre fichier sous forme de tableau (CSV) ou de formulaire (calibration JSON). Modifiez les valeurs dans la zone ci-dessus ; cliquez sur ce bouton pour passer en mode Text brut — ou revenir — selon ce qui est le plus simple.",
-      "Cliquez sur 'Save Changes' pour écrire vos modifications (ou Cancel pour les annuler). Le guide se termine à la fermeture de la boîte de dialogue."
+      {
+        "target": "#file-selection",
+        "description": "Cliquez sur le bouton ✏️ Edit à côté de n'importe quel fichier pour ouvrir l'éditeur — un fichier de données de cette liste, ou une courbe d'étalonnage sous 'Select Coefficients' ci-dessus."
+      },
+      {
+        "target": "#swal-input-filename",
+        "description": "Voici le champ du nom de fichier. Modifiez-le pour enregistrer vos modifications sous un nouveau nom, ou laissez-le pour écraser le fichier d'origine."
+      },
+      {
+        "target": "#toggle-mode",
+        "description": "L'éditeur affiche votre fichier sous forme de tableau (CSV) ou de formulaire (calibration JSON). Modifiez les valeurs dans la zone ci-dessus ; cliquez sur ce bouton pour passer en mode Text brut — ou revenir — selon ce qui est le plus simple."
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "Cliquez sur 'Save Changes' pour écrire vos modifications (ou Cancel pour les annuler). Le guide se termine à la fermeture de la boîte de dialogue."
+      }
     ],
     "queries": [
       "modifier un fichier",
@@ -815,10 +1296,22 @@
   {
     "id": "edit_calibration_curve",
     "steps": [
-      "Les courbes d'étalonnage sont les fichiers JSON enregistrés sous 'Select Coefficients'. Cliquez sur le bouton ✏️ Edit à côté de la courbe à modifier pour ouvrir l'éditeur.",
-      "Voici le champ du nom de fichier. Modifiez-le pour enregistrer la courbe sous un nouveau nom, ou laissez-le pour écraser l'original.",
-      "La courbe s'ouvre sous forme de formulaire affichant son algorithme et ses coefficients ajustés. Modifiez les valeurs ci-dessus ; cliquez sur ce bouton pour passer en mode Text brut si vous préférez éditer le JSON directement.",
-      "Cliquez sur 'Save Changes' pour enregistrer la courbe étalon mise à jour (ou Cancel pour annuler). Le guide se termine à la fermeture de la boîte de dialogue."
+      {
+        "target": "#cal-json-sel-section",
+        "description": "Les courbes d'étalonnage sont les fichiers JSON enregistrés sous 'Select Coefficients'. Cliquez sur le bouton ✏️ Edit à côté de la courbe à modifier pour ouvrir l'éditeur."
+      },
+      {
+        "target": "#swal-input-filename",
+        "description": "Voici le champ du nom de fichier. Modifiez-le pour enregistrer la courbe sous un nouveau nom, ou laissez-le pour écraser l'original."
+      },
+      {
+        "target": "#toggle-mode",
+        "description": "La courbe s'ouvre sous forme de formulaire affichant son algorithme et ses coefficients ajustés. Modifiez les valeurs ci-dessus ; cliquez sur ce bouton pour passer en mode Text brut si vous préférez éditer le JSON directement."
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "Cliquez sur 'Save Changes' pour enregistrer la courbe étalon mise à jour (ou Cancel pour annuler). Le guide se termine à la fermeture de la boîte de dialogue."
+      }
     ],
     "queries": [
       "modifier la courbe d'étalonnage",
@@ -832,15 +1325,42 @@
   {
     "id": "app_settings",
     "steps": [
-      "Cliquez sur l'engrenage ⚙️ pour ouvrir la boîte de dialogue App Settings. Elle regroupe chaque préférence en sections — nous allons parcourir les principales.",
-      "Paramètres généraux. Voici la Langue de l'interface (7 langues) ; juste en dessous se trouve le format d'horodatage utilisé pour nommer les fichiers enregistrés.",
-      "Apparence — basculez l'application entre les thèmes Light, Dark ou Auto (selon le système).",
-      "Valeurs par défaut de mesure : le mode d'ouverture de l'application (kinetics / point / calibrate) et, à côté, l'unité de concentration par défaut (ng/µL, nM ou %).",
-      "File Selection — le tri des listes de fichiers (date ou nom), ainsi que le nombre de lignes CSV / JSON affichées avant le défilement.",
-      "Valeurs par défaut de Lecture du colorimètre appliquées à un nouvel enregistrement : timeout (durée), intervalle entre les lectures, la notification de fin, et la hauteur du panneau de journal.",
-      "Valeurs par défaut d'Affichage des données : hauteur du graphique, normalisation et séparation par source des données, et quels panneaux d'analyse s'ouvrent déjà déployés.",
-      "AI Assistant — activez ou non la collecte de vos évaluations 👍/👎 pour améliorer la correspondance locale des guides. Vous pouvez aussi exporter ou réinitialiser cet apprentissage ici.",
-      "Cliquez sur Save pour appliquer vos modifications. Cancel les annule, et 'Revert to defaults' réinitialise tous les réglages. Le guide se termine à la fermeture de la boîte de dialogue."
+      {
+        "target": "#settingsBtn",
+        "description": "Cliquez sur l'engrenage ⚙️ pour ouvrir la boîte de dialogue App Settings. Elle regroupe chaque préférence en sections — nous allons parcourir les principales."
+      },
+      {
+        "target": "#swal-ui-language",
+        "description": "Paramètres généraux. Voici la Langue de l'interface (7 langues) ; juste en dessous se trouve le format d'horodatage utilisé pour nommer les fichiers enregistrés."
+      },
+      {
+        "target": "#swal-theme",
+        "description": "Apparence — basculez l'application entre les thèmes Light, Dark ou Auto (selon le système)."
+      },
+      {
+        "target": "#swal-mode",
+        "description": "Valeurs par défaut de mesure : le mode d'ouverture de l'application (kinetics / point / calibrate) et, à côté, l'unité de concentration par défaut (ng/µL, nM ou %)."
+      },
+      {
+        "target": "#swal-file-sort",
+        "description": "File Selection — le tri des listes de fichiers (date ou nom), ainsi que le nombre de lignes CSV / JSON affichées avant le défilement."
+      },
+      {
+        "target": "#swal-log-timeout",
+        "description": "Valeurs par défaut de Lecture du colorimètre appliquées à un nouvel enregistrement : timeout (durée), intervalle entre les lectures, la notification de fin, et la hauteur du panneau de journal."
+      },
+      {
+        "target": "#swal-chart-height",
+        "description": "Valeurs par défaut d'Affichage des données : hauteur du graphique, normalisation et séparation par source des données, et quels panneaux d'analyse s'ouvrent déjà déployés."
+      },
+      {
+        "target": "#swal-ai-feedback-enabled",
+        "description": "AI Assistant — activez ou non la collecte de vos évaluations 👍/👎 pour améliorer la correspondance locale des guides. Vous pouvez aussi exporter ou réinitialiser cet apprentissage ici."
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "Cliquez sur Save pour appliquer vos modifications. Cancel les annule, et 'Revert to defaults' réinitialise tous les réglages. Le guide se termine à la fermeture de la boîte de dialogue."
+      }
     ],
     "queries": [
       "paramètres de l'application",
@@ -860,13 +1380,34 @@
   {
     "id": "generate_report_dialog",
     "steps": [
-      "Cliquez sur 'Generate quick Report' pour ouvrir la boîte de dialogue Report Details, où vous définissez le titre, choisissez ce qu'il faut tracer et sélectionnez le format d'export avant de générer le rapport.",
-      "Saisissez le titre affiché en haut du rapport (par défaut 'Colorimetric Analysis Report'). C'est le seul champ affiché pour un instantané Kinetics/Point simple — le mode Calibrate ajoute les options ci-dessous.",
-      "Calibration (Kinetics) uniquement : cochez les metrics à tracer et un ou plusieurs algorithmes d'ajustement par metric. Décocher un metric désactive ses ajustements ; un ajustement non résolu est ignoré avec un avertissement.",
-      "Calibration (Point) uniquement : choisissez un point temporel et cochez un ou plusieurs ajustements. Utilisez '+ Add time point' pour ajouter des entrées — une courbe d'étalonnage est produite par point temporel × ajustement.",
-      "Calibration uniquement : remplacez les libellés des axes X et Y des graphiques Excel natifs. Laissez Y vide pour étiqueter automatiquement chaque graphique avec son metric. Ces libellés restent modifiables dans Excel.",
-      "Choisissez PDF (un rapport HTML imprimable — ouvrez-le puis Print → Save as PDF) ou Excel (un classeur .xlsx avec graphiques intégrés).",
-      "Cliquez sur OK pour générer le rapport au format choisi. Le guide se termine à la fermeture de la boîte de dialogue."
+      {
+        "target": "#generate-report-btn",
+        "description": "Cliquez sur 'Generate quick Report' pour ouvrir la boîte de dialogue Report Details, où vous définissez le titre, choisissez ce qu'il faut tracer et sélectionnez le format d'export avant de générer le rapport."
+      },
+      {
+        "target": "#swal-input1",
+        "description": "Saisissez le titre affiché en haut du rapport (par défaut 'Colorimetric Analysis Report'). C'est le seul champ affiché pour un instantané Kinetics/Point simple — le mode Calibrate ajoute les options ci-dessous."
+      },
+      {
+        "target": "#swal-metrics",
+        "description": "Calibration (Kinetics) uniquement : cochez les metrics à tracer et un ou plusieurs algorithmes d'ajustement par metric. Décocher un metric désactive ses ajustements ; un ajustement non résolu est ignoré avec un avertissement."
+      },
+      {
+        "target": "#swal-timepoints",
+        "description": "Calibration (Point) uniquement : choisissez un point temporel et cochez un ou plusieurs ajustements. Utilisez '+ Add time point' pour ajouter des entrées — une courbe d'étalonnage est produite par point temporel × ajustement."
+      },
+      {
+        "target": "#swal-xlabel",
+        "description": "Calibration uniquement : remplacez les libellés des axes X et Y des graphiques Excel natifs. Laissez Y vide pour étiqueter automatiquement chaque graphique avec son metric. Ces libellés restent modifiables dans Excel."
+      },
+      {
+        "target": "input[name=\"swal-fmt\"]",
+        "description": "Choisissez PDF (un rapport HTML imprimable — ouvrez-le puis Print → Save as PDF) ou Excel (un classeur .xlsx avec graphiques intégrés)."
+      },
+      {
+        "target": ".swal2-confirm",
+        "description": "Cliquez sur OK pour générer le rapport au format choisi. Le guide se termine à la fermeture de la boîte de dialogue."
+      }
     ],
     "queries": [
       "boîte de dialogue de rapport",
@@ -877,6 +1418,26 @@
       "libellés des axes du rapport",
       "fenêtre de rapport",
       "pdf ou excel"
+    ]
+  },
+  {
+    "id": "save_range_csv",
+    "steps": [
+      {
+        "target": "#range-display",
+        "title": "Définir la plage de temps",
+        "description": "Réglez d'abord les valeurs From et To sur la fenêtre de temps à enregistrer. Choisissez l'unité de temps correspondante (secondes, minutes ou heures)."
+      },
+      {
+        "target": "#save-range-btn",
+        "title": "Enregistrer la plage en CSV",
+        "description": "Cliquez sur '💾 Save Range' pour exporter uniquement les lignes de la fenêtre affichée vers un nouveau fichier CSV. Un nom de fichier vous sera demandé avant l'enregistrement."
+      }
+    ],
+    "queries": [
+      "enregistrer la plage",
+      "exporter une plage de temps",
+      "enregistrer une partie des données"
     ]
   }
 ]
