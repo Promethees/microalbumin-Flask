@@ -113,3 +113,42 @@ def test_unknown_workflow_reaches_the_model(monkeypatch):
     events = _stream(model)
     assert not any(e["type"] == "guide" for e in events)
     assert len(model.calls) == 2
+
+
+# ── Help docs match the app (A11 / B10) ──────────────────────────────────────
+# Each formula the help text states is pinned to the function math_ops.py
+# actually fits, evaluated numerically — so the doc and the fit cannot drift.
+import math  # noqa: E402
+
+import math_ops  # noqa: E402
+
+_X, _A, _B, _C = 2.0, 3.0, 0.5, 1.5
+PINNED_FORMS = [
+    ("y = a·x + b", math_ops.linear_func(_X, _A, _B), _A * _X + _B),
+    ("y = a·x² + b·x + c", math_ops.poly_func(_X, _A, _B, _C), _A * _X ** 2 + _B * _X + _C),
+    ("y = a·ln(x + b) + c", math_ops.log_func(_X, _A, _B, _C), _A * math.log(_X + _B) + _C),
+    ("y = a·e^(b·x) + c", math_ops.exp_func(_X, _A, _B, _C), _A * math.exp(_B * _X) + _C),
+    # mm_func(x, vmax, km)
+    ("y = (Km·x) / (Vmax − x)", math_ops.mm_func(_X, 5.0, 4.0), (4.0 * _X) / (5.0 - _X)),
+]
+
+
+@pytest.mark.parametrize("form, fitted, stated", PINNED_FORMS, ids=[p[0] for p in PINNED_FORMS])
+def test_regression_help_states_the_fitted_forms(form, fitted, stated):
+    assert form in ai_assistant._HELP_DOCS["regression"]
+    assert fitted == pytest.approx(stated)
+
+
+def test_help_docs_have_no_stale_claims():
+    joined = "\n".join(ai_assistant._HELP_DOCS.values())
+    assert "3 measurement modes" not in joined
+    assert "degree 2-6" not in joined
+    assert "Vmax·x / (Km + x)" not in joined
+    assert "4 modes" in ai_assistant._HELP_DOCS["measurement_modes"]
+    assert "Turn" in ai_assistant._HELP_DOCS["csv_format"]
+    assert "#cal-json-sel-section" in ai_assistant._HELP_DOCS["calibration"]
+
+
+def test_get_help_topic_returns_the_regression_doc():
+    out = json.loads(ai_assistant._run_tool("get_help_topic", {"topic": "regression"}))
+    assert out["content"] == ai_assistant._HELP_DOCS["regression"]

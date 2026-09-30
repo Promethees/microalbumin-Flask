@@ -847,10 +847,12 @@ TOOLS = [
 
 _HELP_DOCS = {
     "measurement_modes": (
-        "Easy OKAPI has 3 measurement modes:\n"
-        "• kinetics — measures absorbance over time; computes max rate, slope, saturation.\n"
-        "• point — single time-point absorbance; used for endpoint assays.\n"
-        "• calibrate — applies a saved standard-curve JSON to convert absorbance to concentration."
+        "Easy OKAPI has 4 modes:\n"
+        "• kinetics — absorbance over time; computes maxRate, Slope, Sat and Time To Sat for each source.\n"
+        "• point — absorbance at one selected time point (or one row per Turn); used for endpoint assays.\n"
+        "• calibrate — BUILDS a standard curve: pick the quantity (kinetics) or time point (point), a regression algorithm, check R², and export the coefficients as a calibration JSON.\n"
+        "• report — collects exported analysis snapshots into a report subject and compiles HTML / Excel reports.\n"
+        "Concentrations are READ in kinetics or point mode: load a calibration JSON in the calibration-file section (#cal-json-sel-section) and select a data file."
     ),
     "kinetics_analysis": (
         "Kinetics analysis computes from a sliding-window algorithm:\n"
@@ -860,29 +862,32 @@ _HELP_DOCS = {
         "• Time To Sat: time when the reaction plateaus"
     ),
     "standard_curve": (
-        "Standard curves relate known concentrations to measured absorbance values.\n"
-        "Supported algorithms: linear, polynomial (degree 2-6), logarithmic, exponential, Michaelis-Menten.\n"
-        "R² threshold filters out poor fits. Saved as JSON files in json/<mode>/."
+        "Standard curves relate known concentrations to a measured quantity.\n"
+        "Supported algorithms: linear, polynomial (degree 2), logarithmic, exponential, Michaelis-Menten.\n"
+        "R² threshold filters out poor fits. Saved as calibration JSON files in json/<mode>/."
     ),
     "calibration": (
-        "Calibration converts absorbance to concentrations using a saved standard-curve JSON.\n"
-        "Load the JSON via the dropdown, then run calibrate-mode measurements.\n"
-        "The app applies stored regression coefficients automatically."
+        "Calibration has two halves:\n"
+        "1. Build the curve (calibrate mode): export your standards (known concentration per source or per Turn) from kinetics/point data to a calibration CSV, open it in calibrate mode, pick the quantity or time point and a regression algorithm, check R², then export the coefficients as a calibration JSON.\n"
+        "2. Use the curve (kinetics or point mode): load that JSON in the calibration-file section (#cal-json-sel-section), select a data file, and each source's concentration is shown.\n"
+        "Pairing rule: a measurement CSV and a calibration JSON can be paired only when both share the same Measurement, Unit, and concentration unit (ConcenUnit); for a mismatched pair the Select button is disabled."
     ),
     "csv_format": (
         "CSV structure:\n"
-        "• Metadata lines start with #: Measurement, MeasUnit, TimeUnit, MeasMode\n"
-        "• Data header: Timestamp, Value:1, Value:2, …\n"
+        "• Metadata lines start with #: Measurement, MeasUnit, TimeUnit, MeasMode, Concentration, ConcenUnit\n"
+        "• ConcenUnit is the concentration label — one of ng/µL, nM, %, or CFU (absent ⇒ ng/µL for legacy files)\n"
+        "• Data header: the X column is Timestamp OR Turn (never both), then Value:1, Value:2, …\n"
+        "• A Turn file records one row per Turn; each Turn is one concentration standard (point-mode calibration)\n"
         "• Calibration CSVs: Concentration, maxRate/Value, Slope, Sat, Time To Sat"
     ),
     "regression": (
-        "Supported regression types:\n"
-        "• linear: y = mx + b\n"
-        "• polynomial: y = a₀ + a₁x + a₂x² + …\n"
-        "• logarithmic: y = a·ln(x) + b\n"
-        "• exponential: y = a·e^(bx)\n"
-        "• Michaelis-Menten: y = Vmax·x / (Km + x)\n"
-        "All computed server-side via scipy.optimize.curve_fit."
+        "Supported regression types (the forms the app actually fits):\n"
+        "• linear: y = a·x + b\n"
+        "• polynomial (degree 2): y = a·x² + b·x + c\n"
+        "• logarithmic: y = a·ln(x + b) + c\n"
+        "• exponential: y = a·e^(b·x) + c\n"
+        "• Michaelis-Menten: y = (Km·x) / (Vmax − x) — kinetics curves map x = max rate to y = concentration; Vmax must exceed every measured rate\n"
+        "Fitted with SciPy/NumPy; R² reports the goodness of fit."
     ),
     "reports": (
         "Reports are standalone HTML files.\n"
