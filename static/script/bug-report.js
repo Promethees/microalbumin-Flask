@@ -18,6 +18,12 @@
 
     const MAX_LOG_FILES = 5;
 
+    // Dialog chrome follows the UI language (Rule.md §2.22). The email body
+    // stays English on purpose: it is addressed to the maintainer.
+    function _t(key, fallback) {
+        return (typeof t === 'function') ? t(key, fallback) : fallback;
+    }
+
     function _platform() {
         return navigator.platform || navigator.userAgent || 'unknown';
     }
@@ -108,10 +114,10 @@
 
         if (!files.length) {
             await Swal.fire({
-                title: 'No log files found',
-                text: 'There are no event log files to attach. The report email will still open.',
+                title: _t('bug.no_logs_title', 'No log files found'),
+                text: _t('bug.no_logs_text', 'There are no event log files to attach. The report email will still open.'),
                 icon: 'info',
-                confirmButtonText: 'OK',
+                confirmButtonText: _t('common.ok', 'OK'),
             });
             return 'none';
         }
@@ -125,21 +131,21 @@
         ).join('');
 
         const result = await Swal.fire({
-            title: 'Choose log files',
+            title: _t('bug.choose_title', 'Choose log files'),
             html:
-                `<p class="bug-log-hint">Select up to ${MAX_LOG_FILES} event log files to attach (newest first).</p>` +
+                `<p class="bug-log-hint">${_esc(_t('bug.choose_hint', 'Select up to {n} event log files to attach (newest first).').replace('{n}', MAX_LOG_FILES))}</p>` +
                 `<div id="bug-log-list" class="bug-log-list">${rows}</div>`,
             focusConfirm: false,
             showCancelButton: true,
-            confirmButtonText: 'Next',
-            cancelButtonText: 'Cancel',
+            confirmButtonText: _t('bug.next', 'Next'),
+            cancelButtonText: _t('common.cancel', 'Cancel'),
             didOpen: () => {
                 const boxes = Array.from(document.querySelectorAll('.bug-log-cb'));
                 boxes.forEach(cb => cb.addEventListener('change', () => {
                     const checked = boxes.filter(b => b.checked);
                     if (checked.length > MAX_LOG_FILES) {
                         cb.checked = false;
-                        Swal.showValidationMessage(`You can attach at most ${MAX_LOG_FILES} files.`);
+                        Swal.showValidationMessage(_t('bug.too_many', 'You can attach at most {n} files.').replace('{n}', MAX_LOG_FILES));
                     } else {
                         Swal.resetValidationMessage();
                     }
@@ -148,11 +154,11 @@
             preConfirm: () => {
                 const chosen = Array.from(document.querySelectorAll('.bug-log-cb:checked')).map(cb => cb.value);
                 if (!chosen.length) {
-                    Swal.showValidationMessage('Please select at least one file.');
+                    Swal.showValidationMessage(_t('bug.select_one', 'Please select at least one file.'));
                     return false;
                 }
                 if (chosen.length > MAX_LOG_FILES) {
-                    Swal.showValidationMessage(`You can attach at most ${MAX_LOG_FILES} files.`);
+                    Swal.showValidationMessage(_t('bug.too_many', 'You can attach at most {n} files.').replace('{n}', MAX_LOG_FILES));
                     return false;
                 }
                 return chosen;
@@ -167,15 +173,15 @@
     async function _promptZipName() {
         const ts = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 15);
         const result = await Swal.fire({
-            title: 'Name the log archive',
+            title: _t('bug.name_title', 'Name the log archive'),
             input: 'text',
-            inputLabel: 'The .zip file you will attach to your email',
+            inputLabel: _t('bug.name_label', 'The .zip file you will attach to your email'),
             inputValue: `easyokapi-logs-${ts}`,
             inputAttributes: { maxlength: '80', autocapitalize: 'off', spellcheck: 'false' },
             showCancelButton: true,
-            confirmButtonText: 'Download & open email',
-            cancelButtonText: 'Cancel',
-            inputValidator: (v) => (!v || !v.trim() ? 'Please enter a file name.' : null),
+            confirmButtonText: _t('bug.download_open', 'Download & open email'),
+            cancelButtonText: _t('common.cancel', 'Cancel'),
+            inputValidator: (v) => (!v || !v.trim() ? _t('bug.name_required', 'Please enter a file name.') : null),
         });
         if (!result.isConfirmed || !result.value) return null;
         return result.value.trim().replace(/\.zip$/i, '') + '.zip';
@@ -188,7 +194,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ files: paths }),
         });
-        if (!resp.ok) throw new Error('Could not bundle the selected log files.');
+        if (!resp.ok) throw new Error(_t('bug.bundle_failed', 'Could not bundle the selected log files.'));
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -207,14 +213,14 @@
         if (typeof Swal === 'undefined') { _openMail(null); return; }
 
         const choice = await Swal.fire({
-            title: 'Report a Bug',
-            text: 'Would you like to attach event log files to help us diagnose the issue?',
+            title: _t('bug.report.aria', 'Report a Bug'),
+            text: _t('bug.ask_attach', 'Would you like to attach event log files to help us diagnose the issue?'),
             icon: 'question',
             showCancelButton: true,
             showDenyButton: true,
-            confirmButtonText: 'Yes, choose files',
-            denyButtonText: 'No, just email',
-            cancelButtonText: 'Cancel',
+            confirmButtonText: _t('bug.yes_choose', 'Yes, choose files'),
+            denyButtonText: _t('bug.just_email', 'No, just email'),
+            cancelButtonText: _t('common.cancel', 'Cancel'),
         });
 
         if (choice.isDismissed) return;                  // Cancel / Esc → abort
@@ -230,16 +236,16 @@
         try {
             await _downloadSelected(files, zipName);
         } catch (e) {
-            await Swal.fire({ title: 'Download failed', text: e.message, icon: 'error', confirmButtonText: 'OK' });
+            await Swal.fire({ title: _t('bug.download_failed', 'Download failed'), text: e.message, icon: 'error', confirmButtonText: _t('common.ok', 'OK') });
             return;
         }
 
         await Swal.fire({
-            title: 'Log archive downloaded',
-            html: `Saved <b>${_esc(zipName)}</b> to your Downloads folder.<br><br>` +
-                'Your email will now open — please <b>attach that file</b> before sending.',
+            title: _t('bug.downloaded_title', 'Log archive downloaded'),
+            html: _esc(_t('bug.downloaded_saved', 'Saved {f} to your Downloads folder.')).replace('{f}', `<b>${_esc(zipName)}</b>`) + '<br><br>' +
+                _esc(_t('bug.downloaded_attach', 'Your email will now open — please attach that file before sending.')),
             icon: 'success',
-            confirmButtonText: 'Open email',
+            confirmButtonText: _t('bug.open_email', 'Open email'),
         });
         _openMail(zipName);
     };

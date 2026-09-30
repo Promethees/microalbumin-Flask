@@ -950,3 +950,42 @@ def test_ai_feedback_opt_out_is_honoured():
     r = _node(AI_FEEDBACK_OPTOUT)
     assert r['windowSees'] == 'undefined'  # the premise of the bug
     assert r['inserted'] == 0
+
+
+# ---------------------------------------------------------------------------
+# ai-chat.js:489 + user-guide.js:1061 + bug-report.js:210 — widget chrome was
+# English-only. The user guide and the bug-report dialogs now go through t();
+# every key they use must exist in all seven catalogs with the same English.
+# ---------------------------------------------------------------------------
+
+LANGS = ['en', 'vi', 'zh', 'fr', 'ja', 'ru', 'ko']
+
+
+def _catalog(lang):
+    return json.loads((REPO / 'ui_translations' / f'{lang}.json').read_text(encoding='utf-8'))
+
+
+def _wrapped_keys(src, fn):
+    return re.findall(fn + r"\('([\w.]+)',\s*'((?:[^'\\]|\\.)*)'\)", src)
+
+
+@pytest.mark.parametrize('name,fn', [('user-guide.js', '_guideT'), ('bug-report.js', '_t')])
+def test_widget_chrome_keys_exist_in_every_catalog(name, fn):
+    pairs = _wrapped_keys(_src(name), fn)
+    assert len(pairs) >= 9
+    cats = {lang: _catalog(lang) for lang in LANGS}
+    for key, english in pairs:
+        for lang in LANGS:
+            assert key in cats[lang], (lang, key)
+        assert cats['en'][key] == english.replace("\\'", "'"), key
+
+
+def test_user_guide_and_bug_report_have_no_hardcoded_chrome():
+    guide = _src('user-guide.js')
+    for literal in ["? 'Next →' :", "textContent = 'Skip →'", "? 'Skip' : 'Finish'", "= 'Loading…'", '} of ${this.steps.length}',
+                    "'' : ' Click or interact with", 'aria-label="Close guide"']:
+        assert literal not in guide, literal
+    bug = _src('bug-report.js')
+    for literal in ["title: 'Report a Bug'", "confirmButtonText: 'Yes, choose files'", "denyButtonText: 'No, just email'",
+                    "title: 'Choose log files'", "title: 'Name the log archive'", "title: 'Log archive downloaded'"]:
+        assert literal not in bug, literal

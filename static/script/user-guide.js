@@ -3,6 +3,12 @@
  * Provides step-by-step walkthrough with spotlight highlighting
  */
 
+// The guide's own chrome follows the UI language like its step text
+// (guide_translations/); t() falls back to the English here (Rule.md §2.22).
+function _guideT(key, fallback) {
+    return (typeof t === 'function') ? t(key, fallback) : fallback;
+}
+
 class UserGuide {
     constructor() {
         this.isActive = false;
@@ -182,7 +188,7 @@ class UserGuide {
         this.tooltip.innerHTML = `
             <div class="tooltip-header">
                 <span class="tooltip-step-counter" role="status" aria-live="polite"></span>
-                <button type="button" class="tooltip-close-btn" aria-label="Close guide">
+                <button type="button" class="tooltip-close-btn" aria-label="${_attr(_guideT('guide.close', 'Close guide'))}">
                     <span aria-hidden="true">×</span></button>
             </div>
             <div class="tooltip-content">
@@ -191,10 +197,10 @@ class UserGuide {
             </div>
             <div class="tooltip-footer">
                 <button type="button" class="tooltip-btn tooltip-prev-btn">
-                    <span aria-hidden="true">←</span> Previous</button>
+                    <span aria-hidden="true">←</span> ${_escHtml(_guideT('guide.previous', 'Previous'))}</button>
                 <button type="button" class="tooltip-btn tooltip-next-btn">
-                    Next <span aria-hidden="true">→</span></button>
-                <button type="button" class="tooltip-btn tooltip-finish-btn">Finish</button>
+                    ${_escHtml(_guideT('guide.next_plain', 'Next'))} <span aria-hidden="true">→</span></button>
+                <button type="button" class="tooltip-btn tooltip-finish-btn">${_escHtml(_guideT('guide.finish', 'Finish'))}</button>
             </div>
         `;
 
@@ -1058,10 +1064,12 @@ class UserGuide {
     updateTooltip(step, stepIndex) {
         const { counter, title, description, prevBtn, nextBtn, finishBtn } = this._tooltipParts();
 
-        counter.textContent = `${stepIndex + 1} of ${this.steps.length}`;
+        counter.textContent = _guideT('guide.step_counter', '{n} of {m}')
+            .replace('{n}', stepIndex + 1).replace('{m}', this.steps.length);
         title.textContent = step.title;
 
-        const interactionInstruction = step.skipInteraction ? '' : ' Click or interact with the highlighted element to continue.';
+        const interactionInstruction = step.skipInteraction ? ''
+            : ' ' + _guideT('guide.interact_hint', 'Click or interact with the highlighted element to continue.');
         description.textContent = step.description + interactionInstruction;
 
         const isLast = stepIndex === this.steps.length - 1;
@@ -1072,13 +1080,13 @@ class UserGuide {
         // (blur/change) that isn't obvious. On interactive steps the forward button is
         // labelled "Skip" to signal it bypasses the requested action.
         nextBtn.style.display = isLast ? 'none' : 'inline-block';
-        nextBtn.textContent = step.skipInteraction ? 'Next →' : 'Skip →';
+        nextBtn.textContent = step.skipInteraction ? _guideT('guide.next', 'Next →') : _guideT('guide.skip_arrow', 'Skip →');
 
         // Always offer an exit on the last step.
         // Label it "Skip" when the step requires interaction so the user knows
         // they are bypassing the action rather than completing the guide.
         finishBtn.style.display = isLast ? 'inline-block' : 'none';
-        finishBtn.textContent = (isLast && !step.skipInteraction) ? 'Skip' : 'Finish';
+        finishBtn.textContent = (isLast && !step.skipInteraction) ? _guideT('guide.skip', 'Skip') : _guideT('guide.finish', 'Finish');
     }
 
     /**
@@ -1089,18 +1097,19 @@ class UserGuide {
     _updateTooltipSearching(step, stepIndex) {
         const { counter, title, description, prevBtn, nextBtn, finishBtn } = this._tooltipParts();
 
-        counter.textContent = `${stepIndex + 1} of ${this.steps.length}`;
+        counter.textContent = _guideT('guide.step_counter', '{n} of {m}')
+            .replace('{n}', stepIndex + 1).replace('{m}', this.steps.length);
         title.textContent = step.title;
-        description.textContent = 'Loading…';
+        description.textContent = _guideT('guide.loading', 'Loading…');
 
         // Offer an immediate skip while the element is being located, so the user is
         // never forced to wait out the 3s search (after which the step auto-advances).
         const isLast = stepIndex === this.steps.length - 1;
         prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
         nextBtn.style.display = isLast ? 'none' : 'inline-block';
-        nextBtn.textContent = 'Skip →';
+        nextBtn.textContent = _guideT('guide.skip_arrow', 'Skip →');
         finishBtn.style.display = isLast ? 'inline-block' : 'none';
-        finishBtn.textContent = 'Skip';
+        finishBtn.textContent = _guideT('guide.skip', 'Skip');
 
         this.tooltip.classList.add('active');
         // Centre the tooltip while there is nothing to point at
