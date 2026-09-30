@@ -766,8 +766,13 @@
         "description": "Nhấp 'Export Data to Report' để lưu ảnh chụp phân tích này vào chủ đề báo cáo để tổng hợp sau."
       },
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "Sau khi xuất, chuyển sang chế độ Report ở đây để mở giao diện quản lý báo cáo đầy đủ."
+      },
+      {
+        "target": "#file-selection",
+        "title": "Chọn chủ đề báo cáo",
+        "description": "Nhấp vào chủ đề báo cáo mà bạn đã xuất dữ liệu vào. Bảng điều khiển và các mục đã lưu sẽ mở khi chọn chủ đề."
       },
       {
         "target": "#report-console-section",
@@ -906,8 +911,13 @@
     "id": "export_excel_nav",
     "steps": [
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "Xuất Excel có trong chế độ Report. Chuyển sang đây trước, sau đó thêm ảnh chụp phân tích bằng 'Export Data to Report' từ các chế độ khác."
+      },
+      {
+        "target": "#file-selection",
+        "title": "Chọn chủ đề báo cáo",
+        "description": "Nhấp vào chủ đề báo cáo mà bạn đã xuất dữ liệu vào. Bảng điều khiển và các mục đã lưu sẽ mở khi chọn chủ đề."
       },
       {
         "target": "button[onclick=\"finalizeReportExcel()\"]",

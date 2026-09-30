@@ -1509,240 +1509,15 @@ _REPORT_CLARIFY_PROMPTS = {
 # "quick"` branch in deterministic_events) — a single source of truth shared with
 # the /report slash command — so there is no separate inline step list here.
 
-# Full report starting from a data mode (kinetics / point / calibrate)
-_FULL_REPORT_STEPS_FROM_DATA = [
-    {
-        "target": "#report-section",
-        "title": "Export Data to Report",
-        "description": (
-            "Click 'Export Data to Report' to save this analysis snapshot into a named "
-            "report subject for later compilation."
-        ),
-        "descriptions": {
-            "vi": "Nhấp 'Export Data to Report' để lưu ảnh chụp phân tích này vào chủ đề báo cáo đặt tên để tổng hợp sau.",
-            "zh": "点击「Export Data to Report」将此分析快照保存到命名报告主题中，供后续汇编。",
-            "fr": "Cliquez sur 'Export Data to Report' pour enregistrer ce snapshot d'analyse dans un sujet de rapport nommé pour une compilation ultérieure.",
-            "ja": "「Export Data to Report」をクリックして、後で使うためこの分析スナップショットを名前付きレポートテーマに保存します。",
-            "ru": "Нажмите «Export Data to Report», чтобы сохранить снимок анализа в именованную тему отчёта для последующей компиляции.",
-            "ko": "'Export Data to Report'를 클릭하여 이 분석 스냅샷을 이름 붙인 report 주제에 저장하고 나중에 정리하세요.",
-        },
-        "position": "top",
-        "skipInteraction": False,
-    },
-    {
-        "target": "#meas-mode-section",
-        "title": "Switch to Report Mode",
-        "description": (
-            "After exporting, switch to Report mode here to open the full "
-            "report management interface."
-        ),
-        "descriptions": {
-            "vi": "Sau khi xuất, chuyển sang chế độ Report ở đây để mở giao diện quản lý báo cáo đầy đủ.",
-            "zh": "导出后，在此切换到 Report 模式以打开完整的报告管理界面。",
-            "fr": "Après l'exportation, passez en mode Report ici pour ouvrir l'interface complète de gestion des rapports.",
-            "ja": "エクスポート後、ここで Report モードに切り替えてレポート管理インターフェイスを開きます。",
-            "ru": "После экспорта переключитесь в режим Report, чтобы открыть полный интерфейс управления отчётами.",
-            "ko": "내보낸 뒤 여기서 Report 모드로 전환하여 전체 report 관리 화면을 여세요.",
-        },
-        "position": "right",
-        "skipInteraction": False,
-    },
-    {
-        "target": "#report-console-section",
-        "title": "Report Console",
-        "description": (
-            "Manage your saved analysis snapshots here. Configure layout options "
-            "and set a report title."
-        ),
-        "descriptions": {
-            "vi": "Quản lý các ảnh chụp phân tích đã lưu tại đây. Cấu hình tùy chọn bố cục và đặt tiêu đề báo cáo.",
-            "zh": "在此管理已保存的分析快照。配置布局选项并设置报告标题。",
-            "fr": "Gérez vos snapshots d'analyse sauvegardés ici. Configurez les options de mise en page et définissez un titre de rapport.",
-            "ja": "ここで保存された分析スナップショットを管理します。レイアウトオプションを設定してレポートのタイトルを設定してください。",
-            "ru": "Управляйте сохранёнными снимками анализа здесь. Настройте параметры макета и задайте название отчёта.",
-            "ko": "여기서 저장된 분석 스냅샷을 관리합니다. 레이아웃 옵션을 설정하고 report 제목을 정하세요.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "#report-items-container",
-        "title": "Report Items",
-        "description": (
-            "All saved snapshots are listed here. Remove any you don't want "
-            "before generating the final report."
-        ),
-        "descriptions": {
-            "vi": "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa bất kỳ ảnh nào bạn không muốn trước khi tạo báo cáo cuối.",
-            "zh": "所有已保存的快照都列在这里。在生成最终报告之前删除不需要的快照。",
-            "fr": "Tous les snapshots sauvegardés sont listés ici. Supprimez ceux que vous ne souhaitez pas avant de générer le rapport final.",
-            "ja": "保存されたすべてのスナップショットがここに一覧表示されます。最終レポートを生成する前に不要なものを削除してください。",
-            "ru": "Все сохранённые снимки перечислены здесь. Удалите ненужные перед созданием финального отчёта.",
-            "ko": "저장된 모든 스냅샷이 여기에 나열됩니다. 최종 report를 만들기 전에 필요 없는 항목을 제거하세요.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "button[onclick=\"finalizeReport()\"]",
-        "title": "Generate PDF Report",
-        "description": (
-            "Compile all items into a printable HTML report. "
-            "Open in your browser, then use Print → Save as PDF."
-        ),
-        "descriptions": {
-            "vi": "Tổng hợp tất cả mục thành báo cáo HTML có thể in. Mở trong trình duyệt, sau đó dùng In → Lưu thành PDF.",
-            "zh": "将所有项目编译为可打印的 HTML 报告。在浏览器中打开，然后使用打印 → 另存为 PDF。",
-            "fr": "Compilez tous les éléments en rapport HTML imprimable. Ouvrez dans votre navigateur, puis Imprimer → Enregistrer en PDF.",
-            "ja": "すべての項目を印刷可能な HTML レポートにまとめます。ブラウザで開き、印刷 → PDF として保存を使用してください。",
-            "ru": "Скомпилируйте все элементы в печатаемый HTML-отчёт. Откройте в браузере, затем Печать → Сохранить как PDF.",
-            "ko": "모든 항목을 인쇄 가능한 HTML report로 컴파일합니다. 브라우저에서 연 뒤 인쇄 → PDF로 저장을 사용하세요.",
-        },
-        "position": "top",
-        "skipInteraction": True,
-    },
-]
+# Full report walkthroughs are the report_full_from_data / report_full_in_report
+# guides in guide_training.json, loaded by id (work-list B11) — the same source
+# the /report slash command uses — so the chat answer and the button can never
+# drift apart again (they had: #meas-mode-section vs #measurement-mode).
 
-# Full report when already in report mode
-_FULL_REPORT_STEPS_IN_REPORT = [
-    {
-        "target": "#report-console-section",
-        "title": "Report Console",
-        "description": (
-            "This is the Report Modification Console. We'll set the title and layout "
-            "options, review the items, then generate the report as Excel or PDF."
-        ),
-        "descriptions": {
-            "vi": "Đây là Report Modification Console. Chúng ta sẽ đặt tiêu đề và các tùy chọn bố cục, xem lại các mục, rồi tạo báo cáo dưới dạng Excel hoặc PDF.",
-            "zh": "这是 Report Modification Console。我们将设置标题和布局选项、检查项目，然后以 Excel 或 PDF 生成报告。",
-            "fr": "Voici la Report Modification Console. Nous allons définir le titre et les options de mise en page, vérifier les éléments, puis générer le rapport en Excel ou PDF.",
-            "ja": "これは Report Modification Console です。タイトルとレイアウトオプションを設定し、項目を確認してから、Excel または PDF でレポートを生成します。",
-            "ru": "Это Report Modification Console. Мы зададим заголовок и параметры оформления, проверим элементы, затем создадим отчёт в Excel или PDF.",
-            "ko": "여기는 Report Modification Console입니다. 제목과 레이아웃 옵션을 정하고 항목을 확인한 뒤 Excel 또는 PDF로 report를 만듭니다.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "#console-title",
-        "title": "Report Title",
-        "description": (
-            "Set the report title here — the heading of the PDF/HTML report and the "
-            "Excel workbook title (default 'Colorimetric Analysis Report')."
-        ),
-        "descriptions": {
-            "vi": "Đặt tiêu đề báo cáo tại đây — là tiêu đề của báo cáo PDF/HTML và tên workbook Excel (mặc định 'Colorimetric Analysis Report').",
-            "zh": "在此设置报告标题——它是 PDF/HTML 报告的标题和 Excel 工作簿的名称（默认 'Colorimetric Analysis Report'）。",
-            "fr": "Définissez le titre du rapport ici — c'est l'en-tête du rapport PDF/HTML et le nom du classeur Excel (par défaut 'Colorimetric Analysis Report').",
-            "ja": "ここでレポートのタイトルを設定します — PDF/HTML レポートの見出しと Excel ワークブックの名前になります（既定は 'Colorimetric Analysis Report'）。",
-            "ru": "Задайте здесь название отчёта — это заголовок PDF/HTML-отчёта и имя книги Excel (по умолчанию 'Colorimetric Analysis Report').",
-            "ko": "여기서 report 제목을 정하세요 — PDF/HTML report의 제목이자 Excel 통합 문서의 이름입니다(기본값 'Colorimetric Analysis Report').",
-        },
-        "position": "bottom",
-        "skipInteraction": True,
-    },
-    {
-        "target": "#console-watermark",
-        "title": "Watermark & Logo (PDF)",
-        "description": (
-            "PDF/HTML options: tick 'Include Watermark' for a CBBiotec watermark, and "
-            "'Include CBB Logo' (just beside it) to show the logo in the header. Untick "
-            "both for a clean, unbranded report."
-        ),
-        "descriptions": {
-            "vi": "Tùy chọn PDF/HTML: tích 'Include Watermark' để thêm hình mờ CBBiotec, và 'Include CBB Logo' (ngay bên cạnh) để hiển thị logo ở phần đầu. Bỏ tích cả hai để có báo cáo sạch, không thương hiệu.",
-            "zh": "PDF/HTML 选项：勾选 'Include Watermark' 添加 CBBiotec 水印，勾选 'Include CBB Logo'（就在旁边）在页眉显示徽标。两者都取消勾选可获得干净、无品牌的报告。",
-            "fr": "Options PDF/HTML : cochez 'Include Watermark' pour un filigrane CBBiotec, et 'Include CBB Logo' (juste à côté) pour afficher le logo dans l'en-tête. Décochez les deux pour un rapport propre, sans marque.",
-            "ja": "PDF/HTML オプション：CBBiotec の透かしを入れるには 'Include Watermark'、ヘッダーにロゴを表示するには（すぐ隣の）'Include CBB Logo' をチェックします。両方をオフにするとブランドなしのクリーンなレポートになります。",
-            "ru": "Параметры PDF/HTML: отметьте 'Include Watermark' для водяного знака CBBiotec и 'Include CBB Logo' (рядом), чтобы показать логотип в шапке. Снимите обе отметки для чистого отчёта без брендинга.",
-            "ko": "PDF/HTML 옵션: CBBiotec 워터마크를 넣으려면 'Include Watermark'를, 머리말에 로고를 표시하려면 바로 옆의 'Include CBB Logo'를 체크하세요. 둘 다 해제하면 브랜딩 없는 깔끔한 report가 됩니다.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "#console-split-sheets",
-        "title": "Split Sheets (Excel)",
-        "description": (
-            "Excel option: tick to place each CSV file's data on its own tab/sheet; "
-            "untick to combine everything into one sheet."
-        ),
-        "descriptions": {
-            "vi": "Tùy chọn Excel: tích để đặt dữ liệu của mỗi tệp CSV trên một tab/sheet riêng; bỏ tích để gộp tất cả vào một sheet.",
-            "zh": "Excel 选项：勾选可将每个 CSV 文件的数据放在各自的标签页/工作表上；取消勾选可将所有数据合并到一个工作表中。",
-            "fr": "Option Excel : cochez pour placer les données de chaque fichier CSV sur son propre onglet/feuille ; décochez pour tout combiner dans une seule feuille.",
-            "ja": "Excel オプション：各 CSV ファイルのデータを個別のタブ/シートに配置するにはチェック、すべてを 1 つのシートにまとめるにはオフにします。",
-            "ru": "Параметр Excel: отметьте, чтобы поместить данные каждого CSV-файла на отдельную вкладку/лист; снимите отметку, чтобы объединить всё на одном листе.",
-            "ko": "Excel 옵션: 체크하면 각 CSV 파일의 데이터가 별도의 탭/시트에 놓이고, 해제하면 모든 데이터가 한 시트에 합쳐집니다.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": ".cal-xlabel-input",
-        "title": "Chart Axis Labels (Excel)",
-        "description": (
-            "Excel option, shown on each calibrate CSV card: override the X and Y axis "
-            "labels for that file's native (editable) Excel charts. Leave X blank to "
-            "auto-label with the file's concentration unit, and Y blank for its metric."
-        ),
-        "descriptions": {
-            "vi": "Tùy chọn Excel, hiển thị trên mỗi thẻ tệp CSV calibrate: ghi đè nhãn trục X và Y cho các biểu đồ Excel gốc (có thể chỉnh sửa). Để trống X để tự động gán nhãn theo đơn vị nồng độ của mỗi tệp, và để trống Y theo metric của nó.",
-            "zh": "Excel 选项，显示在每个 calibrate CSV 卡片上：覆盖原生（可编辑）Excel 图表的 X 和 Y 轴标签。将 X 留空可按各文件的浓度单位自动标注，将 Y 留空可按其 metric 自动标注。",
-            "fr": "Option Excel, affichée sur chaque carte de fichier CSV calibrate : remplacez les libellés des axes X et Y des graphiques Excel natifs (modifiables). Laissez X vide pour étiqueter automatiquement avec l'unité de concentration de chaque fichier, et Y vide pour son metric.",
-            "ja": "Excel オプション（各 calibrate CSV カードに表示）：ネイティブ（編集可能）Excel グラフの X 軸・Y 軸ラベルを上書きします。X を空欄にすると各ファイルの濃度単位で、Y を空欄にするとその metric で自動ラベル付けされます。",
-            "ru": "Параметр Excel, показанный на карточке каждого calibrate CSV: переопределите подписи осей X и Y для нативных (редактируемых) диаграмм Excel. Оставьте X пустым для автоподписи по единице концентрации файла, а Y пустым — по его metric.",
-            "ko": "Excel 옵션(각 calibrate CSV 카드에 표시): 네이티브(편집 가능) Excel 차트의 X축과 Y축 레이블을 직접 지정합니다. X를 비우면 각 파일의 농도 단위로, Y를 비우면 해당 metric으로 자동 표기됩니다.",
-        },
-        "position": "bottom",
-        "skipInteraction": True,
-    },
-    {
-        "target": "#report-items-container",
-        "title": "Report Items",
-        "description": "All saved snapshots are listed here. Remove any before generating.",
-        "descriptions": {
-            "vi": "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa bất kỳ ảnh nào trước khi tạo.",
-            "zh": "所有已保存的快照都列在这里。在生成之前删除不需要的快照。",
-            "fr": "Tous les snapshots sauvegardés sont listés ici. Supprimez-en avant de générer.",
-            "ja": "保存されたすべてのスナップショットがここに一覧表示されます。生成前に不要なものを削除してください。",
-            "ru": "Все сохранённые снимки перечислены здесь. Удалите ненужные перед созданием.",
-            "ko": "저장된 모든 스냅샷이 여기에 나열됩니다. 생성 전에 필요 없는 항목을 제거하세요.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "button[onclick=\"finalizeReportExcel()\"]",
-        "title": "Export as Excel",
-        "description": "Download all items as a formatted Excel workbook with embedded charts.",
-        "descriptions": {
-            "vi": "Tải xuống tất cả mục dưới dạng bảng tính Excel được định dạng với biểu đồ nhúng.",
-            "zh": "将所有项目下载为带有嵌入图表的格式化 Excel 工作簿。",
-            "fr": "Téléchargez tous les éléments sous forme de classeur Excel formaté avec graphiques intégrés.",
-            "ja": "すべての項目を埋め込みグラフ付きのフォーマットされた Excel ワークブックとしてダウンロードします。",
-            "ru": "Загрузите все элементы как форматированную Excel-книгу со встроенными графиками.",
-            "ko": "모든 항목을 차트가 포함된 서식 있는 Excel 통합 문서로 내려받습니다.",
-        },
-        "position": "top",
-        "skipInteraction": True,
-    },
-    {
-        "target": "button[onclick=\"finalizeReport()\"]",
-        "title": "Generate PDF Report",
-        "description": "Or compile all items into a printable HTML report.",
-        "descriptions": {
-            "vi": "Hoặc tổng hợp tất cả mục thành báo cáo HTML có thể in.",
-            "zh": "或者将所有项目编译为可打印的 HTML 报告。",
-            "fr": "Ou compilez tous les éléments en rapport HTML imprimable.",
-            "ja": "またはすべての項目を印刷可能な HTML レポートにまとめます。",
-            "ru": "Или скомпилируйте все элементы в печатаемый HTML-отчёт.",
-            "ko": "또는 모든 항목을 인쇄 가능한 HTML report로 컴파일합니다.",
-        },
-        "position": "top",
-        "skipInteraction": True,
-    },
-]
+
+def _full_report_guide_id(mode: str) -> str:
+    return "report_full_in_report" if mode == "report" else "report_full_from_data"
+
 
 # Multilingual vocabulary for the report clarification flow, at parity across
 # ALL SEVEN `user_settings.SUPPORTED_LANGUAGES` (en/vi/zh/fr/ja/ru/ko) — the
@@ -1859,12 +1634,63 @@ def _report_clarify_pending(messages: list, ui_context: dict = None) -> bool:
     return False
 
 
+# "report" and its translations must be a WORD in the query (B5 / A8): the old
+# substring test asked quick-vs-full for "reporting issue with the chart". Each
+# entry allows only its own inflection (English/French plural, Russian case
+# endings); CJK has no word boundaries and stays substring.
+_REPORT_WORD_PATTERNS = tuple(re.compile(p) for p in (
+    r"(?<!\w)reports?(?!\w)",
+    r"(?<!\w)rapports?(?!\w)",
+    r"(?<!\w)báo cáo(?!\w)",
+    r"(?<!\w)отч[её]т[а-я]{0,2}(?!\w)",
+    r"报告", r"レポート", r"보고서",
+))
+
+# Questions ABOUT managing a report (its subject, layout, items, …) are not a
+# request to make one, so they never get the quick/full question — in report
+# mode "what is a report subject" used to. Kept at parity across all seven
+# languages; matched from a word start (substring for CJK).
+_REPORT_MANAGEMENT_WORDS = frozenset({
+    "subject", "layout", "watermark", "logo", "item", "delete", "rename", "title", "excel",
+    "chủ đề", "bố cục", "hình mờ", "mục", "xóa", "đổi tên", "tiêu đề",                 # vi
+    "主题", "布局", "水印", "标志", "项目", "删除", "重命名", "标题",                     # zh
+    "sujet", "mise en page", "filigrane", "élément", "supprimer", "renommer", "titre",  # fr
+    "件名", "サブジェクト", "レイアウト", "透かし", "ロゴ", "項目", "削除", "名前を変更", "タイトル",  # ja
+    "тем", "макет", "водян", "логотип", "элемент", "удал", "переимен", "заголов",       # ru
+    "주제", "레이아웃", "워터마크", "로고", "항목", "삭제", "이름 변경", "제목",           # ko
+})
+
+
+def _has_report_word(q: str) -> bool:
+    return any(p.search(q) for p in _REPORT_WORD_PATTERNS)
+
+
+def _mentions_report_management(q: str) -> bool:
+    for w in _REPORT_MANAGEMENT_WORDS:
+        if _is_cjk(w):
+            if w in q:
+                return True
+        elif re.search(r"(?<!\w)" + re.escape(w), q):
+            return True
+    return False
+
+
 def _needs_report_clarification(query: str, messages: list, ui_context: dict = None) -> bool:
-    """True when the query is about reports but doesn't specify quick vs full."""
-    q = query.lower()
-    if not any(w in q for w in _REPORT_WORDS):
+    """True when the query asks to MAKE a report but doesn't say quick vs full.
+
+    Not asked for: a query without the word "report" (any language), one that
+    already names the kind, a conceptual question ("what is a report subject"
+    — unless it also carries explicit how-to phrasing), or a question about
+    managing a report (subject, layout, watermark, items, …).
+    """
+    q = (query or "").lower()
+    if not _has_report_word(q):
         return False
     if any(kw in q for kw in _REPORT_SPECIFIC_KEYWORDS):
+        return False
+    if _is_conceptual(q) and not _has_nav_intent(q):
+        return False
+    if _mentions_report_management(q):
         return False
     # Don't re-ask if the clarification is already outstanding.
     if _report_clarify_pending(messages, ui_context):
@@ -2158,11 +1984,13 @@ def deterministic_events(messages: list, language: str, ui_context: dict = None)
                 {"type": "guide", "guide_action": {"custom_steps": steps}},
             ]
     if pending_report == "full":
-        raw = _FULL_REPORT_STEPS_IN_REPORT if mode == "report" else _FULL_REPORT_STEPS_FROM_DATA
-        return [
-            {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])},
-            {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}},
-        ]
+        example = _guide_example_by_id(_full_report_guide_id(mode), language)
+        if example:
+            steps = _format_fewshot_hint(example, ui_context, language, steps_only=True)
+            return [
+                {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])},
+                {"type": "guide", "guide_action": {"custom_steps": steps}},
+            ]
 
     if _needs_report_clarification(last_user_query, messages, ui_context):
         # The marker event travels with the question: the frontend stores it and

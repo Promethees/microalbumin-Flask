@@ -770,8 +770,13 @@
         "description": "Нажмите «Export Data to Report», чтобы сохранить снимок анализа в именованную тему отчёта для последующей компиляции."
       },
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "После экспорта переключитесь здесь в режим Report для открытия полного интерфейса управления отчётами."
+      },
+      {
+        "target": "#file-selection",
+        "title": "Выберите тему отчёта",
+        "description": "Нажмите на тему отчёта, в которую вы экспортировали данные. Консоль и сохранённые элементы откроются после выбора темы."
       },
       {
         "target": "#report-console-section",
@@ -908,8 +913,13 @@
     "id": "export_excel_nav",
     "steps": [
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "Экспорт Excel доступен в режиме Report. Сначала переключитесь сюда, затем добавьте снимки анализа через «Export Data to Report» из других режимов."
+      },
+      {
+        "target": "#file-selection",
+        "title": "Выберите тему отчёта",
+        "description": "Нажмите на тему отчёта, в которую вы экспортировали данные. Консоль и сохранённые элементы откроются после выбора темы."
       },
       {
         "target": "button[onclick=\"finalizeReportExcel()\"]",

@@ -760,8 +760,13 @@
         "description": "「Export Data to Report」をクリックして、この分析スナップショットを後でまとめるためのレポート主題に保存してください。"
       },
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "エクスポート後、ここでレポートモードに切り替えてレポート管理インターフェイス全体を開きます。"
+      },
+      {
+        "target": "#file-selection",
+        "title": "レポートサブジェクトを選択",
+        "description": "エクスポート先のレポートサブジェクトをクリックします。サブジェクトを選択すると、コンソールと保存済みの項目が開きます。"
       },
       {
         "target": "#report-console-section",
@@ -896,8 +901,13 @@
     "id": "export_excel_nav",
     "steps": [
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "Excel エクスポートはレポートモードで利用できます。まずここで切り替え、他のモードから「Export Data to Report」で分析スナップショットを追加してください。"
+      },
+      {
+        "target": "#file-selection",
+        "title": "レポートサブジェクトを選択",
+        "description": "エクスポート先のレポートサブジェクトをクリックします。サブジェクトを選択すると、コンソールと保存済みの項目が開きます。"
       },
       {
         "target": "button[onclick=\"finalizeReportExcel()\"]",

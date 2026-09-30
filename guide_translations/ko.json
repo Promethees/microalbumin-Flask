@@ -821,8 +821,13 @@
         "description": "'Export Data to Report'를 클릭하여 이 분석 스냅샷을 나중에 정리할 report 주제에 저장하세요."
       },
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "내보낸 뒤 여기서 Report 모드로 전환하여 전체 report 관리 화면을 여세요."
+      },
+      {
+        "target": "#file-selection",
+        "title": "보고서 주제 선택",
+        "description": "데이터를 내보낸 보고서 주제를 클릭하세요. 주제를 선택하면 콘솔과 저장된 항목이 열립니다."
       },
       {
         "target": "#report-console-section",
@@ -1007,8 +1012,13 @@
     "id": "export_excel_nav",
     "steps": [
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "Excel 내보내기는 Report 모드에서 사용할 수 있습니다. 먼저 여기서 전환한 뒤 다른 모드에서 'Export Data to Report'로 분석 스냅샷을 추가하세요."
+      },
+      {
+        "target": "#file-selection",
+        "title": "보고서 주제 선택",
+        "description": "데이터를 내보낸 보고서 주제를 클릭하세요. 주제를 선택하면 콘솔과 저장된 항목이 열립니다."
       },
       {
         "target": "button[onclick=\"finalizeReportExcel()\"]",

@@ -556,3 +556,76 @@ def test_a_turn_that_never_reached_the_server_re_arms():
         "expected the client rate-limit return, the non-ok response and the "
         "network-error catch to each put the marker back"
     )
+
+
+# ── B5: report-topic questions are not asked quick-vs-full ───────────────────
+
+REPORT_MODE = {"mode": "report", "data_loaded": False, "app_started": True, "pending": ""}
+KIN_CTX = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
+
+
+@pytest.mark.parametrize("query, ctx", [
+    ("what is a report subject", REPORT_MODE),
+    ("reporting issue with the chart", REPORT_MODE),
+    ("the chart was reported wrong", KIN_CTX),
+    ("how do I rename a report subject", REPORT_MODE),
+    ("change the report layout watermark", REPORT_MODE),
+    ("qu'est-ce qu'un sujet de rapport", REPORT_MODE),
+    ("chủ đề báo cáo là gì", REPORT_MODE),
+])
+def test_report_topic_questions_do_not_get_the_question(query, ctx):
+    events = ai_assistant.deterministic_events([{"role": "user", "content": query}], "en", ctx)
+    assert not events or events[0].get("content") not in ai_assistant._REPORT_CLARIFY_PROMPTS.values()
+
+
+@pytest.mark.parametrize("lang,ask", [(v[0], v[1]) for v in LANGUAGE_VOCAB])
+def test_make_a_report_still_asks_in_report_mode(lang, ask):
+    events = ai_assistant.deterministic_events([{"role": "user", "content": ask}], lang, REPORT_MODE)
+    assert events and events[0]["content"] == ai_assistant._REPORT_CLARIFY_PROMPTS[lang]
+
+
+# ── B11: one source for the full-report walkthrough ──────────────────────────
+
+def _guide_targets(gid):
+    return [s["target"] for s in ai_assistant._guide_example_by_id(gid, "en")["steps"]]
+
+
+@pytest.mark.parametrize("mode, gid", [("kinetics", "report_full_from_data"),
+                                       ("report", "report_full_in_report")])
+def test_full_answer_equals_the_guide(mode, gid):
+    ctx = {"mode": mode, "data_loaded": True, "app_started": True,
+           "pending": ai_assistant.PENDING_REPORT_TYPE}
+    events = ai_assistant.deterministic_events([{"role": "user", "content": "full"}], "en", ctx)
+    steps = next(e for e in events if e["type"] == "guide")["guide_action"]["custom_steps"]
+    assert [s["target"] for s in steps] == _guide_targets(gid)
+
+
+def test_subject_step_comes_before_the_console():
+    t = _guide_targets("report_full_from_data")
+    assert t.index('#measurement-mode button[data-mode="report"]') < t.index("#file-selection") \
+        < t.index("#report-console-section")
+    x = _guide_targets("export_excel_nav")
+    assert x.index("#file-selection") < x.index('button[onclick="finalizeReportExcel()"]')
+
+
+def test_report_mode_step_targets_the_report_button_not_the_whole_section():
+    for gid in ("report_full_from_data", "export_excel_nav"):
+        assert "#measurement-mode" not in _guide_targets(gid)
+
+
+def test_cal_xlabel_step_is_optional():
+    ex = ai_assistant._guide_example_by_id("report_full_in_report", "en")
+    step = next(s for s in ex["steps"] if s["target"] == ".cal-xlabel-input")
+    assert step.get("optional") is True
+
+
+def test_no_python_full_report_constants():
+    assert not hasattr(ai_assistant, "_FULL_REPORT_STEPS_FROM_DATA")
+    assert not hasattr(ai_assistant, "_FULL_REPORT_STEPS_IN_REPORT")
+
+
+def test_slash_command_uses_the_same_guide_ids():
+    js = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'script', 'ai-chat.js'),
+              encoding='utf-8').read()
+    for mode in ("kinetics", "report"):
+        assert f"'{ai_assistant._full_report_guide_id(mode)}'" in js

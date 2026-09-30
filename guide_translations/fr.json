@@ -776,8 +776,13 @@
         "description": "Cliquez sur 'Export Data to Report' pour sauvegarder ce snapshot dans un sujet de rapport nommé."
       },
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "Après l'export, basculez en mode Report ici pour accéder à l'interface complète de gestion des rapports."
+      },
+      {
+        "target": "#file-selection",
+        "title": "Sélectionner le sujet du rapport",
+        "description": "Cliquez sur le sujet de rapport vers lequel vous avez exporté. Sa console et ses éléments enregistrés s'ouvrent une fois le sujet sélectionné."
       },
       {
         "target": "#report-console-section",
@@ -914,8 +919,13 @@
     "id": "export_excel_nav",
     "steps": [
       {
-        "target": "#measurement-mode",
+        "target": "#measurement-mode button[data-mode=\"report\"]",
         "description": "L'export Excel est disponible en mode Report. Basculez ici d'abord, puis ajoutez vos snapshots via 'Export Data to Report' depuis les autres modes."
+      },
+      {
+        "target": "#file-selection",
+        "title": "Sélectionner le sujet du rapport",
+        "description": "Cliquez sur le sujet de rapport vers lequel vous avez exporté. Sa console et ses éléments enregistrés s'ouvrent une fois le sujet sélectionné."
       },
       {
         "target": "button[onclick=\"finalizeReportExcel()\"]",

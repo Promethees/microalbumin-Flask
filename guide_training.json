@@ -1292,10 +1292,17 @@
           "skipInteraction": false
         },
         {
-          "target": "#measurement-mode",
+          "target": "#measurement-mode button[data-mode=\"report\"]",
           "title": "Switch to Report Mode",
           "description": "After exporting, switch to Report mode here to open the full report management interface.",
           "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select the Report Subject",
+          "description": "Click the report subject you exported to. Its console and saved items open once a subject is selected.",
+          "position": "left",
           "skipInteraction": false
         },
         {
@@ -1361,7 +1368,8 @@
           "title": "Chart Axis Labels (Excel)",
           "description": "Excel option, shown on each calibrate CSV card: override the X and Y axis labels for that file's native (editable) Excel charts. Leave X blank to auto-label with the file's concentration unit, and Y blank for its metric.",
           "position": "bottom",
-          "skipInteraction": true
+          "skipInteraction": true,
+          "optional": true
         },
         {
           "target": "#report-items-container",
@@ -1595,10 +1603,17 @@
       "conditions": {},
       "steps": [
         {
-          "target": "#measurement-mode",
+          "target": "#measurement-mode button[data-mode=\"report\"]",
           "title": "Switch to Report Mode",
           "description": "Excel export is available in Report mode. Switch here first, then add your analysis snapshots using 'Export Data to Report' from other modes.",
           "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select the Report Subject",
+          "description": "Click the report subject you exported to. Its console and saved items open once a subject is selected.",
+          "position": "left",
           "skipInteraction": false
         },
         {
