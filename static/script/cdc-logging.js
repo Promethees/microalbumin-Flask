@@ -1,6 +1,9 @@
 let statusCheckInterval = null;
 const STATUS_CHECK_INTERVAL = 2000; // Check every 2 seconds
 let _terminationNoticeFired = false;
+// Set once a device-side end sentinel (SESSION TIMEOUT / STOPPED) has handed the
+// run-end over to /check_status, so later log frames do not ask again.
+let _endSentinelSeen = false;
 // True for the duration of a manual point-mode capture (device idle, one row per
 // "Measure now" press). Set when runScript starts a manual session, cleared on
 // stop/completion. Used to suppress the interval countdown and to re-enable the
@@ -838,6 +841,7 @@ function lockRunInputs() {
 // fresh start (runScript) and a reload that finds a run already going
 // (resyncRunningSession) — the two must never drift apart.
 function enterRunningUI({ manual, intervalSec, paused, measureArmed }) {
+    _endSentinelSeen = false;
     manualSession = !!manual;
     AppState.scriptRunning = true;
     $disable(["terminate-script-btn"], false);
@@ -1134,12 +1138,17 @@ function showTerminationNotice(message, iconType) {
     if (_terminationNoticeFired) return;
 
     if (iconType === "info") {
-        // Clean completion detected via the logs: mirror the authoritative
-        // completion path. fireDoneNotification owns the guard + chime/popup.
-        AppState.scriptRunning = false;
-        stopSessionTimer();
-        terminateScript();
-        fireDoneNotification(message);
+        // The device ended the session itself (timeout, or Stop on the device)
+        // and the logger is already exiting on its own. /check_status is the
+        // single place that decides why a session ended (Rule.md §2.31): ask it
+        // now rather than SIGINTing an exiting logger and announcing a reason
+        // of our own — with SSE this frame routinely beats the status poll, and
+        // a device-drop `warning` could be relabelled "ended due to timeout".
+        // If the logger has not exited yet, the running status poll finishes
+        // the job on its next tick.
+        if (_endSentinelSeen) return;
+        _endSentinelSeen = true;
+        checkScriptStatus();
         return;
     }
 

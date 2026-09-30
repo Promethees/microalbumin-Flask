@@ -683,3 +683,32 @@ OUT({ failedWhilePaused, failedAfterResume, failedPastLimit: !!ctx.__failed });
 def test_startup_watch_holds_while_paused():
     r = _node(STARTUP_PAUSE)
     assert r == {'failedWhilePaused': False, 'failedAfterResume': False, 'failedPastLimit': True}
+
+
+# ---------------------------------------------------------------------------
+# cdc-logging.js:1002 — a pushed SESSION TIMEOUT / STOPPED log frame called
+# terminateScript() (SIGINT into a logger already exiting) and announced its
+# own reason, racing /check_status, which owns why a session ended (§2.31).
+# ---------------------------------------------------------------------------
+
+END_SENTINEL = PRELUDE + r"""
+const calls = [];
+const ctx = { AppState: { scriptRunning: true }, t: (k, f) => f, Swal: { fire: () => calls.push('swal') } };
+vm.createContext(ctx);
+vm.runInContext('let _terminationNoticeFired = false, _endSentinelSeen = false;' +
+    'function terminateScript() { globalThis.__calls.push("terminate"); }' +
+    'function checkScriptStatus() { globalThis.__calls.push("check"); return Promise.resolve(true); }' +
+    'function stopSessionTimer() {} function updateStartupProgress() {} function onNewDataPoint() {}' +
+    'function fireDoneNotification(m) { globalThis.__calls.push("done:" + m); }' +
+    FN('cdc-logging.js', 'showTerminationNotice') + FN('cdc-logging.js', 'applyLogText'), ctx);
+ctx.__calls = calls;
+ctx.applyLogText('Received: Turn: 1\nSESSION TIMEOUT\n');
+ctx.applyLogText('Received: Turn: 1\nSESSION TIMEOUT\nbye\n');   // a later frame
+OUT({ calls, running: ctx.AppState.scriptRunning });
+"""
+
+
+def test_device_end_sentinel_defers_to_check_status():
+    r = _node(END_SENTINEL)
+    assert r['calls'] == ['check']
+    assert r['running'] is True  # left for /check_status to decide
