@@ -619,5 +619,12 @@
   "bug.downloaded_title": "日志压缩包已下载",
   "bug.downloaded_saved": "已将 {f} 保存到“下载”文件夹。",
   "bug.downloaded_attach": "邮件即将打开——请在发送前附加该文件。",
-  "bug.open_email": "打开邮件"
+  "bug.open_email": "打开邮件",
+  "ai.new_chat": "新对话",
+  "ai.close": "关闭",
+  "ai.send": "发送消息",
+  "ai.stop": "停止生成",
+  "ai.input_label": "给 AI 助手发消息",
+  "ai.token_label": "Easy OKAPI 令牌",
+  "ai.change_language": "更改语言"
 }

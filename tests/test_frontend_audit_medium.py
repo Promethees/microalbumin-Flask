@@ -989,3 +989,27 @@ def test_user_guide_and_bug_report_have_no_hardcoded_chrome():
     for literal in ["title: 'Report a Bug'", "confirmButtonText: 'Yes, choose files'", "denyButtonText: 'No, just email'",
                     "title: 'Choose log files'", "title: 'Name the log archive'", "title: 'Log archive downloaded'"]:
         assert literal not in bug, literal
+
+
+# ---------------------------------------------------------------------------
+# ai-chat.js:497 (also 1463) — the icon-only "+", "✕" and "➤"/"■" buttons
+# had a data-hint but no accessible name; the inputs relied on placeholders.
+# ---------------------------------------------------------------------------
+
+def test_ai_chat_icon_buttons_and_inputs_have_accessible_names():
+    src = _src('ai-chat.js')
+    for elem_id, key in [('okapi-ai-new-btn', 'ai.new_chat'), ('okapi-ai-close-btn', 'ai.close'),
+                         ('okapi-ai-send-btn', 'ai.send'), ('okapi-ai-input', 'ai.input_label'),
+                         ('okapi-ai-token-input', 'ai.token_label')]:
+        tag = re.search(r'<\w+ id="' + elem_id + r'"[^>]*>', src).group(0)
+        assert f"aria-label=\"${{_esc(_tr('{key}'" in tag, elem_id
+    # Stop mode renames the button, and the reset names it Send again.
+    assert "sendBtn.setAttribute('aria-label', _tr('ai.stop', 'Stop generation'))" in src
+    assert "sendBtn.setAttribute('aria-label', _tr('ai.send', 'Send message'))" in src
+    assert "btn.setAttribute('aria-label', `${_tr('ai.change_language'" in src
+    pairs = _wrapped_keys(src, '_tr')
+    cats = {lang: _catalog(lang) for lang in LANGS}
+    for key, english in pairs:
+        for lang in LANGS:
+            assert key in cats[lang], (lang, key)
+        assert cats['en'][key] == english, key

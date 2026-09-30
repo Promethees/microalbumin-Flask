@@ -619,5 +619,12 @@
   "bug.downloaded_title": "로그 압축 파일을 다운로드했습니다",
   "bug.downloaded_saved": "{f}을(를) 다운로드 폴더에 저장했습니다.",
   "bug.downloaded_attach": "이제 이메일이 열립니다. 보내기 전에 해당 파일을 첨부하세요.",
-  "bug.open_email": "이메일 열기"
+  "bug.open_email": "이메일 열기",
+  "ai.new_chat": "새 대화",
+  "ai.close": "닫기",
+  "ai.send": "메시지 보내기",
+  "ai.stop": "생성 중지",
+  "ai.input_label": "AI 도우미에게 메시지",
+  "ai.token_label": "Easy OKAPI 토큰",
+  "ai.change_language": "언어 변경"
 }

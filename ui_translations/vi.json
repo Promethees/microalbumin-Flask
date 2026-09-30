@@ -619,5 +619,12 @@
   "bug.downloaded_title": "Đã tải xuống tệp nén nhật ký",
   "bug.downloaded_saved": "Đã lưu {f} vào thư mục Tải xuống.",
   "bug.downloaded_attach": "Email sẽ được mở — vui lòng đính kèm tệp đó trước khi gửi.",
-  "bug.open_email": "Mở email"
+  "bug.open_email": "Mở email",
+  "ai.new_chat": "Cuộc trò chuyện mới",
+  "ai.close": "Đóng",
+  "ai.send": "Gửi tin nhắn",
+  "ai.stop": "Dừng tạo câu trả lời",
+  "ai.input_label": "Nhắn cho trợ lý AI",
+  "ai.token_label": "Mã Easy OKAPI",
+  "ai.change_language": "Đổi ngôn ngữ"
 }

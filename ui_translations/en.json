@@ -619,5 +619,12 @@
   "bug.downloaded_title": "Log archive downloaded",
   "bug.downloaded_saved": "Saved {f} to your Downloads folder.",
   "bug.downloaded_attach": "Your email will now open — please attach that file before sending.",
-  "bug.open_email": "Open email"
+  "bug.open_email": "Open email",
+  "ai.new_chat": "New conversation",
+  "ai.close": "Close",
+  "ai.send": "Send message",
+  "ai.stop": "Stop generation",
+  "ai.input_label": "Message the AI assistant",
+  "ai.token_label": "Easy OKAPI token",
+  "ai.change_language": "Change language"
 }

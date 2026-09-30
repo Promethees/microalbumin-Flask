@@ -619,5 +619,12 @@
   "bug.downloaded_title": "Archive des journaux téléchargée",
   "bug.downloaded_saved": "{f} a été enregistré dans votre dossier Téléchargements.",
   "bug.downloaded_attach": "Votre e-mail va s'ouvrir — joignez ce fichier avant l'envoi.",
-  "bug.open_email": "Ouvrir l'e-mail"
+  "bug.open_email": "Ouvrir l'e-mail",
+  "ai.new_chat": "Nouvelle conversation",
+  "ai.close": "Fermer",
+  "ai.send": "Envoyer le message",
+  "ai.stop": "Arrêter la génération",
+  "ai.input_label": "Message à l'assistant IA",
+  "ai.token_label": "Jeton Easy OKAPI",
+  "ai.change_language": "Changer de langue"
 }

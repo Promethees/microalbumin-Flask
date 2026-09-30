@@ -482,6 +482,11 @@
 
     // ── DOM injection ────────────────────────────────────────────────────────
 
+    // UI-catalog string (Rule.md §2.22) for the widget's accessible names.
+    function _tr(key, fallback) {
+        return (typeof t === 'function') ? t(key, fallback) : fallback;
+    }
+
     function _injectWidget() {
         const fab = document.createElement('button');
         fab.id = 'okapi-ai-fab';
@@ -496,7 +501,7 @@
 <div id="okapi-ai-header">
   <span id="okapi-ai-title">&#129302; OKAPI Assistant</span>
   <div id="okapi-ai-header-btns">
-    <button id="okapi-ai-new-btn" data-hint="New conversation" onclick="OkapiAI.newChat()">&#43;</button>
+    <button id="okapi-ai-new-btn" type="button" data-hint="${_esc(_tr('ai.new_chat', 'New conversation'))}" aria-label="${_esc(_tr('ai.new_chat', 'New conversation'))}" onclick="OkapiAI.newChat()">&#43;</button>
     <div id="okapi-ai-lang-select">
       <button id="okapi-ai-lang-btn" data-hint="Change language" onclick="OkapiAI.toggleLangMenu()"></button>
       <div id="okapi-ai-lang-menu" class="okapi-hidden">
@@ -509,7 +514,7 @@
         <button class="okapi-ai-lang-opt" data-lang="ko">&#54620;&#44397;&#50612;</button>
       </div>
     </div>
-    <button id="okapi-ai-close-btn" data-hint="Close" onclick="OkapiAI.close()">&#10005;</button>
+    <button id="okapi-ai-close-btn" type="button" data-hint="${_esc(_tr('ai.close', 'Close'))}" aria-label="${_esc(_tr('ai.close', 'Close'))}" onclick="OkapiAI.close()">&#10005;</button>
   </div>
 </div>
 
@@ -519,8 +524,8 @@
   <div id="okapi-ai-status-bar"></div>
   <div id="okapi-ai-cmd-picker" class="okapi-hidden"></div>
   <div id="okapi-ai-input-row">
-    <textarea id="okapi-ai-input" rows="2" placeholder="Ask anything… (type / for commands)"></textarea>
-    <button id="okapi-ai-send-btn" onclick="OkapiAI.send()">&#10148;</button>
+    <textarea id="okapi-ai-input" rows="2" placeholder="Ask anything… (type / for commands)" aria-label="${_esc(_tr('ai.input_label', 'Message the AI assistant'))}"></textarea>
+    <button id="okapi-ai-send-btn" type="button" data-hint="${_esc(_tr('ai.send', 'Send message'))}" aria-label="${_esc(_tr('ai.send', 'Send message'))}" onclick="OkapiAI.send()">&#10148;</button>
   </div>
 </div>`;
         document.body.appendChild(panel);
@@ -628,6 +633,8 @@
         const lang = AI.activeLang || 'en';
         btn.textContent = AI.LANG_LABELS[lang] || lang.toUpperCase();
         btn.setAttribute('data-hint', AI.LANG_NAMES[lang] || lang);
+        // The face is a code ("EN"); name the control and its current value.
+        btn.setAttribute('aria-label', `${_tr('ai.change_language', 'Change language')}: ${AI.LANG_NAMES[lang] || lang}`);
     }
 
     // ── Status bar ────────────────────────────────────────────────────────────
@@ -642,7 +649,7 @@
                 `<div class="okapi-ai-activate-box">` +
                 `<span class="okapi-ai-badge okapi-ai-badge-warn">&#9888; Not activated</span>` +
                 `<div class="okapi-ai-activate-row">` +
-                `<input id="okapi-ai-token-input" type="text" class="okapi-ai-token-input" placeholder="Paste Easy OKAPI token…" />` +
+                `<input id="okapi-ai-token-input" type="text" class="okapi-ai-token-input" placeholder="Paste Easy OKAPI token…" aria-label="${_esc(_tr('ai.token_label', 'Easy OKAPI token'))}" />` +
                 `<button class="okapi-ai-activate-btn" onclick="OkapiAI.activate()">Activate</button>` +
                 `</div>` +
                 `<a class="okapi-ai-activate-link" href="https://www.easyokapi.cbbiotec.vn" target="_blank">Get token at easyokapi.cbbiotec.vn &#8599;</a>` +
@@ -1464,7 +1471,8 @@
             input.disabled = true;
             if (sendBtn) {
                 sendBtn.innerHTML = '&#9632;';
-                sendBtn.setAttribute('data-hint', 'Stop generation');
+                sendBtn.setAttribute('data-hint', _tr('ai.stop', 'Stop generation'));
+                sendBtn.setAttribute('aria-label', _tr('ai.stop', 'Stop generation'));
                 sendBtn.classList.add('okapi-ai-stop-mode');
                 sendBtn.onclick = () => OkapiAI.stopGeneration();
             }
@@ -1585,7 +1593,8 @@
                     AI.currentAbort = null;
                     if (sendBtn) {
                         sendBtn.innerHTML = '&#10148;';
-                        sendBtn.setAttribute('data-hint', 'Send message');
+                        sendBtn.setAttribute('data-hint', _tr('ai.send', 'Send message'));
+                        sendBtn.setAttribute('aria-label', _tr('ai.send', 'Send message'));
                         sendBtn.classList.remove('okapi-ai-stop-mode');
                         sendBtn.onclick = () => OkapiAI.send();
                         sendBtn.disabled = false;

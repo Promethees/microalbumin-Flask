@@ -619,5 +619,12 @@
   "bug.downloaded_title": "ログアーカイブをダウンロードしました",
   "bug.downloaded_saved": "{f} をダウンロードフォルダーに保存しました。",
   "bug.downloaded_attach": "メールが開きます。送信前にそのファイルを添付してください。",
-  "bug.open_email": "メールを開く"
+  "bug.open_email": "メールを開く",
+  "ai.new_chat": "新しい会話",
+  "ai.close": "閉じる",
+  "ai.send": "メッセージを送信",
+  "ai.stop": "生成を停止",
+  "ai.input_label": "AI アシスタントへのメッセージ",
+  "ai.token_label": "Easy OKAPI トークン",
+  "ai.change_language": "言語を変更"
 }

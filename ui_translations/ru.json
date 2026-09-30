@@ -619,5 +619,12 @@
   "bug.downloaded_title": "Архив журналов скачан",
   "bug.downloaded_saved": "{f} сохранён в папку «Загрузки».",
   "bug.downloaded_attach": "Сейчас откроется письмо — приложите этот файл перед отправкой.",
-  "bug.open_email": "Открыть письмо"
+  "bug.open_email": "Открыть письмо",
+  "ai.new_chat": "Новый диалог",
+  "ai.close": "Закрыть",
+  "ai.send": "Отправить сообщение",
+  "ai.stop": "Остановить генерацию",
+  "ai.input_label": "Сообщение ИИ-помощнику",
+  "ai.token_label": "Токен Easy OKAPI",
+  "ai.change_language": "Сменить язык"
 }
