@@ -660,5 +660,15 @@
   "ai.cmd.redo": "Chạy lại hướng dẫn trước hoặc hỏi lại câu trước",
   "ai.cmd.clear": "Xóa lịch sử trò chuyện",
   "ai.msg.request_failed": "Yêu cầu thất bại",
-  "ai.msg.network_error": "Lỗi mạng"
+  "ai.msg.network_error": "Lỗi mạng",
+  "ai.err.groq_not_installed": "Dịch vụ AI chưa được cấu hình trên máy chủ này.",
+  "ai.err.service_unavailable": "Dịch vụ AI tạm thời không khả dụng. Vui lòng thử lại sau.",
+  "ai.err.proxy_unreachable": "Không thể kết nối tới dịch vụ AI. Hãy kiểm tra kết nối Internet.",
+  "ai.err.proxy_timeout": "Dịch vụ AI phản hồi quá lâu. Vui lòng thử lại.",
+  "ai.err.api_key_invalid": "Khóa API của AI không hợp lệ. Hãy liên hệ quản trị viên máy chủ.",
+  "ai.err.rate_limit": "Đã đạt giới hạn tần suất. Vui lòng chờ một chút rồi thử lại.",
+  "ai.err.license_invalid": "Giấy phép AI không hợp lệ hoặc đã hết hạn. Hãy kích hoạt lại tại easyokapi.cbbiotec.vn.",
+  "ai.err.license_machine": "Giấy phép này chưa được kích hoạt trên máy tính này. Hãy kích hoạt lại trợ lý AI tại đây, hoặc dùng máy tính đã kích hoạt.",
+  "ai.err.max_iterations": "Trợ lý không thể hoàn tất câu trả lời. Vui lòng thử lại.",
+  "ai.err.upstream_error": "Dịch vụ AI gặp sự cố. Vui lòng thử lại."
 }

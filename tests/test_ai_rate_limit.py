@@ -98,3 +98,12 @@ def test_wrong_type_messages_rejected(client):
 def test_json_array_body_rejected(client):
     resp = client.post('/ai/chat', json=[{'role': 'user', 'content': 'hi'}])
     assert resp.status_code == 400
+
+
+def test_messages_cover_every_language():
+    # B20b: Korean was missing, so a Korean user got the English text.
+    import user_settings
+    langs = set(user_settings.SUPPORTED_LANGUAGES)
+    assert set(ai_routes._RATE_LIMITED_MSG) == langs
+    assert set(ai_routes._TOO_LARGE_MSG) == langs
+    assert "{s}" in ai_routes._RATE_LIMITED_MSG["ko"]

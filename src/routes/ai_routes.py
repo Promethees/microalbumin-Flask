@@ -42,6 +42,7 @@ _RATE_LIMITED_MSG = {
     'fr': 'Trop de requêtes. Veuillez patienter {s}s avant de réessayer.',
     'ja': 'リクエストが多すぎます。{s} 秒待ってから再試行してください。',
     'ru': 'Слишком много запросов. Подождите {s} сек. и повторите попытку.',
+    'ko': '요청이 너무 많습니다. {s}초 후에 다시 시도하세요.',
 }
 
 _TOO_LARGE_MSG = {
@@ -51,6 +52,7 @@ _TOO_LARGE_MSG = {
     'fr': 'Message trop long. Veuillez le raccourcir et réessayer.',
     'ja': 'メッセージが長すぎます。短くして再試行してください。',
     'ru': 'Сообщение слишком длинное. Сократите его и повторите попытку.',
+    'ko': '메시지가 너무 깁니다. 줄여서 다시 시도하세요.',
 }
 
 
@@ -217,7 +219,11 @@ def activate(validated_data):
     'ui_context': (dict, None, False),
 })
 def ai_chat(validated_data):
+    # One language list (Rule §2.22): anything unsupported answers in English
+    # rather than reaching the prompt/overlay lookups as a free-form key.
     language = validated_data['language'] or 'en'
+    if language not in user_settings.SUPPORTED_LANGUAGES:
+        language = 'en'
     raw_messages = validated_data['messages'] or []
     messages = [
         m for m in raw_messages
@@ -280,6 +286,7 @@ def ai_chat(validated_data):
 
         def generate():
             fell_back = False
+            streamed = False
             for event in ai_assistant.proxy_chat_stream(
                 messages, language, credential,
                 activation_mod.service_base(), _AI_MODEL, ui_context,
@@ -287,8 +294,13 @@ def ai_chat(validated_data):
                 if event.get('type') == 'error' and event.get('error') in _PROXY_TRANSIENT_ERRORS and dev_fallback:
                     fell_back = True
                     break
+                if event.get('type') == 'chunk' and event.get('content'):
+                    streamed = True
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             if fell_back:
+                # The dev answer replaces a partial proxy answer, not appends to it (B14).
+                if streamed:
+                    yield f"data: {json.dumps({'type': 'clear'})}\n\n"
                 for event in ai_assistant.chat_stream(messages, language, dev_fallback, _LOCAL_AI_MODEL, ui_context):
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"

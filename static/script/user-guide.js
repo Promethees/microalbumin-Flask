@@ -465,6 +465,16 @@ class UserGuide {
         });
     }
 
+    _isValidSelector(selector) {
+        if (typeof selector !== 'string' || !selector.trim()) return false;
+        try {
+            document.createDocumentFragment().querySelector(selector);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
     /**
      * Stop the user guide
      */
@@ -763,6 +773,19 @@ class UserGuide {
             this.startPolling(target, step);
         };
 
+        // A step whose target is not even a valid CSS selector (an LLM-written
+        // step can carry one) is skipped outright instead of throwing after the
+        // overlay is already up (B13).
+        if (!this._isValidSelector(step.target)) {
+            console.warn(`Invalid guide target selector, skipping step: ${step.target}`);
+            if (this.currentStep < this.steps.length - 1) {
+                this.currentStep++;
+                this.showStep(this.currentStep);
+            } else {
+                this.stop();
+            }
+            return;
+        }
         const targetElement = document.querySelector(step.target);
 
         if (targetElement) {

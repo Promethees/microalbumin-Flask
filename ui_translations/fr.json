@@ -660,5 +660,15 @@
   "ai.cmd.redo": "Rejouer le dernier guide ou relancer la dernière question",
   "ai.cmd.clear": "Effacer l'historique de la conversation",
   "ai.msg.request_failed": "Échec de la requête",
-  "ai.msg.network_error": "Erreur réseau"
+  "ai.msg.network_error": "Erreur réseau",
+  "ai.err.groq_not_installed": "Le service d'IA n'est pas configuré sur ce serveur.",
+  "ai.err.service_unavailable": "Le service d'IA est temporairement indisponible. Veuillez réessayer plus tard.",
+  "ai.err.proxy_unreachable": "Impossible de joindre le service d'IA. Vérifiez votre connexion Internet.",
+  "ai.err.proxy_timeout": "Le service d'IA n'a pas répondu à temps. Veuillez réessayer.",
+  "ai.err.api_key_invalid": "La clé API de l'IA n'est pas valide. Contactez l'administrateur du serveur.",
+  "ai.err.rate_limit": "Limite de requêtes atteinte. Patientez un instant puis réessayez.",
+  "ai.err.license_invalid": "La licence IA n'est pas valide ou a expiré. Réactivez-la sur easyokapi.cbbiotec.vn.",
+  "ai.err.license_machine": "Cette licence n'est pas activée sur cet ordinateur. Réactivez l'assistant IA ici, ou utilisez l'ordinateur sur lequel il a été activé.",
+  "ai.err.max_iterations": "L'assistant n'a pas pu terminer sa réponse. Veuillez réessayer.",
+  "ai.err.upstream_error": "Le service d'IA a rencontré un problème. Veuillez réessayer."
 }

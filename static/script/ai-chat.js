@@ -78,14 +78,16 @@
         return {
             target: '#meas-mode-section',
             title: 'Switch Measurement Mode',
-            description: `This feature is only available in ${m} mode. Click here to switch to ${m} mode first, then reopen this guide.`,
+            // The guide keeps running after the switch, so the text says "click
+            // Next" — it used to say "reopen this guide" (B20a).
+            description: `This feature is only available in ${m} mode. Click here to switch to ${m} mode first, then click Next to continue.`,
             descriptions: {
-                vi: `Tính năng này chỉ có trong chế độ ${m}. Nhấp vào đây để chuyển sang chế độ ${m} trước, rồi mở lại hướng dẫn này.`,
-                zh: `此功能仅在 ${m} 模式下可用。请先点击此处切换到 ${m} 模式，然后重新打开本指南。`,
-                fr: `Cette fonction n'est disponible qu'en mode ${m}. Cliquez ici pour passer d'abord en mode ${m}, puis rouvrez ce guide.`,
-                ja: `この機能は ${m} モードでのみ利用できます。まずここをクリックして ${m} モードに切り替え、このガイドを開き直してください。`,
-                ru: `Эта функция доступна только в режиме ${m}. Нажмите здесь, чтобы сначала переключиться в режим ${m}, затем снова откройте руководство.`,
-                ko: `이 기능은 ${m} 모드에서만 사용할 수 있습니다. 먼저 여기를 클릭해 ${m} 모드로 전환한 뒤 이 가이드를 다시 여세요.`,
+                vi: `Tính năng này chỉ có trong chế độ ${m}. Nhấp vào đây để chuyển sang chế độ ${m} trước, rồi nhấp Tiếp theo để tiếp tục.`,
+                zh: `此功能仅在 ${m} 模式下可用。请先点击此处切换到 ${m} 模式，然后点击“下一步”继续。`,
+                fr: `Cette fonction n'est disponible qu'en mode ${m}. Cliquez ici pour passer d'abord en mode ${m}, puis cliquez sur Suivant pour continuer.`,
+                ja: `この機能は ${m} モードでのみ利用できます。まずここをクリックして ${m} モードに切り替え、「次へ」をクリックして続行してください。`,
+                ru: `Эта функция доступна только в режиме ${m}. Нажмите здесь, чтобы сначала переключиться в режим ${m}, затем нажмите «Далее», чтобы продолжить.`,
+                ko: `이 기능은 ${m} 모드에서만 사용할 수 있습니다. 먼저 여기를 클릭해 ${m} 모드로 전환한 뒤 다음을 클릭해 계속하세요.`,
             },
             position: 'right',
             skipInteraction: false,
@@ -182,6 +184,31 @@
 
     // True for a raw upstream error string that means "the model emitted an
     // invalid tool call" — matched loosely so any Groq phrasing is caught.
+    // Chat error lines follow the chat language (B18): stable code → catalog
+    // key under ai.err.*, English kept as the fallback. An unknown code shows
+    // the generic upstream_error line instead of the raw code.
+    const _CHAT_ERRORS = {
+        groq_not_installed: 'AI service is not configured on this server.',
+        service_unavailable: 'AI service is temporarily unavailable. Please try again later.',
+        proxy_unreachable: 'Cannot connect to AI service. Check your internet connection.',
+        proxy_timeout: 'AI service timed out. Please try again.',
+        api_key_invalid: 'AI API key is invalid. Contact the server administrator.',
+        rate_limit: 'Rate limit reached. Please wait a moment and try again.',
+        license_invalid: 'AI license is invalid or expired. Re-activate at easyokapi.cbbiotec.vn.',
+        license_machine: 'This license is not activated on this computer. Re-activate the AI assistant here, or use the computer it was activated on.',
+        max_iterations: 'The assistant could not complete its response. Please try again.',
+        upstream_error: 'The AI service had a problem. Please try again.',
+    };
+
+    function _chatErrorText(code) {
+        const key = Object.prototype.hasOwnProperty.call(_CHAT_ERRORS, code) ? code : 'upstream_error';
+        return '⚠ ' + _trChat('ai.err.' + key, _CHAT_ERRORS[key]);
+    }
+
+    // No SSE data for this long → give up on the stream and say so (B20f). The
+    // server's own read timeout is 120 s, so 150 s only fires on a stalled link.
+    const _STREAM_IDLE_MS = 150000;
+
     function _isToolFailure(raw) {
         return /tool_use_failed|tool call validation failed|did not match schema|failed to call a function/i
             .test(String(raw || ''));
@@ -1009,6 +1036,10 @@
                 }
                 _addMsg('user', text);
                 const aDiv = _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+                // Keep the turn in the conversation the model sees next, so a
+                // follow-up ("that didn't help", "and then?") has its context (B20e).
+                AI.messages.push({ role: 'user', content: text });
+                AI.messages.push({ role: 'assistant', content: 'Guide launched: ' + (data.guide_id || 'guide') });
                 // Let the user rate whether this was the right guide — a 👍/👎 here
                 // tunes the local matcher's coefficient for this guide_id.
                 _attachFeedback(aDiv, { source: 'guide', guide_id: data.guide_id || '', query: text, answer: '' });
@@ -1229,9 +1260,12 @@
         }
         // Soft mode gate: prepend a switch-mode step (ahead of file-select) when
         // the guide's feature needs a mode the app isn't currently in. requires_mode
-        // may be a single mode or a list of acceptable modes.
-        if (example.requires_mode) {
-            const rm = example.requires_mode;
+        // may be a single mode or a list of acceptable modes. A slash command also
+        // honours the guide's hard `conditions` (mode / mode_in) the same way —
+        // e.g. /time-point in kinetics mode first says "switch to calibrate" (B19).
+        const cond = example.conditions || {};
+        const rm = example.requires_mode || cond.mode || cond.mode_in;
+        if (rm) {
             const ok = Array.isArray(rm) ? rm.includes(ctx.mode) : ctx.mode === rm;
             if (!ok) steps = [_modeSwitchStep(rm), ...steps];
         }
@@ -1530,6 +1564,13 @@
 
             (async () => {
                 let fullReply = '';
+                let idleTimedOut = false;
+                let idleTimer = null;
+                const armIdle = () => {
+                    clearTimeout(idleTimer);
+                    idleTimer = setTimeout(() => { idleTimedOut = true; controller.abort(); }, _STREAM_IDLE_MS);
+                };
+                armIdle();
                 try {
                     // The marker was consumed at the head of the turn; hand it to
                     // the context builder explicitly (it applies to this one send).
@@ -1556,6 +1597,7 @@
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
+                        armIdle();
                         sseBuffer += decoder.decode(value, { stream: true });
                         const lines = sseBuffer.split('\n');
                         sseBuffer = lines.pop();
@@ -1595,17 +1637,7 @@
                                     _finalizeStreamingMsg(msgDiv, null, _TOOL_FALLBACK[l] || _TOOL_FALLBACK.en);
                                     return;
                                 }
-                                const errMsg = {
-                                    groq_not_installed: '⚠ AI service is not configured on this server.',
-                                    service_unavailable: '⚠ AI service is temporarily unavailable. Please try again later.',
-                                    proxy_unreachable: '⚠ Cannot connect to AI service. Check your internet connection.',
-                                    proxy_timeout: '⚠ AI service timed out. Please try again.',
-                                    api_key_invalid: '⚠ AI API key is invalid. Contact the server administrator.',
-                                    rate_limit: '⚠ Rate limit reached. Please wait a moment and try again.',
-                                    license_invalid: '⚠ AI license is invalid or expired. Re-activate at easyokapi.cbbiotec.vn.',
-                                    max_iterations: '⚠ The assistant could not complete its response. Please try again.',
-                                }[event.error] || ('⚠ ' + event.error);
-                                _finalizeStreamingMsg(msgDiv, null, errMsg);
+                                _finalizeStreamingMsg(msgDiv, null, _chatErrorText(event.error));
                                 return;
                             }
                         }
@@ -1622,7 +1654,10 @@
                     }
 
                 } catch (err) {
-                    if (err.name === 'AbortError') {
+                    if (err.name === 'AbortError' && idleTimedOut) {
+                        _finalizeStreamingMsg(msgDiv, fullReply || null,
+                            fullReply ? null : _chatErrorText('proxy_timeout'));
+                    } else if (err.name === 'AbortError') {
                         if (fullReply) {
                             _finalizeStreamingMsg(msgDiv, fullReply, null);
                         } else {
@@ -1637,6 +1672,7 @@
                         _rearmPending(pending);
                     }
                 } finally {
+                    clearTimeout(idleTimer);
                     AI.currentAbort = null;
                     if (sendBtn) {
                         sendBtn.innerHTML = '&#10148;';

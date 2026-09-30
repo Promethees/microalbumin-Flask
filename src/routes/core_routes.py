@@ -106,7 +106,7 @@ def index():
     # that slice of every catalog: command descriptions and chat messages.
     ai_chat_strings = {
         lang: {k: v for k, v in _i18n.load_catalog(lang).items()
-               if k.startswith(('ai.cmd.', 'ai.msg.'))}
+               if k.startswith(('ai.cmd.', 'ai.msg.', 'ai.err.'))}
         for lang in _user_settings.SUPPORTED_LANGUAGES
     }
     file_meta = get_file_meta(DATA_ROOT, time_format=time_tag_format)

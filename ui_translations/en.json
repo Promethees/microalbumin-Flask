@@ -660,5 +660,15 @@
   "ai.cmd.redo": "Replay the last guide or retry the last question",
   "ai.cmd.clear": "Clear the conversation history",
   "ai.msg.request_failed": "Request failed",
-  "ai.msg.network_error": "Network error"
+  "ai.msg.network_error": "Network error",
+  "ai.err.groq_not_installed": "AI service is not configured on this server.",
+  "ai.err.service_unavailable": "AI service is temporarily unavailable. Please try again later.",
+  "ai.err.proxy_unreachable": "Cannot connect to AI service. Check your internet connection.",
+  "ai.err.proxy_timeout": "AI service timed out. Please try again.",
+  "ai.err.api_key_invalid": "AI API key is invalid. Contact the server administrator.",
+  "ai.err.rate_limit": "Rate limit reached. Please wait a moment and try again.",
+  "ai.err.license_invalid": "AI license is invalid or expired. Re-activate at easyokapi.cbbiotec.vn.",
+  "ai.err.license_machine": "This license is not activated on this computer. Re-activate the AI assistant here, or use the computer it was activated on.",
+  "ai.err.max_iterations": "The assistant could not complete its response. Please try again.",
+  "ai.err.upstream_error": "The AI service had a problem. Please try again."
 }
