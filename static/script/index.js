@@ -451,20 +451,7 @@ $(document).ready(function () {
         // visibilitychange below instead of polling in the background.
         if (!document.hidden) updateDirectory(AppState.currentDirectory, false);
 
-        if (AppState.currentFile) {
-            if (AppState.currentFile !== AppState.prevFile) {
-                // Same fallback split as the log poll above: with the stream up,
-                // rows arrive as rows and the chart is redrawn because a
-                // measurement landed, not because this timer fired.
-                if (AppState.scriptRunning && !liveStreamCarrying()) {
-                    // Nullify previous file so that graphics can be redrawn
-                    AppState.prevFile = null;
-                    drawMeasurementChart();
-                } else {
-                    AppState.prevFile = AppState.currentFile;
-                }
-            }
-        }
+        chartFallbackTick();
 
         if (!AppState.currentJSON) {
             $hidden(["derived-concentration-section"]);
@@ -851,6 +838,23 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
     return Promise.all([browsePromise, jsonPromise]).finally(() => {
         isUpdatingDirectory = false;
     });
+}
+
+// The 500 ms tick's chart half. Same fallback split as the log poll: with the
+// stream up, rows arrive as rows and the chart is redrawn because a measurement
+// landed, not because this timer fired. The fallback test runs on every tick,
+// not only when currentFile changed — a stream that closes mid-run has already
+// marked the file drawn, and the chart froze at the last pushed row
+// (Rule.md §2.31).
+function chartFallbackTick() {
+    if (!AppState.currentFile) return;
+    if (AppState.scriptRunning && !liveStreamCarrying()) {
+        // Nullify previous file so that graphics can be redrawn
+        AppState.prevFile = null;
+        drawMeasurementChart();
+    } else if (AppState.currentFile !== AppState.prevFile) {
+        AppState.prevFile = AppState.currentFile;
+    }
 }
 
 function drawMeasurementChart() {
