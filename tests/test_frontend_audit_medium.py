@@ -612,3 +612,39 @@ def test_session_strip_draws_the_live_session_not_the_open_file():
     r = _node(STRIP_SOURCE)
     assert r['scale'].startswith('3 rows') and 'turns' in r['scale']
     assert r['latest'] == '0.300'
+
+
+# ---------------------------------------------------------------------------
+# cdc-logging.js:64 — stopping a paused run left #strip-state at "Paused";
+# resetRunControls() set readingPaused = false directly, so the next run's
+# applyPausedState(false) returned early and the strip said "Paused" all run.
+# ---------------------------------------------------------------------------
+
+STRIP_PAUSE_RESET = PRELUDE + FAKE_DOM + r"""
+for (const id of ['session-strip', 'strip-state', 'strip-traces', 'strip-elapsed', 'strip-latest', 'strip-next',
+                  'strip-next-field', 'strip-scale', 'pause-reading-btn', 'reading-control-fab', 'reading-fab-pause',
+                  'measure-point-btn', 'measure-point-fab', 'measure-fab-btn']) {
+    const e = new El('div'); e.id = id; DOC.body.appendChild(e);
+}
+const ctx = { document: DOC, t: (k, f) => f, AppState: {}, console };
+vm.createContext(ctx);
+const names = ['applyStripPausedState', 'hideSessionStrip', 'resetRunControls'];
+vm.runInContext('let readingPaused = true, _pausedAt = 1, manualSession = false;' +
+    'function endStartupWatch() {} function applyPauseControlsUI() {} function stopControlObserver() {} function stopMeasureObserver() {}' +
+    names.map(n => FN('cdc-logging.js', n)).join('\n'), ctx);
+const state = DOC.getElementById('strip-state'), strip = DOC.getElementById('session-strip');
+const r = {};
+ctx.applyStripPausedState(true);
+ctx.hideSessionStrip();
+r.afterHide = [state.textContent, strip.classList.contains('is-paused')];
+ctx.applyStripPausedState(true);
+ctx.resetRunControls();
+r.afterReset = [state.textContent, strip.classList.contains('is-paused')];
+OUT(r);
+"""
+
+
+def test_strip_state_is_reset_after_a_paused_run_ends():
+    r = _node(STRIP_PAUSE_RESET)
+    assert r['afterHide'] == ['Recording', False]
+    assert r['afterReset'] == ['Recording', False]

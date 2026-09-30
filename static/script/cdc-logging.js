@@ -80,10 +80,10 @@ function applySessionStripSetting() {
 
 function hideSessionStrip() {
     const el = document.getElementById('session-strip');
-    if (el) {
-        el.classList.add('hidden');
-        el.classList.remove('is-paused');
-    }
+    if (el) el.classList.add('hidden');
+    // Clear the class *and* the "Paused" wording: the next run's strip must not
+    // come up labelled Paused over a live trace.
+    applyStripPausedState(false);
     document.body.classList.remove('strip-open');
     const traces = document.getElementById('strip-traces');
     if (traces) traces.textContent = '';
@@ -367,6 +367,9 @@ function resetRunControls() {
     readingPaused = false;
     _pausedAt = null;
     applyPauseControlsUI();
+    // Set directly above, so the next run's applyPausedState(false) returns
+    // early — reset the strip's state here or it keeps saying "Paused".
+    applyStripPausedState(false);
     const pauseBtn = document.getElementById('pause-reading-btn');
     if (pauseBtn) { pauseBtn.classList.add('hidden'); pauseBtn.disabled = false; }
     manualSession = false;
