@@ -177,17 +177,17 @@ const REPORT_ALGO_CHOICES = [
 function _fullPointTpEntryHtml(filename, timePoints) {
     return `<div class="point-tp-entry" style="border:1px solid #e2e8f0; border-radius:5px; padding:6px; margin-bottom:6px;">
         <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-            <select class="point-timepoint-select" data-filename="${filename}" onchange="updatePointPreview('${filename}')" style="flex:1;">
+            <select class="point-timepoint-select" data-filename="${_attr(filename)}" onchange="updatePointPreview('${_esc(filename)}')" style="flex:1;">
                 <option value="">All time points</option>
-                ${timePoints.map(tp => `<option value="${tp}">${tp}</option>`).join('')}
+                ${timePoints.map(tp => `<option value="${_attr(tp)}">${_escHtml(tp)}</option>`).join('')}
             </select>
-            <button type="button" class="point-tp-remove" onclick="removePointTimePoint(this, '${filename}')" data-hint="Remove time point"
+            <button type="button" class="point-tp-remove" onclick="removePointTimePoint(this, '${_esc(filename)}')" data-hint="Remove time point"
                 style="border:none; background:#fdecea; color:#c0392b; border-radius:4px; cursor:pointer; padding:2px 8px;">✕</button>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:5px; font-size:0.7rem;">
             ${REPORT_ALGO_CHOICES.map(a => `
                 <label class="algo-include-label" data-hint="${a.label}" style="cursor:pointer; background:#f0f0f0; padding:2px 4px; border-radius:3px;">
-                    <input type="checkbox" class="point-algo-checkbox" data-filename="${filename}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
+                    <input type="checkbox" class="point-algo-checkbox" data-filename="${_attr(filename)}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
                     ${a.label}
                 </label>`).join('')}
         </div>
@@ -410,7 +410,7 @@ async function generateReport() {
     const currentTimePoint = document.getElementById('regressed-time-point')?.value ?? '';
     const tpOptionsHtml = `<option value="">All time points (pooled)</option>` +
         pointTimePoints.map(tp =>
-            `<option value="${tp}" ${String(tp) === String(currentTimePoint) ? 'selected' : ''}>t = ${tp}</option>`).join('');
+            `<option value="${_attr(tp)}" ${String(tp) === String(currentTimePoint) ? 'selected' : ''}>t = ${_escHtml(tp)}</option>`).join('');
     // One time-point entry: a time-point <select>, a remove button and the algo checks.
     const tpEntryHtml = () =>
         `<div class="swal-tp-entry" style="border:1px solid #eee; border-radius:6px; padding:6px 8px; margin:4px 0;">
@@ -1315,9 +1315,9 @@ async function loadReportItems(subject) {
                 // they live on the calibrate card instead of the shared layout config.
                 const calAxisHtml = `
                     <div class="cal-axis-config" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
-                        <label>Chart X-axis: <input type="text" class="cal-xlabel-input" data-item="${item.filename}"
+                        <label>Chart X-axis: <input type="text" class="cal-xlabel-input" data-item="${_attr(item.filename)}"
                                 placeholder="auto: Concentration (unit)" style="width: 160px;"></label>
-                        <label>Chart Y-axis: <input type="text" class="cal-ylabel-input" data-item="${item.filename}"
+                        <label>Chart Y-axis: <input type="text" class="cal-ylabel-input" data-item="${_attr(item.filename)}"
                                 placeholder="auto per metric" style="width: 160px;"></label>
                         <span style="color:#888; font-size:0.8rem;">Exported as native (editable) Excel charts. Leave X blank
                             to auto-label with this file's concentration unit, Y blank for its metric.</span>
@@ -1336,10 +1336,10 @@ async function loadReportItems(subject) {
                                 <canvas id="preview-chart-${itemID}-point"></canvas>
                             </div>
                             <label style="font-size:0.85rem; font-weight:700;">Time points &amp; fit curves</label>
-                            <div class="point-tp-list" data-filename="${item.filename}">
+                            <div class="point-tp-list" data-filename="${_attr(item.filename)}">
                                 ${_fullPointTpEntryHtml(item.filename, timePoints)}
                             </div>
-                            <button type="button" onclick="addPointTimePoint('${item.filename}')"
+                            <button type="button" onclick="addPointTimePoint('${_esc(item.filename)}')"
                                 style="margin-top:4px; padding:3px 10px; border:1px solid #3498db; background:#eaf4fc; color:#2980b9; border-radius:5px; cursor:pointer; font-size:0.8rem;">+ Add time point</button>
                         </div>
                         ${calAxisHtml}
@@ -1365,7 +1365,7 @@ async function loadReportItems(subject) {
                                 <div class="metric-console-block" style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #fff;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                                         <label style="font-size: 0.85rem; font-weight: 700; cursor: pointer;">
-                                            <input type="checkbox" class="metric-include-checkbox" checked data-filename="${item.filename}" data-metric="${m.id}" onchange="toggleMetricDisplayArea('${itemID}-${m.id}', this.checked)">
+                                            <input type="checkbox" class="metric-include-checkbox" checked data-filename="${_attr(item.filename)}" data-metric="${m.id}" onchange="toggleMetricDisplayArea('${itemID}-${m.id}', this.checked)">
                                             ${m.label}
                                         </label>
                                     </div>
@@ -1376,7 +1376,7 @@ async function loadReportItems(subject) {
                                         <div id="${itemID}-${m.id}-algo-checkboxes" style="display: flex; flex-wrap: wrap; gap: 5px; font-size: 0.7rem;">
                                             ${algos.map(a => `
                                                 <label class="algo-include-label" data-hint="${a.label}" style="cursor: pointer; background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">
-                                                    <input type="checkbox" class="algo-include-checkbox" data-filename="${item.filename}" data-metric="${m.id}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
+                                                    <input type="checkbox" class="algo-include-checkbox" data-filename="${_attr(item.filename)}" data-metric="${m.id}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
                                                     ${a.label}
                                                 </label>
                                             `).join('')}
@@ -1404,8 +1404,8 @@ async function loadReportItems(subject) {
                                         value="4"
                                         style="width: 6em;"
                                         class="report-window-size-input"
-                                        data-item="${item.filename}"
-                                        onchange="updateReportWindowSize('${item.filename}', this.value)"
+                                        data-item="${_attr(item.filename)}"
+                                        onchange="updateReportWindowSize('${_esc(item.filename)}', this.value)"
                                     >
                                 </div>
                                 ` : ''}
@@ -1417,15 +1417,15 @@ async function loadReportItems(subject) {
                                 </div>
                                 <div class="control-group">
                                     <label>Calibration Curve</label>
-                                    <select class="cal-source-select" data-item="${item.filename}">
+                                    <select class="cal-source-select" data-item="${_attr(item.filename)}">
                                         <option value="">None (Raw Data)</option>
-                                        ${applicableJsonFiles.map(j => `<option value="${j}">${j}</option>`).join('')}
+                                        ${applicableJsonFiles.map(j => `<option value="${_attr(j)}">${_escHtml(j)}</option>`).join('')}
                                     </select>
                                 </div>
                                 ${isKinetics ? `
                                 <div class="control-group derived-quantity-group hidden">
                                     <label>Derived concentration from</label>
-                                    <select class="derived-quantity-select" data-item="${item.filename}" onchange="updateReportDerivedQuantity('${item.filename}', this.value)">
+                                    <select class="derived-quantity-select" data-item="${_attr(item.filename)}" onchange="updateReportDerivedQuantity('${_esc(item.filename)}', this.value)">
                                         <option value="maxrate" selected>maxRate</option>
                                         <option value="slope">Slope</option>
                                         <option value="sat">Saturation</option>
@@ -1443,7 +1443,7 @@ async function loadReportItems(subject) {
                                 ${(isKinetics || item.metadata.mode === 'point') ? `
                                 <div class="control-group">
                                     <label style="cursor: pointer;">
-                                        <input type="checkbox" class="item-normalize-checkbox" data-item="${item.filename}">
+                                        <input type="checkbox" class="item-normalize-checkbox" data-item="${_attr(item.filename)}">
                                         Normalize Data
                                     </label>
                                 </div>
@@ -1458,11 +1458,11 @@ async function loadReportItems(subject) {
                         <button class="move-card-btn" onclick="moveCardUp(this)" data-hint="Move up" style="background: none; border: 1px solid #cbd5e1; cursor: pointer; color: #64748b; font-size: 0.75rem; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">▲</button>
                         <button class="move-card-btn" onclick="moveCardDown(this)" data-hint="Move down" style="background: none; border: 1px solid #cbd5e1; cursor: pointer; color: #64748b; font-size: 0.75rem; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">▼</button>
                         <label style="font-weight: 700; cursor: pointer; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            <input type="checkbox" class="report-console-item-checkbox" checked data-filename="${item.filename}" data-path="${item.path}" onchange="toggleItemCardOpacity('${itemID}', this.checked)">
-                            ${item.filename}
+                            <input type="checkbox" class="report-console-item-checkbox" checked data-filename="${_attr(item.filename)}" data-path="${_attr(item.path)}" onchange="toggleItemCardOpacity('${itemID}', this.checked)">
+                            ${_escHtml(item.filename)}
                         </label>
-                        <span class="item-mode-badge" style="font-size: 0.8rem; color: #6366f1; background: #eef2ff; padding: 2px 8px; border-radius: 10px; font-weight: bold; flex-shrink: 0;">${item.metadata.mode || 'Measurement'}</span>
-                        <button class="delete-item-btn" data-card-id="${itemID}" data-filename="${item.filename}" data-hint="Remove from subject" onclick="deleteReportItem(this)" style="background: none; border: 1px solid #fca5a5; cursor: pointer; color: #ef4444; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;">✕ Remove</button>
+                        <span class="item-mode-badge" style="font-size: 0.8rem; color: #6366f1; background: #eef2ff; padding: 2px 8px; border-radius: 10px; font-weight: bold; flex-shrink: 0;">${_escHtml(item.metadata.mode || 'Measurement')}</span>
+                        <button class="delete-item-btn" data-card-id="${itemID}" data-filename="${_attr(item.filename)}" data-hint="Remove from subject" onclick="deleteReportItem(this)" style="background: none; border: 1px solid #fca5a5; cursor: pointer; color: #ef4444; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;">✕ Remove</button>
                     </div>
                     ${contentHtml}
                 `;
@@ -1487,10 +1487,10 @@ async function loadReportItems(subject) {
                 }
             }
         } else {
-            container.innerHTML = `<p style="color: red;">Error: ${result.message}</p>`;
+            container.innerHTML = `<p style="color: red;">Error: ${_escHtml(result.message)}</p>`;
         }
     } catch (e) {
-        container.innerHTML = `<p style="color: red;">Failed to load items: ${e.message}</p>`;
+        container.innerHTML = `<p style="color: red;">Failed to load items: ${_escHtml(e.message)}</p>`;
     }
 }
 
@@ -1619,7 +1619,7 @@ async function initItemPreview(item, itemID, preloaded = null, calType = null) {
                     lbl.style.alignItems = 'center';
                     lbl.style.gap = '4px';
                     lbl.style.cursor = 'pointer';
-                    lbl.innerHTML = `<input type="checkbox" checked onchange="updateReportPreview('${item.filename}', ${i}, this.checked)"> S${i}`;
+                    lbl.innerHTML = `<input type="checkbox" checked onchange="updateReportPreview('${_esc(item.filename)}', ${i}, this.checked)"> S${i}`;
                     traceGroup.appendChild(lbl);
                 }
             }
@@ -1680,7 +1680,7 @@ function refreshPreviewNormalization(filename) {
     const config = window.ReportItemConfig[filename];
     if (!config || !config.chart) return;
 
-    const card = document.querySelector(`.report-item-card[data-filename="${filename}"]`);
+    const card = document.querySelector(`.report-item-card[data-filename="${CSS.escape(filename)}"]`);
     const shouldNormalize = card?.querySelector('.item-normalize-checkbox')?.checked || false;
 
     const allTraces = Array.from({ length: config.num_sources }, (_, i) => i + 1);
@@ -1803,7 +1803,7 @@ async function finalizeReport() {
 
                 finalHtmlContent += `
                     <div class="report-item-block" style="page-break-inside: auto; margin-bottom: 40px;">
-                        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Calibration (point): ${filename}</h2>
+                        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Calibration (point): ${_escHtml(filename)}</h2>
                         ${fits.length ? itemChartsMarkup : '<p style="color:#888;">Not enough calibration points to fit a curve for the selected time point(s).</p>'}
                         ${fits.length ? _renderCoefTablesHtml('Time Point', fits) : ''}
                     </div>
@@ -1930,7 +1930,7 @@ async function finalizeReport() {
 
                     finalHtmlContent += `
                         <div class="report-item-block" style="page-break-inside: auto; margin-bottom: 40px;">
-                            <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Calibration: ${filename} - ${metric}</h2>
+                            <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Calibration: ${_escHtml(filename)} - ${metric}</h2>
                             ${itemChartsMarkup}
                             ${_renderCoefTablesHtml('Metric', fits)}
                         </div>
@@ -2000,10 +2000,10 @@ async function finalizeReport() {
                         : '';
                     finalHtmlContent += `
                         <div style="margin-bottom: 30px;">
-                            <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Measurement Item: ${filename}</h2>
+                            <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Measurement Item: ${_escHtml(filename)}</h2>
                             <div style="page-break-inside: avoid; break-inside: avoid;">
                                 <img src="${img}" style="width:100%; border:1px solid #eee;"/>
-                                <p style="font-size:0.8rem; color:#666; margin-top:5px;">Mode: ${config.metadata.mode || 'N/A'} | Calibration: ${calFile || 'None'}</p>
+                                <p style="font-size:0.8rem; color:#666; margin-top:5px;">Mode: ${_escHtml(config.metadata.mode || 'N/A')} | Calibration: ${_escHtml(calFile || 'None')}</p>
                                 ${calFile ? `<div class="report-cal-meta" style="background:#f0f7ff; padding:10px; border-left:4px solid #3498db; font-size:0.8rem;">[Applied Calibration: ${calFile}]</div>` : ''}
                             </div>
                             ${derivedHtml}
@@ -2012,7 +2012,7 @@ async function finalizeReport() {
                     `;
                     tempChart.destroy();
                 } else {
-                    finalHtmlContent += `<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Measurement Item: ${filename}</h2>`;
+                    finalHtmlContent += `<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Measurement Item: ${_escHtml(filename)}</h2>`;
                     for (const traceIdx of visibleTraces) {
                         const tempCanvas = document.createElement('canvas');
                         tempCanvas.width = 1600; tempCanvas.height = 700;
@@ -2059,7 +2059,7 @@ async function finalizeReport() {
             <div>
                 <h1 style="margin: 0; font-size: 2rem; color: #3498db;">Easy<span style="color: #ff4444;">OKAPI</span> Report</h1>
                 <h2 style="margin: 5px 0; font-size: 1.5rem; color:#333;">${reportTitle}</h2>
-                <p style="margin: 5px 0; color: #666;">Subject: <strong>${subject}</strong></p>
+                <p style="margin: 5px 0; color: #666;">Subject: <strong>${_escHtml(subject)}</strong></p>
                 <p style="margin: 5px 0; color: #999; font-size:0.8rem;">Generated on: ${new Date().toLocaleString()}</p>
             </div>
             ${includeLogo ? `<img src="/static/cbb.png" style="height: 70px;" />` : ''}

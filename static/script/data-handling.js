@@ -1237,7 +1237,7 @@ async function confirmSwalItemDelete(btn) {
             if (config.charts) Object.values(config.charts).forEach(c => c.destroy());
             delete window.ReportItemConfig[filename];
         }
-        const consoleCard = document.querySelector(`#report-items-container [data-filename="${filename}"]`)
+        const consoleCard = document.querySelector(`#report-items-container [data-filename="${CSS.escape(filename)}"]`)
             ?.closest('.report-item-card');
         consoleCard?.remove();
         const consoleContainer = document.getElementById('report-items-container');

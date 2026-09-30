@@ -793,3 +793,67 @@ def test_device_chips_are_updated_in_place_across_polls():
     assert r['menuKept'] and r['uvKept'] and r['focusKept']
     assert r['openMoved'] == [False, True] and r['cursor'] and r['uvOpen']
     assert r['rebuiltOnNewList']
+
+
+# ---------------------------------------------------------------------------
+# report.js:1461 — the report console card put item.filename, item.path and
+# metadata.mode into innerHTML, attributes and inline handlers unescaped; and
+# refreshPreviewNormalization built [data-filename="…"] without CSS.escape.
+# ---------------------------------------------------------------------------
+
+REPORT_CARD = PRELUDE + FAKE_DOM + r"""
+const container = new El('div'); container.id = 'report-items-container'; DOC.body.appendChild(container);
+const name = JSON.parse(process.env.EOK_NAME);
+const items = [
+    { filename: name + '.csv', path: '/r/' + name + '.csv', metadata: { mode: 'kinetics' } },
+    { filename: 'p' + name + '.csv', path: '/r/p' + name + '.csv', metadata: { mode: 'calibrate' } },
+];
+const ctx = {
+    document: DOC, window: {}, console, CSS: { escape: s => String(s).replace(/["\\]/g, '\\$&') },
+    fetch: async (u) => ({ json: async () => (u.startsWith('/get_report_items')
+        ? { status: 'success', items } : { status: 'success', items: [name + '.json'] }) }),
+    $: { get: (u, q) => Promise.resolve(q.file.startsWith('/r/p')
+        ? { data: [{ Concentration: '1', Value: '2', TimePoint: name }] } : { data: [{ Timestamp: 0, 'Value:1': 1 }] }) },
+    initItemPreview: () => {},
+};
+vm.createContext(ctx);
+const src = fs.readFileSync(path.join(process.env.EOK_JS, 'report.js'), 'utf8');
+const algo = src.match(/^const REPORT_ALGO_CHOICES = \[[\s\S]*?\n\];/m)[0];
+vm.runInContext(HELPERS + '\n' + algo + FN('report.js', '_fullPointTpEntryHtml') + FN('report.js', 'loadReportItems'), ctx);
+(async () => {
+    await ctx.loadReportItems('subj');
+    const html = container.children.map(c => c.innerHTML).join('\n');
+    const unhtml = s => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    const attrs = [...html.matchAll(/data-(?:filename|item|path)="([^"]*)"/g)].map(m => unhtml(m[1]));
+    // Run every inline handler that names a function taking the filename.
+    const calls = [];
+    const hctx = { calls };
+    for (const fn of ['addPointTimePoint', 'updateReportWindowSize', 'updateReportDerivedQuantity', 'updatePointPreview', 'removePointTimePoint', 'toggleItemCardOpacity', 'deleteReportItem', 'toggleMetricDisplayArea'])
+        hctx[fn] = (...a) => calls.push([fn, ...a.filter(x => typeof x === 'string')]);
+    vm.createContext(hctx);
+    let handlerErrors = 0;
+    for (const m of html.matchAll(/on(?:click|change)="([^"]*)"/g)) {
+        try { vm.runInContext(`(function(){ ${unhtml(m[1])} }).call({ value: '5', checked: true })`, hctx); }
+        catch (e) { if (!/moveCard/.test(String(e))) { handlerErrors++; console.error(String(e), m[1]); } }
+    }
+    OUT({ html, attrs, calls, handlerErrors });
+})();
+"""
+
+
+@pytest.mark.parametrize('name', ['<img src=x onerror=alert(1)>', 'std "A"', "O'Neil\\x"])
+def test_report_console_card_escapes_file_names(name):
+    r = _node(REPORT_CARD, EOK_NAME=name)
+    assert '<img' not in r['html']
+    for a in r['attrs']:
+        assert name in a
+    assert r['handlerErrors'] == 0
+    named = [c for c in r['calls'] if c[0] not in ('toggleItemCardOpacity', 'deleteReportItem', 'toggleMetricDisplayArea')]
+    assert named and all(name in c[1] for c in named)
+
+
+def test_preview_normalization_selector_uses_css_escape():
+    src = _src('report.js')
+    fn = src[src.index('function refreshPreviewNormalization'):]
+    fn = fn[:fn.index('\n}\n')]
+    assert 'data-filename="${CSS.escape(filename)}"' in fn
