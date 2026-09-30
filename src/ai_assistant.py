@@ -977,6 +977,81 @@ def _filter_grounded_tools(tools) -> list | None:
     ]
     return kept or None
 
+# ── LLM-written guide steps (work-list A10 / B13 — shared by main and online) ──
+# A trigger_custom_steps result is spotlighted in the browser as-is, so it is
+# validated here: invented or malformed targets are dropped (an invalid CSS
+# selector used to throw inside user-guide.js after the overlay was up), titles
+# and descriptions are coerced to bounded strings, and the list is capped. An
+# empty result is an ERROR the model sees, never a "Guide launched" message.
+_MAX_CUSTOM_STEPS = 6
+_GUIDE_WORKFLOWS = ("general", "kinetics", "point", "calibrate_kinetics", "calibrate_point", "report")
+
+
+def _custom_step_whitelist() -> frozenset:
+    """Targets an LLM may spotlight: the valid-ID list in the tool description
+    plus every static target this app's own guides use (which brings in the
+    button[onclick=…], .swal2-* and class selectors those guides rely on)."""
+    ids = set()
+    for tool in TOOLS:
+        fn = tool.get("function", {})
+        if fn.get("name") == "trigger_custom_steps":
+            ids |= set(re.findall(r"#[A-Za-z][\w-]*", fn.get("description", "")))
+    for ex in _load_guide_examples("en"):
+        for st in ex.get("steps", []):
+            target = st.get("target")
+            if isinstance(target, str) and target.strip():
+                ids.add(target.strip())
+    return frozenset(ids)
+
+
+def _sanitize_custom_steps(raw_steps, whitelist=None) -> list:
+    """Validated steps from an LLM's trigger_custom_steps arguments.
+
+    ``whitelist`` None = only require an id selector ('#…'); used for requests
+    grounded in ANOTHER app's UI (a desktop build through the proxy), whose ids
+    this app cannot know.
+    """
+    steps = []
+    if not isinstance(raw_steps, list):
+        return steps
+    for s in raw_steps:
+        if not isinstance(s, dict):
+            continue
+        target = s.get("target")
+        if not isinstance(target, str) or not target.strip():
+            continue
+        target = target.strip()
+        if whitelist is None:
+            if not target.startswith("#"):
+                continue
+        elif target not in whitelist:
+            continue
+        pos = s.get("position", "bottom")
+        step = {
+            "target": target,
+            "title": str(s.get("title") or "Step")[:120],
+            "description": str(s.get("description") or "")[:600],
+            "position": pos if pos in ("right", "left", "top", "bottom") else "bottom",
+        }
+        if "skipInteraction" in s:
+            step["skipInteraction"] = bool(s["skipInteraction"])
+        steps.append(step)
+        if len(steps) >= _MAX_CUSTOM_STEPS:
+            break
+    return steps
+
+
+def _launchable_guide_action(tool_result: str):
+    """The guide action in a guide tool's result, or None for an error result."""
+    try:
+        parsed = json.loads(tool_result)
+    except (TypeError, ValueError):
+        return None
+    if isinstance(parsed, dict) and (parsed.get("custom_steps") or parsed.get("guide_workflow")):
+        return parsed
+    return None
+
+
 # ── Tool execution ────────────────────────────────────────────────────────────
 
 def _run_tool(name: str, args: dict, user_data: dict = None, help_docs: dict = None,
@@ -1037,29 +1112,23 @@ def _run_tool(name: str, args: dict, user_data: dict = None, help_docs: dict = N
             })
 
         elif name == "trigger_guide":
-            valid = {"general", "kinetics", "point", "calibrate_kinetics", "calibrate_point", "report"}
             workflow = args.get("workflow", "general")
-            if workflow not in valid:
-                workflow = "general"
+            if workflow not in _GUIDE_WORKFLOWS:
+                # Never silently swap in the general tour: tell the model.
+                return json.dumps({"error": "unknown_workflow", "valid": list(_GUIDE_WORKFLOWS)})
             return json.dumps({"guide_workflow": workflow})
 
         elif name == "trigger_custom_steps":
-            raw_steps = args.get("steps", [])
-            steps = []
-            for s in raw_steps:
-                if not (isinstance(s, dict) and s.get("target", "").startswith("#")):
-                    continue
-                step = {
-                    "target":      s.get("target", ""),
-                    "title":       s.get("title", "Step"),
-                    "description": s.get("description", ""),
-                    "position":    s.get("position", "bottom"),
-                }
-                if "skipInteraction" in s:
-                    step["skipInteraction"] = bool(s["skipInteraction"])
-                steps.append(step)
+            # Web requests are checked against THIS app's ids; a desktop build
+            # (proxied) spotlights its own UI, so only the '#id' shape is checked.
+            whitelist = None if desktop_request else _custom_step_whitelist()
+            steps = _sanitize_custom_steps(args.get("steps"), whitelist)
             if not steps:
-                return json.dumps({"error": "No valid steps provided (targets must start with #)"})
+                return json.dumps({
+                    "error": "no_valid_steps",
+                    "note": "Use only targets from the valid-ID list in the tool description, "
+                            "or answer in text naming the visible buttons.",
+                })
             return json.dumps({"custom_steps": steps})
 
         else:
@@ -1778,12 +1847,12 @@ def chat_stream(messages: list, language: str, api_key: str, model: str,
                 tool_args = {}
             tool_result = _run_tool(tool_name, tool_args, ud, help_docs_override,
                                     desktop_request=desktop_request)
-            if tool_name in _GUIDE_TOOLS:
-                try:
-                    guide_action = json.loads(tool_result)
-                except Exception:
-                    pass
+            launchable = _launchable_guide_action(tool_result) if tool_name in _GUIDE_TOOLS else None
+            if launchable:
+                guide_action = launchable
             else:
+                # A data tool, or a guide tool that returned an ERROR: the model
+                # must see the result and answer — never "Guide launched".
                 only_guide_tools = False
             full_messages.append({
                 "role": "tool",

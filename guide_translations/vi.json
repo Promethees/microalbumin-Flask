@@ -715,18 +715,6 @@
     ]
   },
   {
-    "id": "export_saving_directory",
-    "steps": [
-      "Khi được chọn, tệp xuất (dữ liệu hiệu chuẩn hoặc JSON hệ số) được lưu cùng thư mục với tệp dữ liệu đang tải. Bỏ chọn để chọn đích khác.",
-      "Trường này hiển thị nơi tệp xuất sẽ đến. Tự động cập nhật khi bạn duyệt vị trí mới hoặc bật/tắt hộp kiểm 'cùng thư mục' ở trên."
-    ],
-    "queries": [
-      "thư mục lưu xuất",
-      "thay đổi vị trí xuất",
-      "lưu xuất ở đâu"
-    ]
-  },
-  {
     "id": "rsquared_threshold",
     "steps": [
       "R² đo mức độ khớp của đường hồi quy với dữ liệu đường chuẩn — 1.0 là khớp hoàn hảo, 0.0 là không khớp. Đặt R² tối thiểu ở đây; chỉ kết quả tại hoặc trên giá trị này mới được dùng. Khuyến nghị 0.99 để hiệu chuẩn đáng tin cậy."
@@ -756,7 +744,7 @@
     "steps": [
       "'Chủ đề báo cáo' là thư mục có tên nhóm các ảnh chụp phân tích liên quan. Nhập tên chủ đề ở đây (vd: 'Bệnh nhân A', 'Lô 1') trước khi xuất dữ liệu.",
       "Tất cả ảnh chụp đã xuất vào chủ đề hiện tại được liệt kê ở đây. Bạn có thể xem lại và xóa từng mục trước khi tạo báo cáo.",
-      "Nhấp vào đây để xóa tất cả mục khỏi thư mục chủ đề đang chọn. Thư mục chủ đề bị xóa khỏi đĩa. Không thể hoàn tác."
+      "Nhấp vào đây để bỏ chọn chủ đề hiện tại. Các mục đã lưu vẫn được giữ lại — không có gì bị xóa."
     ],
     "queries": [
       "quản lý chủ đề báo cáo",

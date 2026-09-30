@@ -244,7 +244,7 @@ class UserGuide {
                 // Re-verify target element in case of DOM re-render
                 let targetElement = this.currentTargetElement;
                 if (!targetElement || !document.body.contains(targetElement)) {
-                    targetElement = document.querySelector(this.currentStepData.target);
+                    targetElement = this._safeQuery(this.currentStepData.target);
                     if (targetElement) {
                         console.log('Target element was detached or null, re-found:', targetElement);
                         this.currentTargetElement = targetElement;
@@ -426,6 +426,44 @@ class UserGuide {
     }
 
     /**
+     * document.querySelector that never throws: an invalid selector is "not found".
+     */
+    _safeQuery(selector) {
+        try {
+            return document.querySelector(selector);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    _isValidSelector(selector) {
+        if (typeof selector !== 'string' || !selector.trim()) return false;
+        try {
+            document.createDocumentFragment().querySelector(selector);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Skip to the next step, or end the guide when this was the last one.
+     */
+    _advanceOrStop() {
+        if (this.waitInterval) {
+            clearInterval(this.waitInterval);
+            this.waitInterval = null;
+        }
+        if (this.currentStep < this.steps.length - 1) {
+            this.removeInteractionHandler();
+            this.currentStep++;
+            this.showStep(this.currentStep);
+        } else {
+            this.stop();
+        }
+    }
+
+    /**
      * Stop the user guide
      */
     stop() {
@@ -482,7 +520,7 @@ class UserGuide {
             }
 
             // Re-query the element in case it was re-rendered
-            const element = document.querySelector(step.target);
+            const element = this._safeQuery(step.target);
             if (element) {
                 // If the element has changed (re-rendered), re-attach handlers
                 if (element !== this.currentTargetElement) {
@@ -498,7 +536,7 @@ class UserGuide {
                 clearInterval(this.pollingInterval);
                 this.pollingInterval = setInterval(() => {
                     if (!this.isActive) return;
-                    const el = document.querySelector(step.target);
+                    const el = this._safeQuery(step.target);
                     if (el) {
                         if (el !== this.currentTargetElement) {
                             this.removeInteractionHandlersOnly();
@@ -569,7 +607,15 @@ class UserGuide {
             this._expandGuideSection(step.expandSection);
         }
 
-        const targetElement = document.querySelector(step.target);
+        // A step whose target is not even a valid CSS selector (an LLM-written
+        // step can carry one) is skipped outright instead of throwing after the
+        // overlay is already up.
+        if (!this._isValidSelector(step.target)) {
+            console.warn(`Invalid guide target selector, skipping step: ${step.target}`);
+            this._advanceOrStop();
+            return;
+        }
+        const targetElement = this._safeQuery(step.target);
 
         if (targetElement) {
             setupStepWithElement(targetElement);
@@ -583,7 +629,7 @@ class UserGuide {
             let checkCount = 0;
             const maxChecks = 30; // 3 seconds total
             const checkInterval = setInterval(() => {
-                const el = document.querySelector(step.target);
+                const el = this._safeQuery(step.target);
                 if (el) {
                     clearInterval(checkInterval);
                     setupStepWithElement(el);
@@ -595,7 +641,9 @@ class UserGuide {
                     if (checkCount >= maxChecks) {
                         clearInterval(checkInterval);
                         console.error(`Target element still not found after waiting: ${step.target}`);
-                        if (this.isActive) this.nextStep();
+                        // nextStep() is a no-op on the last step, which used to
+                        // leave the overlay up with nothing to click (A9).
+                        if (this.isActive) this._advanceOrStop();
                     }
                 }
             }, 100);

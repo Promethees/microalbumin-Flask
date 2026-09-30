@@ -1364,36 +1364,6 @@
       ]
     },
     {
-      "id": "export_saving_directory",
-      "queries": [
-        "export saving directory",
-        "where are exported files saved",
-        "change export location",
-        "export to same directory",
-        "same directory export",
-        "export output folder",
-        "where is the exported file"
-      ],
-      "conditions": {},
-      "requires_data_loaded": true,
-      "steps": [
-        {
-          "target": "#same-dir-as-data",
-          "title": "Export to Same Directory",
-          "description": "When checked, exported files (calibration data or coefficient JSON) are saved in the same folder as the currently loaded data file. Uncheck to pick a different destination.",
-          "position": "top",
-          "skipInteraction": true
-        },
-        {
-          "target": "#save-dir-label",
-          "title": "Export Saving Directory",
-          "description": "This field shows where exported files will go. It updates automatically when you browse a new location or when the 'same directory' checkbox above is toggled.",
-          "position": "top",
-          "skipInteraction": true
-        }
-      ]
-    },
-    {
       "id": "rsquared_threshold",
       "queries": [
         "r squared threshold",
@@ -1491,9 +1461,9 @@
           "skipInteraction": true
         },
         {
-          "target": "button[onclick=\"clearReportSubject()\"]",
-          "title": "Clear Selected Subject",
-          "description": "Click here to remove all items from the currently selected subject folder. The subject folder itself is deleted from disk. This cannot be undone.",
+          "target": "button[onclick=\"clearReportItems()\"]",
+          "title": "Deselect the Subject",
+          "description": "Click here to deselect the current subject. Its saved items are kept — nothing is deleted.",
           "position": "top",
           "skipInteraction": true
         }
