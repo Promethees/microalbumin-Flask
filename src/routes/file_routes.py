@@ -74,14 +74,16 @@ _SCHEMA_VALIDATORS = {
         'error': 'Invalid format (Kinetics calibration).'
     },
     CSV_SCHEMA_POINT_CAL: {
-        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
+        # Value (2nd column) may be negative: a blank-subtracted reading can dip
+        # below zero. Concentration and TimePoint stay non-negative.
+        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|-?\d+|-?\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
         'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
         'error': 'Invalid format (Point calibration).'
     },
     # Turn-based point calibration: Concentration,Value — each Turn is a standard,
     # no TimePoint column (Rule §2.27).
     CSV_SCHEMA_POINT_CAL_TURN: {
-        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+)$",
+        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|-?\d+|-?\d+\.\d+)$",
         'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
         'error': 'Invalid format (Turn point calibration).'
     },

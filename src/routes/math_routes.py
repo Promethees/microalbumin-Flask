@@ -38,6 +38,27 @@ def calc_kinetics(validated_data):
     except Exception as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 500
 
+@math_bp.route('/calculate_kinetics_quantities_batch', methods=['POST'])
+@validate_json({
+    'XColumn': (list, [], True),
+    'YColumns': (list, [], True),
+    'window_size': (int, 4, True)
+})
+def calc_kinetics_batch(validated_data):
+    """Every source of one file in a single request. The chart render calls
+    this synchronously, so N sources used to cost N blocking round trips.
+    A source that fails yields null in its slot, as the single route's error
+    reply does, so one bad column never hides the others."""
+    x_col = validated_data['XColumn']
+    window_size = validated_data['window_size']
+    results = []
+    for y_col in validated_data['YColumns']:
+        try:
+            results.append(calculate_kinetics_quantities(x_col, y_col, window_size))
+        except Exception:
+            results.append(None)
+    return jsonify({'status': 'success', 'results': results})
+
 @math_bp.route('/calculate_concentration', methods=['POST'])
 @validate_json({
     'regress_algo': (str, 'linear', False),

@@ -44,6 +44,32 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     return result;
 }
 
+// Every source of one file in one synchronous request (was one per source).
+// Returns one result per entry of YColumns; a source the server could not
+// analyse gets the same defaults calculateKineticsQuantities() falls back to.
+function calculateKineticsQuantitiesBatch(XColumn, YColumns, window_size) {
+    const fallback = () => ({ slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--", maxRate: 0, linearSlope: 0, linearYMin: 0, linearYMax: 0, linearXMin: 0, linearXMax: 0 });
+    let results = YColumns.map(fallback);
+    $.ajax({
+        url: '/calculate_kinetics_quantities_batch',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ XColumn: XColumn, YColumns: YColumns, window_size: window_size }),
+        async: false,
+        success: function (response) {
+            if (response.status === 'success' && Array.isArray(response.results)) {
+                results = YColumns.map((_, i) => response.results[i] || fallback());
+            } else {
+                console.error("Math API error:", response.message);
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.error("AJAX Error:", textStatus, errorThrown);
+        }
+    });
+    return results;
+}
+
 function getEstimatedValue(data, timepoint, sourceIndex, maxTolerance = 60) {
     if (!Array.isArray(data) || data.length === 0 || !timepoint) return null;
 
@@ -114,8 +140,10 @@ function computeFit(value, fit_type, coef) {
         case "logarithmic":
             // Expect coef = [a, b, c]
             if (Object.keys(coef).length !== 3) throw new Error("Logarithmic fit requires 3 coefficients: [a, b, c]");
-            if (value <= 0) throw new Error("Invalid input for logarithm: value must be > 0");
-            return coef["a"] * Math.log(value + coef["b"]) + coef["c"];
+            // Same domain as math_ops.evaluate_curve (and excel_formula.py): the
+            // logarithm's argument is x + b, not x.
+            if (value + Number(coef["b"]) <= 0) throw new Error("Invalid input for logarithm: x + b must be > 0");
+            return coef["a"] * Math.log(value + Number(coef["b"])) + coef["c"];
 
         case "exponential":
             // Expect coef = [a, b, c]
@@ -125,7 +153,10 @@ function computeFit(value, fit_type, coef) {
         case "michaelis-menten":
             // Expect coef = [Vmax, Km]
             if (Object.keys(coef).length !== 2) throw new Error("Michaelis-Menten fit requires 2 coefficients: [Vmax, Km]");
-            if (value >= coef["VMax"] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value ${value}/minute must be < Vmax: ${coef["VMax"]} and >= 0`);
+            // Same domain as math_ops.evaluate_curve: only a zero denominator is
+            // rejected. A rate outside 0..VMax yields a (negative) value, as the
+            // server and the Excel formula do.
+            if (Number(coef["VMax"]) - value === 0) throw new Error(`Invalid input for Michaelis-Menten: VMax - x is zero (VMax: ${coef["VMax"]})`);
             return (coef["Km"] * value) / (coef["VMax"] - value);
 
         default:

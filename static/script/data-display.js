@@ -209,7 +209,7 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
 
     // Calculate kinetics quantities using filtered data
     const analysis = Array.isArray(filteredY[0]) ?
-        filteredY.map(y => calculateKineticsQuantities(filteredX, y, getValInt("window-size"))) :
+        calculateKineticsQuantitiesBatch(filteredX, filteredY, getValInt("window-size")) :
         calculateKineticsQuantities(filteredX, filteredY, getValInt("window-size"));
 
     // Generate the chart with filtered and converted data
@@ -406,6 +406,9 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
     const charts = [];
     const analyses = [];
 
+    // One request for every source, not one per source.
+    const batchAnalyses = calculateKineticsQuantitiesBatch(allGroups.allXColumn, allGroups.allYColumn, getValInt("window-size"));
+
     for (let i = 0; i < AppState.numSources; i++) {
         const yColumn = YColumn[i];
         const isFullDisplay = getBtnChecked(`full-display-source-${i}`);
@@ -415,7 +418,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
         const label = getLabel(`Value:${i + 1}`, measUnit);
         let analysis = null;
 
-        analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], getValInt("window-size"));
+        analysis = batchAnalyses[i];
 
         analyses.push(analysis);
 
@@ -462,7 +465,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     const filteredData = filteredByRangeValue(false, allGroups.allData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
-    const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, getValInt("window-size")));
+    const analyses = calculateKineticsQuantitiesBatch(allGroups.allXColumn, allGroups.allYColumn, getValInt("window-size"));
     const labels = YColumn.map(y => getLabel(y, measUnit));
 
     // Format analysis info for all sources

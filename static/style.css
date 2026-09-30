@@ -33,6 +33,12 @@
     --accent: #1c6e9c;
     --accent-strong: #2e8fc4;
     --accent-wash: rgba(28, 110, 156, 0.10);
+    /* Text on an --accent fill, and the fill of a destructive button. White on
+       the dark-mode accent is 3.59:1 (WCAG AA needs 4.5), so dark mode puts the
+       page background on it instead (5.27:1), and keeps a danger fill that white
+       text clears (5.08:1) rather than the brighter dark --danger. */
+    --on-accent: #ffffff;
+    --danger-fill: #c93a32;
 
     /* ---- status: reserved, never reused as a series colour ---- */
     --danger: #c93a32;
@@ -132,6 +138,8 @@ body.dark {
     --accent: #2e8fc4;
     --accent-strong: #7fc4e8;
     --accent-wash: rgba(46, 143, 196, 0.14);
+    --on-accent: #0e1113;
+    --danger-fill: #c93a32;
 
     --danger: #e0483f;
     --warn: #e8a33a;
@@ -2658,12 +2666,15 @@ body:not(.ui-classic) .swal2-popup .swal2-styled.swal-danger:focus-visible {
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-confirm {
     background: var(--accent) !important;
     border-color: var(--accent) !important;
-    color: #ffffff !important;
+    color: var(--on-accent) !important;
 }
 
+/* Hover keeps the fill (a lighter fill drops the label below 4.5:1 in light
+   mode) and marks itself with the stronger accent as a ring instead. */
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-confirm:hover:enabled {
-    background: var(--accent-strong) !important;
+    background: var(--accent) !important;
     border-color: var(--accent-strong) !important;
+    box-shadow: 0 0 0 1px var(--accent-strong) !important;
 }
 
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-cancel {
@@ -2683,15 +2694,18 @@ body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-cancel:hover:enabled {
    colour follows the *meaning*, not a hex chosen at the call site. */
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-deny,
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal-danger {
-    background: var(--danger) !important;
-    border-color: var(--danger) !important;
+    background: var(--danger-fill) !important;
+    border-color: var(--danger-fill) !important;
     color: #ffffff !important;
 }
 
+/* Same as the confirm button: brightening the fill on hover would push white
+   text below 4.5:1, so hover draws a ring instead. */
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-deny:hover:enabled,
 body:not(.ui-classic) .swal2-popup .swal2-styled.swal-danger:hover:enabled {
-    background: var(--danger) !important;
-    filter: brightness(1.12);
+    background: var(--danger-fill) !important;
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 1px var(--danger) !important;
 }
 
 body:not(.ui-classic) .swal2-popup .swal2-styled:disabled {

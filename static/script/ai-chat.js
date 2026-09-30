@@ -487,11 +487,17 @@
         return (typeof t === 'function') ? t(key, fallback) : fallback;
     }
 
+    // A command's description in the picker is widget chrome, so it follows
+    // the app's UI language (t()); answers inside the chat follow AI.activeLang.
+    function _cmdDesc(c) {
+        return _tr('ai.cmd.' + c.cmd.slice(1).replace(/-/g, '_'), c.desc);
+    }
+
     function _injectWidget() {
         const fab = document.createElement('button');
         fab.id = 'okapi-ai-fab';
         fab.setAttribute('data-hint', 'OKAPI Assistant');
-        fab.innerHTML = `<span class="okapi-ai-label">AI Assistant</span><span class="okapi-ai-icon">&#129302;</span>`;
+        fab.innerHTML = `<span class="okapi-ai-label">${_esc(_tr('ai.fab_label', 'AI Assistant'))}</span><span class="okapi-ai-icon">&#129302;</span>`;
         fab.addEventListener('click', _togglePanel);
         fab.setAttribute('aria-controls', 'okapi-ai-panel');
         fab.setAttribute('aria-expanded', 'false');
@@ -505,7 +511,7 @@
   <div id="okapi-ai-header-btns">
     <button id="okapi-ai-new-btn" type="button" data-hint="${_esc(_tr('ai.new_chat', 'New conversation'))}" aria-label="${_esc(_tr('ai.new_chat', 'New conversation'))}" onclick="OkapiAI.newChat()">&#43;</button>
     <div id="okapi-ai-lang-select">
-      <button id="okapi-ai-lang-btn" data-hint="Change language" onclick="OkapiAI.toggleLangMenu()"></button>
+      <button id="okapi-ai-lang-btn" data-hint="${_esc(_tr('ai.change_language', 'Change language'))}" onclick="OkapiAI.toggleLangMenu()"></button>
       <div id="okapi-ai-lang-menu" class="okapi-hidden">
         <button class="okapi-ai-lang-opt" data-lang="en">English</button>
         <button class="okapi-ai-lang-opt" data-lang="vi">Ti&#7871;ng Vi&#7879;t</button>
@@ -526,7 +532,7 @@
   <div id="okapi-ai-status-bar"></div>
   <div id="okapi-ai-cmd-picker" class="okapi-hidden"></div>
   <div id="okapi-ai-input-row">
-    <textarea id="okapi-ai-input" rows="2" placeholder="Ask anything… (type / for commands)" aria-label="${_esc(_tr('ai.input_label', 'Message the AI assistant'))}"></textarea>
+    <textarea id="okapi-ai-input" rows="2" placeholder="${_esc(_tr('ai.input_placeholder', 'Ask anything… (type / for commands)'))}" aria-label="${_esc(_tr('ai.input_label', 'Message the AI assistant'))}"></textarea>
     <button id="okapi-ai-send-btn" type="button" data-hint="${_esc(_tr('ai.send', 'Send message'))}" aria-label="${_esc(_tr('ai.send', 'Send message'))}" onclick="OkapiAI.send()">&#10148;</button>
   </div>
 </div>`;
@@ -671,16 +677,16 @@
         const bar = document.getElementById('okapi-ai-status-bar');
         if (!bar || !AI.status) return;
         if (AI.status.api_ready) {
-            bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-ok">&#10003; AI ready</span>`;
+            bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-ok">&#10003; ${_esc(_tr('ai.status_ready', 'AI ready'))}</span>`;
         } else {
             bar.innerHTML =
                 `<div class="okapi-ai-activate-box">` +
-                `<span class="okapi-ai-badge okapi-ai-badge-warn">&#9888; Not activated</span>` +
+                `<span class="okapi-ai-badge okapi-ai-badge-warn">&#9888; ${_esc(_tr('ai.status_not_activated', 'Not activated'))}</span>` +
                 `<div class="okapi-ai-activate-row">` +
-                `<input id="okapi-ai-token-input" type="text" class="okapi-ai-token-input" placeholder="Paste Easy OKAPI token…" aria-label="${_esc(_tr('ai.token_label', 'Easy OKAPI token'))}" />` +
-                `<button class="okapi-ai-activate-btn" onclick="OkapiAI.activate()">Activate</button>` +
+                `<input id="okapi-ai-token-input" type="text" class="okapi-ai-token-input" placeholder="${_esc(_tr('ai.token_placeholder', 'Paste Easy OKAPI token…'))}" aria-label="${_esc(_tr('ai.token_label', 'Easy OKAPI token'))}" />` +
+                `<button class="okapi-ai-activate-btn" onclick="OkapiAI.activate()">${_esc(_tr('ai.activate', 'Activate'))}</button>` +
                 `</div>` +
-                `<a class="okapi-ai-activate-link" href="https://www.easyokapi.cbbiotec.vn" target="_blank">Get token at easyokapi.cbbiotec.vn &#8599;</a>` +
+                `<a class="okapi-ai-activate-link" href="https://www.easyokapi.cbbiotec.vn" target="_blank">${_esc(_tr('ai.get_token', 'Get token at easyokapi.cbbiotec.vn'))} &#8599;</a>` +
                 `</div>`;
         }
     }
@@ -1072,6 +1078,7 @@
         const q = query.toLowerCase();
         _picker.list = SLASH_COMMANDS.filter(c =>
             q === '' || c.cmd.slice(1).startsWith(q) || c.desc.toLowerCase().includes(q)
+                || _cmdDesc(c).toLowerCase().includes(q)
         );
         if (_picker.list.length === 0) { _pickerHide(); return; }
         _picker.idx = Math.min(_picker.idx, _picker.list.length - 1);
@@ -1093,7 +1100,7 @@
         el.innerHTML = _picker.list.map((c, i) =>
             `<div class="okapi-ai-cmd-item${i === _picker.idx ? ' okapi-ai-cmd-active' : ''}" data-i="${i}">` +
             `<span class="okapi-ai-cmd-name">${_esc(c.cmd)}</span>` +
-            `<span class="okapi-ai-cmd-desc">${_esc(c.desc)}</span>` +
+            `<span class="okapi-ai-cmd-desc">${_esc(_cmdDesc(c))}</span>` +
             `</div>`
         ).join('');
         el.querySelectorAll('.okapi-ai-cmd-item').forEach(item => {
@@ -1402,7 +1409,7 @@
             const token = (input ? input.value : '').trim();
             if (!token) return;
             const btn = document.querySelector('.okapi-ai-activate-btn');
-            if (btn) { btn.disabled = true; btn.textContent = 'Activating…'; }
+            if (btn) { btn.disabled = true; btn.textContent = _tr('ai.activating', 'Activating…'); }
             fetch('/ai/activate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1422,14 +1429,15 @@
                     } else {
                         const bar = document.getElementById('okapi-ai-status-bar');
                         const errEl = bar && bar.querySelector('.okapi-ai-activate-err');
-                        if (errEl) errEl.textContent = data.message || 'Activation failed.';
+                        const failMsg = data.message || _tr('ai.activation_failed', 'Activation failed.');
+                        if (errEl) errEl.textContent = failMsg;
                         else if (bar) bar.insertAdjacentHTML('beforeend',
-                            `<span class="okapi-ai-activate-err">${data.message || 'Activation failed.'}</span>`);
-                        if (btn) { btn.disabled = false; btn.textContent = 'Activate'; }
+                            `<span class="okapi-ai-activate-err">${_esc(failMsg)}</span>`);
+                        if (btn) { btn.disabled = false; btn.textContent = _tr('ai.activate', 'Activate'); }
                     }
                 })
                 .catch(() => {
-                    if (btn) { btn.disabled = false; btn.textContent = 'Activate'; }
+                    if (btn) { btn.disabled = false; btn.textContent = _tr('ai.activate', 'Activate'); }
                 });
         },
 

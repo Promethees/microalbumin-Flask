@@ -33,7 +33,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 html += `
                     <fieldset class="json-array-item" style="margin-bottom:12px; border:1px solid #ddd; border-radius:6px;">
                         <div class="json-section">${buildGraphicUI(item, itemPath)}</div>
-                        <button type="button" class="json-delete-item btn-small" data-path="${itemPath}"
+                        <button type="button" class="json-delete-item btn-small" data-path="${escapeHtml(itemPath)}"
                                 style="margin:4px 0 0 4px; background:#c33; color:#fff; border:none; padding:2px 6px; border-radius:3px;">
                             Delete
                         </button>
@@ -41,7 +41,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             });
             // Add-item button for arrays
             html += `
-                <button type="button" class="json-add-array-item btn-small" data-path="${pathPrefix}"
+                <button type="button" class="json-add-array-item btn-small" data-path="${escapeHtml(pathPrefix)}"
                         style="margin-top:8px; background:#28a745; color:#fff; border:none; padding:4px 8px; border-radius:3px;">
                     + Add Item
                 </button>`;
@@ -58,7 +58,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
                 html += `
                     <div class="json-field" style="margin-bottom:12px; display:flex; align-items:flex-start; gap:8px;">
-                        <label style="min-width:140px; font-weight:600; margin-top:6px;">${label}</label>
+                        <label style="min-width:140px; font-weight:600; margin-top:6px;">${escapeHtml(label)}</label>
                         <div style="flex:1;">`;
 
                 if (isObj) {
@@ -81,18 +81,18 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     if (inputType === 'checkbox') {
                         html += `
                             <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                                <input type="checkbox" class="json-input" data-path="${fullPath}" ${valueAttr}>
+                                <input type="checkbox" class="json-input" data-path="${escapeHtml(fullPath)}" ${valueAttr}>
                                 <span>${val ? 'true' : 'false'}</span>
                             </label>`;
                     } else if (inputType === 'number') {
                         html += `
-                            <input type="${inputType}" class="json-input" data-path="${fullPath}" ${valueAttr}>`;
+                            <input type="${inputType}" class="json-input" data-path="${escapeHtml(fullPath)}" ${valueAttr}>`;
                     } else {
                         // Text / fallback – use textarea for multi-line
                         const isMultiline = String(val).includes('\n');
                         if (isMultiline) {
                             html += `
-                                <textarea class="json-input" data-path="${fullPath}">${escapeHtml(String(val))}</textarea>`;
+                                <textarea class="json-input" data-path="${escapeHtml(fullPath)}">${escapeHtml(String(val))}</textarea>`;
                         } else {
                             html += generateInputHtml(key, val, fullPath, valueAttr);
                         }
@@ -149,7 +149,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             // Build the option list – include any "foreign" value as an extra option
             const allOptions = [...new Set([...cfg.options, ...currentArray])];
 
-            let html = `<select class="json-input" data-path="${fullPath}">`;
+            let html = `<select class="json-input" data-path="${escapeHtml(fullPath)}">`;
             for (const opt of allOptions) {
                 const selected = currentArray.includes(opt) ? "selected" : "";
                 html += `<option value="${opt}" ${selected}>${opt}</option>`;
@@ -172,7 +172,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     <input type="checkbox" class="meta-none-cb" ${isNone ? 'checked' : ''}>
                     <span>${noneLabel}</span>
                 </label>
-                <input type="text" class="json-input meta-none-input" data-path="${fullPath}"
+                <input type="text" class="json-input meta-none-input" data-path="${escapeHtml(fullPath)}"
                        size="${unitInputSize(isNone ? '' : current)}" oninput="${UNIT_INPUT_AUTOSIZE}"
                        value="${isNone ? '' : escapeHtml(current)}" ${isNone ? 'disabled' : ''}
                        placeholder="e.g. AU">
@@ -183,13 +183,15 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         // 4. Fallback – original text input
         // -----------------------------------------------------------------
         return `
-            <input type="text" class="json-input" data-path="${fullPath}" ${valueAttr}>`;
+            <input type="text" class="json-input" data-path="${escapeHtml(fullPath)}" ${valueAttr}>`;
     }
 
+    // Text AND double/single-quoted attribute values: innerHTML of a text node
+    // escapes & < > only, so quotes are added for value="…" / data-*="…".
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
-        return div.innerHTML;
+        return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     checkScriptStatus().then((isRunning) => {
@@ -481,9 +483,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             `<option value="${escapeHtml(u)}" ${u === value ? 'selected' : ''}>${escapeHtml(u)}</option>`).join('');
                         return `
                                         <tr>
-                                            <td class="metadata-key">${key}</td>
+                                            <td class="metadata-key">${escapeHtml(key)}</td>
                                             <td class="metadata-value">
-                                                <select class="metadata-value-select" data-meta-key="${key}">${opts}</select>
+                                                <select class="metadata-value-select" data-meta-key="${escapeHtml(key)}">${opts}</select>
                                             </td>
                                         </tr>
                                     `;
@@ -495,8 +497,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         const isNone = isNoneMetaValue(value);
                         return `
                                         <tr>
-                                            <td class="metadata-key">${key}</td>
-                                            <td class="metadata-value noneable-meta-cell" data-meta-key="${key}">
+                                            <td class="metadata-key">${escapeHtml(key)}</td>
+                                            <td class="metadata-value noneable-meta-cell" data-meta-key="${escapeHtml(key)}">
                                               <span style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
                                                 <label class="meta-none-toggle" style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
                                                     <input type="checkbox" class="meta-none-cb" ${isNone ? 'checked' : ''}>
@@ -512,10 +514,10 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     }
                     return `
                                         <tr>
-                                            <td class="metadata-key">${key}</td>
+                                            <td class="metadata-key">${escapeHtml(key)}</td>
                                             <td
                                                 ${isNonEditable ? '' : 'contenteditable="true"'}
-                                                data-meta-key="${key}"
+                                                data-meta-key="${escapeHtml(key)}"
                                                 class="metadata-value ${isNonEditable ? 'noneditable' : ''}"
                                             >
                                                 ${escapeHtml(value)}
@@ -558,11 +560,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     const isValueCol = col.startsWith('Value:');
                     return `<th style="border: 1px solid #ddd; padding: 6px; text-align: left; 
                                             font-size: 0.85em; font-weight: bold; white-space: nowrap;">
-                                            ${col}
+                                            ${escapeHtml(col)}
                                             ${isValueCol ? `
-                                                <span class="move-col-btn" onclick="moveColumn('${col}', -1)" style="cursor: pointer; margin-left: 5px;">(&lt;)</span>
-                                                <span class="move-col-btn" onclick="moveColumn('${col}', 1)" style="cursor: pointer; margin-left: 5px;">(&gt;)</span>
-                                                <span class="remove-col-btn" onclick="removeColumn('${col}')" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>
+                                                <span class="move-col-btn" onclick="moveColumn('${_esc(col)}', -1)" style="cursor: pointer; margin-left: 5px;">(&lt;)</span>
+                                                <span class="move-col-btn" onclick="moveColumn('${_esc(col)}', 1)" style="cursor: pointer; margin-left: 5px;">(&gt;)</span>
+                                                <span class="remove-col-btn" onclick="removeColumn('${_esc(col)}')" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>
                                             ` : ''}
                                         </th>`;
                 }).join('')}
@@ -585,7 +587,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                                     ${!isEditable ? 'background-color: #f8f8f8; cursor: not-allowed;' : ''}
                                                     ${columnName === 'Timestamp' ? 'white-space: nowrap;' : ''}
                                                     ${columnName === 'Value' || columnName === 'Concentration' ? 'text-align: right;' : ''}"
-                                                    data-col="${columnName}">
+                                                    data-col="${escapeHtml(columnName)}">
                                                     ${escapeHtml(cell.trim())}
                                                 </td>
                                             `;
@@ -1105,7 +1107,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 },
                                 {
                                     header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*$/,
-                                    data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
+                                    data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|-?\d+|-?\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
                                     error: 'Invalid format (Pattern 2). Header must be: Concentration,Value,TimePoint',
                                     meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                                 },
@@ -1142,7 +1144,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                     // Concentration,Value with no TimePoint column.
                                     // Mirrors backend CSV_SCHEMA_POINT_CAL_TURN.
                                     header: /^\s*Concentration\s*,\s*Value\s*$/,
-                                    data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
+                                    data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|-?\d+|-?\d+\.\d+)\s*$/,
                                     error: 'Invalid format (Pattern 5). Header must be: Concentration,Value',
                                     meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                                 }

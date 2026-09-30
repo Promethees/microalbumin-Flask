@@ -249,6 +249,11 @@ const AppState = {
     reportNames: [],
     reset: function () {
         this.myChart = null;
+        // Stop a run only if this page is driving one. A page load always
+        // arrives with scriptRunning false, so a reload (F5, or a language or
+        // style change) leaves the logger alone and resyncRunningSession()
+        // picks the run back up (Rule.md §2.39).
+        const stopRun = this.scriptRunning;
         this.scriptRunning = false;
         // Mirror the selected mode button rather than hard-coding "kinetics", so the
         // internal mode and the #measurement-mode highlight never desync. init.js sets
@@ -274,7 +279,7 @@ const AppState = {
         if (this.chartInstances) {
             Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
         }
-        terminateScript();
+        if (stopRun) terminateScript();
     }
 };
 

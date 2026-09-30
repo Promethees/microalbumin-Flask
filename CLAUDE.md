@@ -122,7 +122,7 @@ devtools/                  ← DEV ONLY: the --monitor performance monitor; neve
 - All routes go in blueprints under `src/routes/`. Never add one to `main.py`.
 - `@validate_json` (from `validators.py`) is mandatory on every POST route that accepts
   JSON. Documented exemption: `/download_event_logs` (GET+POST, validates inline).
-- Tests live in `tests/` (45 files). CI runs the whole suite on 3.12 before any build.
+- Tests live in `tests/` (47 files). CI runs the whole suite on 3.12 before any build.
 - **The dev monitor is a package, not a feature.** `--monitor` attaches `devtools/` (its own
   blueprint at `/__dev/monitor`, its own page, attach-time wrappers instead of production
   hooks). It never opens the serial port, 404s when off, and never ships — excluded in
