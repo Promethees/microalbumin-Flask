@@ -7387,10 +7387,11 @@ body.ui-classic.light #plot-analysis {
    button destroys something is meaning, not styling — it does not belong to
    either visual language, so both carry it. */
 body.ui-classic .swal2-popup .swal2-styled.swal-danger {
-    /* `background`, not `background-color`: classic redefines --danger-gradient
-       as a linear-gradient, which background-color silently rejects — the button
-       rendered blank white with white text. */
-    background: var(--danger-gradient, #c93a32) !important;
+    /* A solid fill, not classic's --danger-gradient: white text on its
+       red-to-orange gradient is 3.76 to 2.80:1, below WCAG AA. --danger-fill
+       clears 5.08:1 in both themes (§2.33). */
+    background: var(--danger-fill) !important;
+    border-color: var(--danger-fill) !important;
     color: #ffffff !important;
 }
 

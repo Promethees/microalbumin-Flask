@@ -352,3 +352,13 @@ def test_chat_messages_follow_the_chat_language(client):
     assert set(data) == set(LANGS)
     assert data['vi']['ai.cmd.clear'] != data['en']['ai.cmd.clear']
     assert 'ai.msg.network_error' in data['ja']
+
+
+def test_classic_destructive_button_uses_the_solid_danger_fill():
+    css = (REPO / 'static' / 'style.css').read_text(encoding='utf-8')
+    rule = css[css.index('body.ui-classic .swal2-popup .swal2-styled.swal-danger {'):]
+    rule = rule[:rule.index('\n}')]
+    assert 'background: var(--danger-fill) !important;' in rule
+    assert 'danger-gradient' not in rule.split('*/')[-1]
+    for block in (':root', 'body.dark'):
+        assert _ratio('#ffffff', _tokens(block)['danger-fill']) >= 4.5
