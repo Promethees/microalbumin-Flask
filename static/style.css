@@ -2246,6 +2246,8 @@ body.dark  .legend-label { color: var(--chart-label-dark); }
 
 .legend-item:hover .legend-pencil { opacity: 0.55; }
 .legend-pencil:hover               { opacity: 1 !important; }
+/* A keyboard user must see the pencil they Tabbed onto (§2.36). */
+.legend-pencil:focus-visible       { opacity: 1 !important; }
 
 body.light .legend-pencil { color: var(--text-color-light); }
 body.dark  .legend-pencil { color: var(--text-color-dark); }

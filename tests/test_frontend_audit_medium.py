@@ -379,3 +379,123 @@ def test_editor_mode_toggle_restores_name_and_text_as_dom_values():
     body = src[src.index('function fillRawFields'):]
     body = body[:body.index('\n            }\n')]
     assert "nameInput.value = name" in body and "textArea.value = content" in body
+
+
+# ---------------------------------------------------------------------------
+# A tiny fake DOM for widget-building code: enough of createElement /
+# appendChild / attributes / listeners / querySelector(All) by class, id and
+# [data-*] to drive a render and a key press.
+# ---------------------------------------------------------------------------
+
+FAKE_DOM = r"""
+class El {
+    constructor(tag) {
+        this.tagName = tag.toUpperCase(); this.children = []; this.parentElement = null;
+        this.attrs = {}; this.dataset = {}; this.style = {}; this.listeners = {};
+        this.className = ''; this.textContent = ''; this.id = ''; this.disabled = false; this.hidden = false;
+        const self = this;
+        this.classList = {
+            add: (...c) => { const s = new Set(self.className.split(/\s+/).filter(Boolean)); c.forEach(x => s.add(x)); self.className = [...s].join(' '); },
+            remove: (...c) => { self.className = self.className.split(/\s+/).filter(x => x && !c.includes(x)).join(' '); },
+            contains: c => self.className.split(/\s+/).includes(c),
+            toggle: (c, on) => { const has = self.classList.contains(c); const want = on === undefined ? !has : !!on; if (want) self.classList.add(c); else self.classList.remove(c); return want; },
+        };
+    }
+    set innerHTML(v) { this.children = []; this._html = v; }
+    get innerHTML() { return this._html || ''; }
+    set tabIndex(v) { this.attrs.tabindex = String(v); }
+    get tabIndex() { return this.attrs.tabindex === undefined ? -1 : Number(this.attrs.tabindex); }
+    setAttribute(k, v) { this.attrs[k] = String(v); if (k === 'id') this.id = String(v); if (k === 'class') this.className = String(v); }
+    getAttribute(k) { return k === 'id' ? this.id : (k in this.attrs ? this.attrs[k] : null); }
+    hasAttribute(k) { return k in this.attrs; }
+    removeAttribute(k) { delete this.attrs[k]; }
+    appendChild(c) { if (c.parentElement) c.parentElement.removeChild(c); c.parentElement = this; this.children.push(c); return c; }
+    append(...cs) { cs.forEach(c => (typeof c === 'string' ? this.appendChild(Object.assign(new El('#text'), { textContent: c })) : this.appendChild(c))); }
+    insertBefore(c, ref) { c.parentElement = this; const i = this.children.indexOf(ref); this.children.splice(i < 0 ? this.children.length : i, 0, c); return c; }
+    removeChild(c) { this.children = this.children.filter(x => x !== c); c.parentElement = null; return c; }
+    remove() { if (this.parentElement) this.parentElement.removeChild(this); }
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); }
+    removeEventListener(t, f) { this.listeners[t] = (this.listeners[t] || []).filter(x => x !== f); }
+    fire(t, ev = {}) { const e = Object.assign({ type: t, target: this, preventDefault() { this.defaultPrevented = true; }, stopPropagation() {} }, ev); (this.listeners[t] || []).slice().forEach(f => f(e)); return e; }
+    click() { this.fire('click'); }
+    focus() { DOC.activeElement = this; }
+    getBoundingClientRect() { return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }; }
+    closest(sel) { let e = this; while (e) { if (MATCH(e, sel)) return e; e = e.parentElement; } return null; }
+    *walk() { for (const c of this.children) { yield c; yield* c.walk(); } }
+    querySelectorAll(sel) {
+        const parts = sel.trim().split(/\s+/);
+        return [...this.walk()].filter(e => {
+            if (!MATCH(e, parts[parts.length - 1])) return false;
+            let p = e.parentElement, i = parts.length - 2;
+            while (i >= 0 && p) { if (MATCH(p, parts[i])) i--; p = p.parentElement; }
+            return i < 0;
+        });
+    }
+    querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+}
+function MATCH(e, sel) {
+    const m = /^([a-z]+)?((?:[.#][\w-]+)*)((?:\[[^\]]+\])*)$/i.exec(sel);
+    if (!m) throw new Error('fake DOM selector: ' + sel);
+    if (m[1] && e.tagName !== m[1].toUpperCase()) return false;
+    for (const t of (m[2].match(/[.#][\w-]+/g) || [])) {
+        if (t[0] === '.' && !e.classList.contains(t.slice(1))) return false;
+        if (t[0] === '#' && e.id !== t.slice(1)) return false;
+    }
+    for (const a of (m[3].match(/\[[^\]]+\]/g) || [])) {
+        const [, k, v] = /^\[([\w-]+)(?:="([^"]*)")?\]$/.exec(a);
+        let val;
+        if (k.startsWith('data-')) { const dk = k.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase()); val = e.dataset[dk]; }
+        else val = e.getAttribute(k);
+        if (val === undefined || val === null) return false;
+        if (v !== undefined && String(val) !== v) return false;
+    }
+    return true;
+}
+const DOC = {
+    activeElement: null, body: new El('body'), head: new El('head'), listeners: {},
+    createElement: t => new El(t),
+    getElementById: id => (DOC.body.id === id ? DOC.body : [...DOC.body.walk()].find(e => e.id === id) || null),
+    querySelector: s => DOC.body.querySelector(s), querySelectorAll: s => DOC.body.querySelectorAll(s),
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
+    removeEventListener() {},
+};
+"""
+
+
+# ---------------------------------------------------------------------------
+# generate-chart.js:504 — the legend's show/hide toggle was a click on plain
+# spans (no role, no tabindex, no keys); the pencil was an unnamed "✎".
+# ---------------------------------------------------------------------------
+
+LEGEND = PRELUDE + FAKE_DOM + r"""
+const wrap = new El('div'); DOC.body.appendChild(wrap);
+const canvas = new El('canvas'); canvas.id = 'c1'; wrap.appendChild(canvas);
+const hidden = { 0: false, 1: false };
+const chart = { data: { datasets: [{}, {}] }, setDatasetVisibility: (i, v) => { hidden[i] = !v; }, update() {} };
+const ctx = {
+    document: DOC, t: (k, f) => f,
+    Chart: { defaults: { plugins: { legend: { labels: { generateLabels: () => [0, 1].map(i => ({ text: 'Source ' + (i + 1), datasetIndex: i, hidden: hidden[i], strokeStyle: '#000' })) } } } } },
+};
+vm.createContext(ctx);
+vm.runInContext(FN('generate-chart.js', 'renderHtmlLegend'), ctx);
+ctx.renderHtmlLegend(chart, 'c1', null);
+const legend = DOC.getElementById('html-legend-c1');
+const labels = () => legend.querySelectorAll('.legend-label');
+const before = labels().map(l => ({ role: l.getAttribute('role'), tab: l.getAttribute('tabindex'), pressed: l.getAttribute('aria-pressed') }));
+const pencils = legend.querySelectorAll('.legend-pencil').map(p => p.getAttribute('aria-label'));
+const first = labels()[0];
+first.focus();
+const ev = first.fire('keydown', { key: 'Enter' });
+const after = labels()[0];
+OUT({ before, pencils, hidden0: hidden[0], prevented: !!ev.defaultPrevented, pressedAfter: after.getAttribute('aria-pressed'),
+      focusKept: DOC.activeElement === after && after !== first });
+"""
+
+
+def test_legend_series_toggle_works_from_the_keyboard():
+    r = _node(LEGEND)
+    assert r['before'] == [{'role': 'button', 'tab': '0', 'pressed': 'true'}] * 2
+    assert r['pencils'] == ['Edit label and color: Source 1', 'Edit label and color: Source 2']
+    assert r['hidden0'] is True and r['prevented'] is True
+    assert r['pressedAfter'] == 'false'
+    assert r['focusKept'] is True

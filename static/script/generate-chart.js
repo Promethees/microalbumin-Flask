@@ -503,6 +503,7 @@ function renderHtmlLegend(chart, canvasId, sourceIndex) {
 
         const row = document.createElement('span');
         row.className = 'legend-item' + (item.hidden ? ' hidden-dataset' : '');
+        row.dataset.datasetIndex = String(item.datasetIndex);
 
         const swatch = document.createElement('span');
         swatch.className = 'legend-swatch';
@@ -511,23 +512,43 @@ function renderHtmlLegend(chart, canvasId, sourceIndex) {
         const labelSpan = document.createElement('span');
         labelSpan.className = 'legend-label';
         labelSpan.textContent = item.text;
+        // The label is the keyboard/screen-reader handle for the show/hide
+        // toggle (Rule.md §2.36); the swatch stays a mouse-only duplicate so
+        // each series is one Tab stop. Pressed = the line is shown.
+        labelSpan.setAttribute('role', 'button');
+        labelSpan.tabIndex = 0;
+        labelSpan.setAttribute('aria-pressed', item.hidden ? 'false' : 'true');
 
         const toggle = () => {
+            const hadFocus = document.activeElement === labelSpan;
             chart.setDatasetVisibility(item.datasetIndex, item.hidden);
             chart.update('none');
             renderHtmlLegend(chart, canvasId, sourceIndex);
+            // The legend is rebuilt, so put focus back on the same series.
+            if (hadFocus) {
+                legendEl.querySelector(`.legend-item[data-dataset-index="${item.datasetIndex}"] .legend-label`)?.focus();
+            }
         };
         swatch.addEventListener('click', toggle);
         labelSpan.addEventListener('click', toggle);
+        labelSpan.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggle();
+            }
+        });
 
         row.appendChild(swatch);
         row.appendChild(labelSpan);
 
         if (!isRegression) {
             const pencil = document.createElement('button');
+            pencil.type = 'button';
             pencil.className = 'legend-pencil';
             pencil.textContent = '✎';
             pencil.setAttribute('data-hint', t('hint.edit_label_color', 'Edit label and color'));
+            // The glyph alone reads as "✎ button"; name it and its series.
+            pencil.setAttribute('aria-label', `${t('hint.edit_label_color', 'Edit label and color')}: ${item.text}`);
             pencil.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const rect = pencil.getBoundingClientRect();
