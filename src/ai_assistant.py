@@ -1103,247 +1103,223 @@ _REPORT_CLARIFY_PROMPTS = {
     ),
 }
 
-_QUICK_REPORT_STEPS = [
-    {
-        "target": "#report-section",
-        "title": "Generate Quick Report",
-        "description": (
-            "Click 'Generate quick Report' here to instantly snapshot the current chart "
-            "and analysis as a standalone HTML report."
-        ),
-        "descriptions": {
-            "vi": "Nhấp 'Generate quick Report' tại đây để chụp nhanh biểu đồ và phân tích hiện tại.",
-            "zh": "点击此处的「Generate quick Report」即时将当前图表和分析快照为独立的 HTML 报告。",
-            "fr": "Cliquez sur 'Generate quick Report' ici pour capturer instantanément le graphique et l'analyse.",
-            "ja": "ここで「Generate quick Report」をクリックして、現在のチャートと分析を即時スナップショットします。",
-            "ru": "Нажмите «Generate quick Report», чтобы мгновенно сохранить текущий график и анализ.",
-            "ko": "여기서 'Generate quick Report'를 클릭하면 현재 차트와 분석이 즉시 스냅샷됩니다.",
-        },
-        "position": "top",
-        "skipInteraction": False,
-    },
-]
+# Quick and full report walkthroughs are guides in guide_training.json, loaded
+# by id (work-list A13) — the same source the /report slash command in
+# ai-chat.js uses — so the chat answer and the button can never drift apart.
+# The subject-select step lives in those guides too.
+def _quick_report_guide_id(mode: str) -> str:
+    return "report_quick_from_report" if mode == "report" else "report_quick"
 
-_QUICK_REPORT_STEPS_NO_DATA = [
-    {
-        "target": "#file-selection",
-        "title": "Load Data First",
-        "description": "Select a CSV data file to load your analysis before generating a report.",
-        "descriptions": {
-            "vi": "Chọn tệp dữ liệu CSV để tải phân tích trước khi tạo báo cáo.",
-            "zh": "选择一个 CSV 数据文件以在生成报告之前加载您的分析。",
-            "fr": "Sélectionnez un fichier de données CSV pour charger votre analyse avant de générer un rapport.",
-            "ja": "レポートを生成する前に分析を読み込むため CSV データファイルを選択してください。",
-            "ru": "Выберите CSV-файл данных для загрузки анализа перед созданием отчёта.",
-            "ko": "보고서를 생성하기 전에 분석을 불러오려면 CSV 데이터 파일을 선택하세요.",
-        },
-        "position": "left",
-        "skipInteraction": False,
-    },
-    {
-        "target": "#report-section",
-        "title": "Generate Quick Report",
-        "description": "Once data is loaded, click 'Generate quick Report' here to snapshot the current chart.",
-        "descriptions": {
-            "vi": "Khi dữ liệu đã tải, nhấp 'Generate quick Report' tại đây.",
-            "zh": "数据加载后，点击此处的「Generate quick Report」。",
-            "fr": "Une fois les données chargées, cliquez sur 'Generate quick Report' ici.",
-            "ja": "データが読み込まれたら、ここで「Generate quick Report」をクリックします。",
-            "ru": "После загрузки данных нажмите «Generate quick Report».",
-            "ko": "데이터가 로드되면 여기서 'Generate quick Report'를 클릭하세요.",
-        },
-        "position": "top",
-        "skipInteraction": True,
-    },
-]
 
-_FULL_REPORT_STEPS_FROM_DATA = [
-    {
-        "target": "#report-section",
-        "title": "Export Data to Report",
-        "description": "Click 'Export Data to Report' to save this analysis snapshot into a named report subject.",
-        "descriptions": {
-            "vi": "Nhấp 'Export Data to Report' để lưu ảnh chụp phân tích này vào chủ đề báo cáo.",
-            "zh": "点击「Export Data to Report」将此分析快照保存到命名报告主题中。",
-            "fr": "Cliquez sur 'Export Data to Report' pour enregistrer ce snapshot d'analyse.",
-            "ja": "「Export Data to Report」をクリックして、分析スナップショットを保存します。",
-            "ru": "Нажмите «Export Data to Report», чтобы сохранить снимок анализа.",
-            "ko": "'Export Data to Report'를 클릭하여 분석 스냅샷을 저장하세요.",
-        },
-        "position": "top",
-        "skipInteraction": False,
-    },
-    {
-        "target": "#meas-mode-section",
-        "title": "Switch to Report Mode",
-        "description": "After exporting, switch to Report mode here to open the full report management interface.",
-        "descriptions": {
-            "vi": "Sau khi xuất, chuyển sang chế độ Report ở đây.",
-            "zh": "导出后，在此切换到 Report 模式。",
-            "fr": "Après l'exportation, passez en mode Report ici.",
-            "ja": "エクスポート後、ここで Report モードに切り替えます。",
-            "ru": "После экспорта переключитесь в режим Report.",
-            "ko": "내보낸 뒤 여기서 Report 모드로 전환하세요.",
-        },
-        "position": "right",
-        "skipInteraction": False,
-    },
-    {
-        "target": "#report-console-section",
-        "title": "Report Console",
-        "description": "Manage your saved analysis snapshots here. Configure layout and set a report title.",
-        "descriptions": {
-            "vi": "Quản lý các ảnh chụp phân tích đã lưu tại đây.",
-            "zh": "在此管理已保存的分析快照。",
-            "fr": "Gérez vos snapshots d'analyse sauvegardés ici.",
-            "ja": "ここで保存された分析スナップショットを管理します。",
-            "ru": "Управляйте сохранёнными снимками анализа здесь.",
-            "ko": "여기서 저장된 분석 스냅샷을 관리합니다.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "#report-items-container",
-        "title": "Report Items",
-        "description": "All saved snapshots are listed here. Remove any before generating the final report.",
-        "descriptions": {
-            "vi": "Tất cả ảnh chụp đã lưu được liệt kê ở đây.",
-            "zh": "所有已保存的快照都列在这里。",
-            "fr": "Tous les snapshots sauvegardés sont listés ici.",
-            "ja": "保存されたすべてのスナップショットがここに一覧表示されます。",
-            "ru": "Все сохранённые снимки перечислены здесь.",
-            "ko": "저장된 모든 스냅샷이 여기에 나열됩니다.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "button[onclick=\"finalizeReport()\"]",
-        "title": "Generate PDF Report",
-        "description": "Compile all items into a printable HTML report. Open in your browser, then Print → Save as PDF.",
-        "descriptions": {
-            "vi": "Tổng hợp tất cả mục thành báo cáo HTML. Mở trong trình duyệt, sau đó In → Lưu thành PDF.",
-            "zh": "将所有项目编译为可打印的 HTML 报告。在浏览器中打印 → 另存为 PDF。",
-            "fr": "Compilez tous les éléments en rapport HTML imprimable. Imprimer → Enregistrer en PDF.",
-            "ja": "すべての項目を印刷可能な HTML レポートにまとめます。印刷 → PDF として保存。",
-            "ru": "Скомпилируйте все элементы в HTML-отчёт. Печать → Сохранить как PDF.",
-            "ko": "모든 항목을 인쇄 가능한 HTML 보고서로 컴파일합니다. 인쇄 → PDF로 저장.",
-        },
-        "position": "top",
-        "skipInteraction": True,
-    },
-]
+def _full_report_guide_id(mode: str) -> str:
+    return "report_full_in_report" if mode == "report" else "report_full_from_data"
 
-_FULL_REPORT_STEPS_IN_REPORT = [
-    {
-        "target": "#report-console-section",
-        "title": "Report Console",
-        "description": "Manage your saved analysis snapshots here. Configure layout and set a report title.",
-        "descriptions": {
-            "vi": "Quản lý các ảnh chụp phân tích đã lưu tại đây.",
-            "zh": "在此管理已保存的分析快照。",
-            "fr": "Gérez vos snapshots d'analyse sauvegardés ici.",
-            "ja": "ここで保存された分析スナップショットを管理します。",
-            "ru": "Управляйте сохранёнными снимками анализа здесь.",
-            "ko": "여기서 저장된 분석 스냅샷을 관리합니다.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "#report-items-container",
-        "title": "Report Items",
-        "description": "All saved snapshots are listed here. Remove any before generating.",
-        "descriptions": {
-            "vi": "Tất cả ảnh chụp đã lưu được liệt kê ở đây.",
-            "zh": "所有已保存的快照都列在这里。",
-            "fr": "Tous les snapshots sauvegardés sont listés ici.",
-            "ja": "保存されたすべてのスナップショットがここに一覧表示されます。",
-            "ru": "Все сохранённые снимки перечислены здесь.",
-            "ko": "저장된 모든 스냅샷이 여기에 나열됩니다.",
-        },
-        "position": "right",
-        "skipInteraction": True,
-    },
-    {
-        "target": "button[onclick=\"finalizeReportExcel()\"]",
-        "title": "Export as Excel",
-        "description": "Download all items as a formatted Excel workbook with embedded charts.",
-        "descriptions": {
-            "vi": "Tải xuống tất cả mục dưới dạng bảng tính Excel.",
-            "zh": "将所有项目下载为格式化的 Excel 工作簿。",
-            "fr": "Téléchargez tous les éléments sous forme de classeur Excel formaté.",
-            "ja": "すべての項目をフォーマットされた Excel ワークブックとしてダウンロードします。",
-            "ru": "Загрузите все элементы как форматированную Excel-книгу.",
-            "ko": "모든 항목을 서식이 적용된 Excel 통합 문서로 다운로드합니다.",
-        },
-        "position": "top",
-        "skipInteraction": True,
-    },
-    {
-        "target": "button[onclick=\"finalizeReport()\"]",
-        "title": "Generate PDF Report",
-        "description": "Or compile all items into a printable HTML report.",
-        "descriptions": {
-            "vi": "Hoặc tổng hợp tất cả mục thành báo cáo HTML có thể in.",
-            "zh": "或者将所有项目编译为可打印的 HTML 报告。",
-            "fr": "Ou compilez tous les éléments en rapport HTML imprimable.",
-            "ja": "またはすべての項目を印刷可能な HTML レポートにまとめます。",
-            "ru": "Или скомпилируйте все элементы в печатаемый HTML-отчёт.",
-            "ko": "또는 모든 항목을 인쇄 가능한 HTML 보고서로 컴파일합니다.",
-        },
-        "position": "top",
-        "skipInteraction": True,
-    },
-]
 
-_REPORT_SPECIFIC_KEYWORDS = {
-    "quick", "fast", "snapshot", "nhanh", "rapide", "schnell", "быстро",
+def _report_guide_events(guide_id: str, ui_context: dict, language: str):
+    example = _guide_example_by_id(guide_id, language)
+    if not example:
+        return None
+    steps = _format_fewshot_hint(example, ui_context or {}, language, steps_only=True)
+    return [
+        {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])},
+        {"type": "guide", "guide_action": {"custom_steps": steps}},
+    ]
+
+
+# Multilingual vocabulary for the report clarification flow, at parity across
+# ALL SEVEN `user_settings.SUPPORTED_LANGUAGES` (en/vi/zh/fr/ja/ru/ko) — the
+# quick-vs-full question is asked, and its answer understood, whatever the chat
+# language is. Two rules keep it honest:
+#
+#   1. Every entry belongs to a supported language. ("schnell" used to sit in
+#      _QUICK_KWS; German is not a UI language, so it was dead weight.)
+#   2. These sets are SUBSTRING-matched, so an inflecting language needs the
+#      STEM, not one surface form. Russian «быстрый отчёт» and French
+#      "rapport complète" — the natural adjectival answers — both resolved to
+#      None while «быстро» / "complet" worked, so the stems `быстр` / `полн` /
+#      `complèt` are what is listed. Korean was absent from all three sets, so
+#      «보고서 만들기» never even triggered the clarification and Korean users
+#      could not reach the flow at all.
+#
+# Test: tests/test_ai_report_flow.py::test_every_language_can_ask_and_answer.
+_REPORT_WORDS = frozenset({
+    "report", "báo cáo", "报告", "rapport", "レポート", "отчёт", "отчет", "보고서",
+})
+
+_QUICK_KWS = frozenset({
+    "quick", "fast", "snapshot", "instant",
+    "nhanh", "rapide", "быстр",
+    "快速", "即时", "迅速", "クイック", "速報",
+    "빠른", "빠르게", "간단",
+})
+
+_FULL_KWS = frozenset({
     "full", "final", "compile", "comprehensive", "excel", "pdf", "complete",
-    "đầy đủ", "toàn", "complet", "полный",
+    "đầy đủ", "toàn", "complet", "complèt", "полн",
+    "完整", "完全", "全面", "フル",
+    "전체", "완전", "종합",
+})
+
+# Phrases that already pin the report kind, so the clarification is skipped.
+_REPORT_SPECIFIC_KEYWORDS = _QUICK_KWS | _FULL_KWS | frozenset({
     "export to report", "save to report", "export data to report",
-    "快速", "快", "すぐ", "クイック", "速い",
-}
+})
+
+# ── Pending-clarification state (explicit, not prose-matched) ────────────────
+# The quick/full clarification is a two-turn exchange, and the second turn has to
+# know the first one happened. That state is carried EXPLICITLY: the clarify turn
+# emits a machine-readable `{"type": "pending", "pending": "report_type"}` SSE
+# event alongside the localized question, the frontend stores it, and the next
+# /ai/chat request echoes it back as `ui_context["pending"]`.
+#
+# It rides in `ui_context` — NOT as an extra key on a message dict. `/ai/chat`
+# keeps the caller's original message dicts (it only filters the list), and those
+# dicts are handed verbatim to Groq in `_groq_chat_stream`; an unknown per-message
+# field is a hard 400 upstream (the same trap `finish_reason` already had to be
+# popped for). `ui_context` is a separate, already-validated top-level dict that
+# never reaches the model as a message.
+PENDING_REPORT_TYPE = "report_type"
+
+# The clarify prompt is emitted verbatim (one localized string per language), so
+# the previous assistant turn is recognised by exact match in any language —
+# more robust than substring-matching an English phrase that the localized
+# prompts never contain (the old check silently broke for vi/zh/fr/ja/ru).
+_CLARIFY_PROMPT_SET = frozenset(v.strip() for v in _REPORT_CLARIFY_PROMPTS.values())
 
 
-def _needs_report_clarification(query: str, messages: list) -> bool:
-    q = query.lower()
-    if "report" not in q:
+def _is_report_clarify_prompt(content: str) -> bool:
+    """True if `content` is the quick/full clarification prompt (any language).
+
+    TRANSITIONAL: prose matching is the pre-`PENDING_REPORT_TYPE` fallback only.
+    It is fragile by construction — any edit to the user-facing copy (a fixed
+    typo, added markdown, trailing whitespace) silently breaks the recovery of
+    the pending state — so nothing new should depend on it. See
+    `_prose_fallback_applies` for when it is still consulted.
+    """
+    return (content or "").strip() in _CLARIFY_PROMPT_SET
+
+
+def _prose_fallback_applies(ui_context: dict) -> bool:
+    """The removal criterion for the transitional prose match.
+
+    The fallback exists for exactly one situation: a chat that was already open
+    in a browser tab when the build was upgraded, whose clarify turn came from
+    the pre-marker code and therefore carries no marker to echo back.
+
+    That situation is identified by DATA, not by a date: a marker-aware client
+    always sends the `pending` key in `ui_context` — empty string when nothing
+    is armed (`_getUiContext` in `ai-chat.js` sets it unconditionally). So the
+    absence of the key is the signature of an older client, and the fallback is
+    scoped to exactly that. For every current client the prose path is already
+    unreachable, whatever the assistant last said.
+
+    **Removal criterion**: delete `_is_report_clarify_prompt`,
+    `_CLARIFY_PROMPT_SET` and this function once no client older than the
+    marker (shipped in 1.5.7) can still be talking to this build — i.e. one
+    release after every supported install has taken an update. Nothing else may
+    depend on it in the meantime; `tests/test_ai_report_flow.py` pins both the
+    "old client still works" and the "current client never reaches it" halves.
+    """
+    return "pending" not in (ui_context or {})
+
+
+def _report_clarify_pending(messages: list, ui_context: dict = None) -> bool:
+    """True when the clarification question is outstanding for this turn.
+
+    Reads the explicit `ui_context["pending"]` marker the frontend echoes back.
+    The transitional prose match is reached ONLY for a client that predates the
+    marker — see `_prose_fallback_applies` for the bound.
+    """
+    ui_context = ui_context or {}
+    if (ui_context.get("pending") or "") == PENDING_REPORT_TYPE:
+        return True
+    if not _prose_fallback_applies(ui_context):
+        return False
+    for msg in reversed((messages or [])[:-1]):
+        if msg.get("role") == "assistant":
+            return _is_report_clarify_prompt(msg.get("content", ""))
+    return False
+
+
+# "report" and its translations must be a WORD in the query (B5 / A8): the old
+# substring test asked quick-vs-full for "reporting issue with the chart". Each
+# entry allows only its own inflection (English/French plural, Russian case
+# endings); CJK has no word boundaries and stays substring.
+_REPORT_WORD_PATTERNS = tuple(re.compile(p) for p in (
+    r"(?<!\w)reports?(?!\w)",
+    r"(?<!\w)rapports?(?!\w)",
+    r"(?<!\w)báo cáo(?!\w)",
+    r"(?<!\w)отч[её]т[а-я]{0,2}(?!\w)",
+    r"报告", r"レポート", r"보고서",
+))
+
+# Questions ABOUT managing a report (its subject, layout, items, …) are not a
+# request to make one, so they never get the quick/full question — in report
+# mode "what is a report subject" used to. Kept at parity across all seven
+# languages; matched from a word start (substring for CJK).
+_REPORT_MANAGEMENT_WORDS = frozenset({
+    "subject", "layout", "watermark", "logo", "item", "delete", "rename", "title", "excel",
+    "chủ đề", "bố cục", "hình mờ", "mục", "xóa", "đổi tên", "tiêu đề",                 # vi
+    "主题", "布局", "水印", "标志", "项目", "删除", "重命名", "标题",                     # zh
+    "sujet", "mise en page", "filigrane", "élément", "supprimer", "renommer", "titre",  # fr
+    "件名", "サブジェクト", "レイアウト", "透かし", "ロゴ", "項目", "削除", "名前を変更", "タイトル",  # ja
+    "тем", "макет", "водян", "логотип", "элемент", "удал", "переимен", "заголов",       # ru
+    "주제", "레이아웃", "워터마크", "로고", "항목", "삭제", "이름 변경", "제목",           # ko
+})
+
+
+def _has_report_word(q: str) -> bool:
+    return any(p.search(q) for p in _REPORT_WORD_PATTERNS)
+
+
+def _mentions_report_management(q: str) -> bool:
+    for w in _REPORT_MANAGEMENT_WORDS:
+        if _is_cjk(w):
+            if w in q:
+                return True
+        elif re.search(r"(?<!\w)" + re.escape(w), q):
+            return True
+    return False
+
+
+def _needs_report_clarification(query: str, messages: list, ui_context: dict = None) -> bool:
+    """True when the query asks to MAKE a report but doesn't say quick vs full.
+
+    Not asked for: a query without the word "report" (any language), one that
+    already names the kind, a conceptual question ("what is a report subject"
+    — unless it also carries explicit how-to phrasing), or a question about
+    managing a report (subject, layout, watermark, items, …).
+    """
+    q = (query or "").lower()
+    if not _has_report_word(q):
         return False
     if any(kw in q for kw in _REPORT_SPECIFIC_KEYWORDS):
         return False
-    for msg in reversed(messages[:-1]):
-        if msg.get("role") == "assistant":
-            c = msg.get("content", "").lower()
-            if "quick report" in c and "full report" in c:
-                return False
-            break
+    if _is_conceptual(q) and not _has_nav_intent(q):
+        return False
+    if _mentions_report_management(q):
+        return False
+    # Don't re-ask if the clarification is already outstanding.
+    if _report_clarify_pending(messages, ui_context):
+        return False
     return True
 
 
-def _get_pending_report_type(messages: list) -> str | None:
-    if len(messages) < 2:
+def _get_pending_report_type(messages: list, ui_context: dict = None) -> str | None:
+    """Resolve the user's answer to an outstanding quick/full clarification.
+
+    Returns 'quick'/'full' when the clarification is pending (explicit marker
+    first, transitional prose match second) and the latest user turn picks one,
+    else None.
+    """
+    if not messages or messages[-1].get("role") != "user":
         return None
-    prev_assistant = None
-    for msg in reversed(messages[:-1]):
-        if msg.get("role") == "assistant":
-            prev_assistant = msg
-            break
-    if not prev_assistant:
-        return None
-    c = prev_assistant.get("content", "").lower()
-    if "quick report" not in c or "full report" not in c:
+    if not _report_clarify_pending(messages, ui_context):
         return None
     user_answer = messages[-1].get("content", "").lower()
-    quick_kws = {"quick", "fast", "snapshot", "nhanh", "rapide", "schnell", "быстро", "instant"}
-    full_kws = {
-        "full", "final", "compile", "comprehensive", "excel", "pdf", "complete",
-        "đầy đủ", "toàn", "complet", "полный",
-    }
-    if any(kw in user_answer for kw in quick_kws):
+    if any(kw in user_answer for kw in _QUICK_KWS):
         return "quick"
-    if any(kw in user_answer for kw in full_kws):
+    if any(kw in user_answer for kw in _FULL_KWS):
         return "full"
     return None
 
@@ -1705,20 +1681,20 @@ def chat_stream(messages: list, language: str, api_key: str, model: str,
     if not run_report_fast_path:
         pending_report = None
     else:
-        pending_report = _get_pending_report_type(messages)
-    if pending_report == "quick":
-        raw = _QUICK_REPORT_STEPS_NO_DATA if not data_loaded else _QUICK_REPORT_STEPS
-        yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
-        yield {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}}
-        return
-    if pending_report == "full":
-        raw = _FULL_REPORT_STEPS_IN_REPORT if mode == "report" else _FULL_REPORT_STEPS_FROM_DATA
-        yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
-        yield {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}}
-        return
+        pending_report = _get_pending_report_type(messages, ui_context)
+    if pending_report in ("quick", "full"):
+        gid = (_quick_report_guide_id if pending_report == "quick" else _full_report_guide_id)(mode)
+        events = _report_guide_events(gid, ui_context, language)
+        if events:
+            yield from events
+            return
 
-    if run_report_fast_path and _needs_report_clarification(last_user_query, messages):
+    if run_report_fast_path and _needs_report_clarification(last_user_query, messages, ui_context):
         yield {"type": "chunk", "content": _REPORT_CLARIFY_PROMPTS.get(language, _REPORT_CLARIFY_PROMPTS["en"])}
+        # Machine-readable marker (A8): the web client stores it and echoes it
+        # back as ui_context["pending"] on the next turn, so the answer is
+        # recognised from data rather than by re-reading this localized prose.
+        yield {"type": "pending", "pending": PENDING_REPORT_TYPE}
         return
 
     if system_prompt_override:

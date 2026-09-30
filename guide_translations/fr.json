@@ -459,6 +459,7 @@
     "steps": [
       "Cliquez sur 'Export Data to Report' pour sauvegarder ce snapshot dans un sujet de rapport nommé.",
       "Après l'export, basculez en mode Report ici pour accéder à l'interface complète de gestion des rapports.",
+      "Cliquez sur le sujet de rapport vers lequel vous avez exporté. Sa console et ses éléments enregistrés s'ouvrent une fois le sujet sélectionné.",
       "Gérez ici vos snapshots d'analyse sauvegardés. Configurez les options de mise en page et définissez un titre.",
       "Tous les snapshots sauvegardés sont listés ici. Supprimez ceux dont vous ne voulez pas avant de générer le rapport.",
       "Compilez tous les éléments en rapport HTML imprimable. Ouvrez dans votre navigateur puis Imprimer → Enregistrer en PDF."
@@ -536,6 +537,7 @@
     "id": "export_excel_nav",
     "steps": [
       "L'export Excel est disponible en mode Report. Basculez ici d'abord, puis ajoutez vos snapshots via 'Export Data to Report' depuis les autres modes.",
+      "Cliquez sur le sujet de rapport vers lequel vous avez exporté. Sa console et ses éléments enregistrés s'ouvrent une fois le sujet sélectionné.",
       "Cliquez ici pour télécharger tous les éléments de rapport en classeur Excel formaté avec graphiques intégrés."
     ],
     "queries": [

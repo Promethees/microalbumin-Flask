@@ -443,6 +443,7 @@
     "steps": [
       "Nhấp 'Export Data to Report' để lưu ảnh chụp phân tích này vào chủ đề báo cáo để tổng hợp sau.",
       "Sau khi xuất, chuyển sang chế độ Report ở đây để mở giao diện quản lý báo cáo đầy đủ.",
+      "Nhấp vào chủ đề báo cáo mà bạn đã xuất dữ liệu vào. Bảng điều khiển và các mục đã lưu sẽ mở khi chọn chủ đề.",
       "Quản lý ảnh chụp phân tích đã lưu ở đây. Cấu hình tùy chọn bố cục và đặt tiêu đề báo cáo.",
       "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa những mục không cần trước khi tạo báo cáo cuối.",
       "Tổng hợp tất cả mục thành báo cáo HTML có thể in. Mở trong trình duyệt, sau đó dùng In → Lưu dưới dạng PDF."
@@ -522,6 +523,7 @@
     "id": "export_excel_nav",
     "steps": [
       "Xuất Excel có trong chế độ Report. Chuyển sang đây trước, sau đó thêm ảnh chụp phân tích bằng 'Export Data to Report' từ các chế độ khác.",
+      "Nhấp vào chủ đề báo cáo mà bạn đã xuất dữ liệu vào. Bảng điều khiển và các mục đã lưu sẽ mở khi chọn chủ đề.",
       "Nhấp vào đây để tải xuống tất cả mục báo cáo dưới dạng sổ làm việc Excel có biểu đồ nhúng."
     ],
     "queries": [

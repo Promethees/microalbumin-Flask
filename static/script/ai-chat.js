@@ -221,6 +221,13 @@
         activeLang: null,
         currentAbort: null,
         lastAction: null,
+        // Machine-readable conversation state echoed back to /ai/chat on the NEXT
+        // turn (currently only 'report_type', set by the quick/full report
+        // clarification — work-list A8, same contract as main's ai-chat.js).
+        // Armed only by the `pending` SSE event; consumed at the head of every
+        // user turn by _consumePending(); re-armed by _rearmPending() only when
+        // the turn never reached the server, so a retry still resolves.
+        pending: '',
         LANG_LABELS: {
             en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU', ko: '한'
         },
@@ -524,7 +531,28 @@
         setTimeout(() => window.userGuide.startCustomSteps(steps), 400);
     }
 
-    function _getUiContext() {
+    // Text written into the conversation follows the chat's own language picker
+    // (AI.activeLang), from the ai.msg.* / ai.err.* slice of every catalog that
+    // index.html injects as window.AI_CHAT_STRINGS. Falls back to English.
+    function _trChat(key, fallback) {
+        const all = window.AI_CHAT_STRINGS || null;
+        const cat = all ? all[AI.activeLang || 'en'] : null;
+        return (cat && cat[key]) || fallback;
+    }
+
+    // Take the pending marker for this turn and disarm it (the only consumer).
+    function _consumePending() {
+        const pending = AI.pending || '';
+        AI.pending = '';
+        return pending;
+    }
+
+    // Put the marker back when the turn never reached the server.
+    function _rearmPending(pending) {
+        if (pending && !AI.pending) AI.pending = pending;
+    }
+
+    function _getUiContext(pending) {
         const appState = window.AppState || {};
         const mainContent = document.getElementById('main-content');
         const dataDisplay = document.getElementById('data-display-section');
@@ -534,6 +562,10 @@
             app_started: !!(mainContent && !mainContent.classList.contains('hidden')),
             data_loaded: !!(dataDisplay && !dataDisplay.classList.contains('hidden')),
             cal_mode: calMode ? (calMode.getAttribute('data-value') || '') : '',
+            // ALWAYS present (empty when unarmed): the server reads its absence
+            // as "client older than the marker" and only then falls back to
+            // matching the clarification prose.
+            pending: pending || '',
         };
     }
 
@@ -592,6 +624,8 @@
     function _cmdExecute(cmd) {
         const input = document.getElementById('okapi-ai-input');
         input.value = '';
+        // A slash command ends any outstanding clarification.
+        _consumePending();
 
         if (cmd.action === 'clear') {
             OkapiAI.clearHistory();
@@ -831,6 +865,10 @@
             const text = (input.value || '').trim();
             if (!text) return;
 
+            // A user turn: take the pending marker before any branch, so no early
+            // return can leak it into a later, unrelated turn.
+            const pending = _consumePending();
+
             if (AI.status && !AI.status.api_ready) {
                 const lang = AI.activeLang || 'en';
                 _addSystemMsg(_AI_UNAVAILABLE_MSG[lang] || _AI_UNAVAILABLE_MSG.en);
@@ -877,14 +915,15 @@
                         body: JSON.stringify({
                             messages: historyToSend,
                             language: lang,
-                            ui_context: _getUiContext(),
+                            ui_context: _getUiContext(pending),
                         }),
                         signal: controller.signal,
                     });
 
                     if (!resp.ok || !resp.body) {
                         const err = await resp.json().catch(() => ({}));
-                        _finalizeStreamingMsg(msgDiv, null, '⚠ ' + (err.message || 'Request failed'));
+                        _finalizeStreamingMsg(msgDiv, null, '⚠ ' + (err.message || _trChat('ai.msg.request_failed', 'Request failed')));
+                        _rearmPending(pending);
                         return;
                     }
 
@@ -909,6 +948,11 @@
                             if (event.type === 'chunk') {
                                 fullReply += event.content;
                                 _updateStreamingMsg(msgDiv, fullReply);
+                            } else if (event.type === 'pending') {
+                                AI.pending = event.pending || '';
+                            } else if (event.type === 'clear') {
+                                fullReply = '';
+                                _updateStreamingMsg(msgDiv, '');
                             } else if (event.type === 'guide') {
                                 const ga = event.guide_action;
                                 if (ga && ga.guide_workflow) {
@@ -947,7 +991,8 @@
                             msgDiv?.remove();
                         }
                     } else {
-                        _finalizeStreamingMsg(msgDiv, null, '⚠ Network error: ' + err.message);
+                        _finalizeStreamingMsg(msgDiv, null, '⚠ ' + _trChat('ai.msg.network_error', 'Network error') + ': ' + err.message);
+                        _rearmPending(pending);
                     }
                 } finally {
                     AI.currentAbort = null;
@@ -966,6 +1011,7 @@
 
         clearHistory() {
             AI.messages = [];
+            AI.pending = '';
             const container = document.getElementById('okapi-ai-messages');
             if (container) container.innerHTML = '';
         },
