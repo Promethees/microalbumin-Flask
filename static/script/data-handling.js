@@ -955,7 +955,7 @@ function processTurnDerive(jsonFile) {
         for (let s = 1; s <= n; s++) {
             const val = row['Value:' + s];
             let cell = '—';
-            if (val !== undefined && val !== null && val !== 'NONE' && val !== '') {
+            if (measNumber(val) !== null) {
                 try {
                     cell = computeFit(parseFloat(val), jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
                 } catch (e) {
@@ -2106,7 +2106,10 @@ function exportTurnCal(processedExpPath, saveFile) {
         return;
     }
 
-    const isVal = v => !(v === undefined || v === null || v === 'NONE' || v === '');
+    // A standard's Value must be a number: OVFL / INF / inf / NONE are skipped
+    // like an empty cell (measNumber, Rule.md §2.10) — exported, they made the
+    // file fail CSV_SCHEMA_POINT_CAL_TURN on the editor's Save.
+    const isVal = v => measNumber(v) !== null;
     const jobs = selected.map(src => {
         const entries = [];
         rows.forEach(row => {

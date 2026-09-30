@@ -266,3 +266,50 @@ def test_export_and_estimate_line_survive_one_null_source():
     assert r['data'] is None
     assert len(r['swal']) == 1 and 'source: 2' in r['swal'][0]
     assert '0.5000' in r['line'] and '[#S2] —' in r['line']
+
+
+# ---------------------------------------------------------------------------
+# data-handling.js:2071 (also 937) — isVal only rejected 'NONE', so OVFL / INF
+# / inf were exported as a Turn standard's Value, and the file then failed
+# CSV_SCHEMA_POINT_CAL_TURN on the editor's Save.
+# ---------------------------------------------------------------------------
+
+TURN_EXPORT = PRELUDE + r"""
+const posted = [];
+const rows = [
+    { Timestamp: 1, 'Value:1': '0.1' }, { Timestamp: 2, 'Value:1': 'OVFL' }, { Timestamp: 3, 'Value:1': '0.3' },
+    { Timestamp: 4, 'Value:1': 'INF' }, { Timestamp: 5, 'Value:1': 'inf' }, { Timestamp: 6, 'Value:1': 'NONE' },
+];
+const ctx = {
+    console, window: {}, AppState: { responseData: rows, globalAnalysis: { meas: 'Abs', meas_unit: 'AU' }, metaData: {} },
+    document: { querySelectorAll: () => rows.map(r => ({ getAttribute: () => String(r.Timestamp), value: '5' })) },
+    getSelectedExportSources: () => [1],
+    Swal: { fire: () => {} }, t: (k, f) => f,
+    $: { ajax: o => { posted.push(JSON.parse(o.data)); return { then: () => Promise.resolve({ src: 1, resp: { status: 'success' } }) }; } },
+    exportFolderLabel: p => p,
+};
+vm.createContext(ctx);
+LOAD(ctx, 'short-hands.js');
+vm.runInContext(FN('data-handling.js', 'exportTurnCal'), ctx);
+ctx.exportTurnCal('/data', 'cal');
+// processTurnDerive: a sentinel is a dash, not an "err" cell.
+const container = { innerHTML: '', classList: { toggle() {}, add() {}, remove() {} } };
+Object.assign(ctx, { $hidden: () => {}, computeFit: v => { if (!isFinite(v)) throw new Error('bad'); return v * 2; },
+                     document: { getElementById: () => container }, _escHtml: s => String(s) });
+ctx.AppState.numSources = 1;
+vm.runInContext(FN('data-handling.js', 'processTurnDerive'), ctx);
+ctx.processTurnDerive({ fit_type: 'linear', fit_coef: {} });
+OUT({ entries: posted.map(p => p.entries), derive: container.innerHTML });
+"""
+
+
+def test_turn_export_skips_sentinel_values():
+    from routes.file_routes import _SCHEMA_VALIDATORS
+    from file_path import CSV_SCHEMA_POINT_CAL_TURN
+    r = _node(TURN_EXPORT)
+    assert len(r['entries']) == 1
+    entries = r['entries'][0]
+    assert [e['estValue'] for e in entries] == ['0.1', '0.3']
+    pattern = re.compile(_SCHEMA_VALIDATORS[CSV_SCHEMA_POINT_CAL_TURN]['data'])
+    assert all(pattern.match(f"{e['con']},{e['estValue']}") for e in entries)
+    assert 'err' not in r['derive']
