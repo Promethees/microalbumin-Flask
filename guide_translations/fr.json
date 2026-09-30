@@ -761,5 +761,84 @@
       "qu'est-ce qu'un sujet de rapport",
       "supprimer sujet rapport"
     ]
+  },
+  {
+    "id": "google_drive_connect",
+    "steps": [
+      {
+        "target": "#drive-section",
+        "title": "Intégration Google Drive",
+        "description": "La section Google Drive se trouve ici, dans la barre latérale. Connectez votre compte Google pour synchroniser les fichiers de données entre Easy OKAPI et votre Drive."
+      },
+      {
+        "target": "#drive-connect-btn",
+        "title": "Connecter Google Drive",
+        "description": "Cliquez ici pour vous connecter avec votre compte Google et autoriser Easy OKAPI à accéder à votre Drive. Une fois connecté, choisissez un dossier Drive et faites Push ou Pull de vos fichiers."
+      }
+    ],
+    "queries": [
+      "connecter google drive",
+      "connecter le drive",
+      "lier google drive",
+      "google drive"
+    ]
+  },
+  {
+    "id": "google_drive_sync",
+    "steps": [
+      {
+        "target": "#drive-section",
+        "title": "Synchronisation Google Drive",
+        "description": "Après avoir connecté votre compte et choisi un dossier Drive, utilisez les commandes de synchronisation pour envoyer vos données vers le cloud ou récupérer des fichiers du Drive."
+      },
+      {
+        "target": "#drive-sync-section",
+        "title": "Commandes Push / Pull",
+        "description": "Les boutons Push et Pull apparaissent ici une fois un dossier Drive choisi. Push envoie vos fichiers de données ; Pull télécharge les fichiers du Drive dans votre session."
+      },
+      {
+        "target": "#auto-sync-checkbox",
+        "title": "Synchronisation automatique",
+        "description": "Activez la synchronisation automatique pour envoyer chaque nouveau fichier de données vers Google Drive à la fin de chaque mesure."
+      }
+    ],
+    "queries": [
+      "synchroniser drive",
+      "synchronisation automatique",
+      "envoyer vers drive",
+      "récupérer depuis drive"
+    ]
+  },
+  {
+    "id": "upload_file",
+    "steps": [
+      {
+        "target": "#upload-file-btn",
+        "title": "Téléverser un fichier CSV",
+        "description": "Cliquez ici pour téléverser un fichier de données CSV depuis votre appareil dans la session. Il est ajouté à la liste et peut être sélectionné et analysé immédiatement."
+      }
+    ],
+    "queries": [
+      "téléverser un fichier",
+      "téléverser csv",
+      "importer un fichier",
+      "importer csv"
+    ]
+  },
+  {
+    "id": "upload_calibration_json",
+    "steps": [
+      {
+        "target": "#upload-json-btn",
+        "title": "Téléverser un JSON de calibration",
+        "description": "Cliquez ici pour téléverser un fichier JSON de coefficients de calibration depuis votre appareil. Il apparaît dans la liste des JSON de calibration et peut servir de courbe étalon pour calculer une concentration."
+      }
+    ],
+    "queries": [
+      "téléverser json",
+      "importer une calibration",
+      "téléverser une courbe étalon",
+      "importer json"
+    ]
   }
 ]

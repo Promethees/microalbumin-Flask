@@ -1284,5 +1284,12 @@
   "a11y.points": "points",
   "a11y.caption_report_table": "Report subject folders, with select, delete and edit actions on each row",
   "display.load_failed_title": "Could not open this file",
-  "display.load_failed": "Could not load the selected file."
+  "display.load_failed": "Could not load the selected file.",
+  "ai.msg.request_failed": "Request failed",
+  "ai.msg.network_error": "Network error",
+  "ai.err.api_key_invalid": "AI API key is invalid. Please contact the administrator.",
+  "ai.err.rate_limit": "AI rate limit reached. Please wait a moment and try again.",
+  "ai.err.not_configured": "AI service is not configured on this server.",
+  "ai.err.max_iterations": "Could not complete the request. Please try again.",
+  "ai.err.upstream_error": "The AI service had a problem. Please try again."
 }

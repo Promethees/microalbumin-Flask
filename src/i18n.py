@@ -324,7 +324,21 @@ def init_app(app):
         """Language-picker href: the switch endpoint carrying the target URL."""
         return url_for("set_language", code=code, next=url_for_lang(code))
 
+    def ai_chat_strings():
+        """The ai.msg.* / ai.err.* slice of every catalog, keyed by language.
+
+        Text the AI chat writes INTO the conversation (error lines, request
+        failures) follows the chat's own language picker, not the page
+        language, so the widget needs all seven slices (work-list A15).
+        """
+        return {
+            code: {k: v for k, v in load_catalog(code).items()
+                   if k.startswith(("ai.msg.", "ai.err."))}
+            for code in SUPPORTED_UI_LANGUAGES
+        }
+
     app.jinja_env.globals.update(
+        ai_chat_strings=ai_chat_strings,
         picker_url=picker_url,
         ui_strings=lambda: load_catalog(current_lang()),
         t=translate,

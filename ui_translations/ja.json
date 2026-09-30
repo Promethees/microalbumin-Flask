@@ -1284,5 +1284,12 @@
   "a11y.points": "点",
   "a11y.caption_report_table": "レポートの対象フォルダー。各行に選択・削除・編集の操作があります",
   "display.load_failed_title": "このファイルを開けません",
-  "display.load_failed": "選択したファイルを読み込めませんでした。"
+  "display.load_failed": "選択したファイルを読み込めませんでした。",
+  "ai.msg.request_failed": "リクエストに失敗しました",
+  "ai.msg.network_error": "ネットワークエラー",
+  "ai.err.api_key_invalid": "AI の API キーが無効です。管理者にお問い合わせください。",
+  "ai.err.rate_limit": "AI のリクエスト上限に達しました。しばらく待ってから再試行してください。",
+  "ai.err.not_configured": "このサーバーでは AI サービスが設定されていません。",
+  "ai.err.max_iterations": "リクエストを完了できませんでした。もう一度お試しください。",
+  "ai.err.upstream_error": "AI サービスで問題が発生しました。もう一度お試しください。"
 }

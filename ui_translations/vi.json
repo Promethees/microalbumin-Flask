@@ -1284,5 +1284,12 @@
   "a11y.points": "điểm",
   "a11y.caption_report_table": "Các thư mục chủ đề báo cáo, mỗi dòng có thao tác chọn, xoá và sửa",
   "display.load_failed_title": "Không thể mở tệp này",
-  "display.load_failed": "Không thể tải tệp đã chọn."
+  "display.load_failed": "Không thể tải tệp đã chọn.",
+  "ai.msg.request_failed": "Yêu cầu thất bại",
+  "ai.msg.network_error": "Lỗi mạng",
+  "ai.err.api_key_invalid": "Khóa API của AI không hợp lệ. Vui lòng liên hệ quản trị viên.",
+  "ai.err.rate_limit": "Đã đạt giới hạn tần suất AI. Vui lòng chờ một chút rồi thử lại.",
+  "ai.err.not_configured": "Dịch vụ AI chưa được cấu hình trên máy chủ này.",
+  "ai.err.max_iterations": "Không thể hoàn tất yêu cầu. Vui lòng thử lại.",
+  "ai.err.upstream_error": "Dịch vụ AI gặp sự cố. Vui lòng thử lại."
 }

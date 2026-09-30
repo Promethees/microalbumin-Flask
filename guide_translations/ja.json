@@ -773,5 +773,84 @@
       "テーマを削除",
       "レポート"
     ]
+  },
+  {
+    "id": "google_drive_connect",
+    "steps": [
+      {
+        "target": "#drive-section",
+        "title": "Google Drive 連携",
+        "description": "Google Drive セクションはサイドバーのここにあります。Google アカウントを接続すると、Easy OKAPI と Drive の間でデータファイルを同期できます。"
+      },
+      {
+        "target": "#drive-connect-btn",
+        "title": "Google Drive に接続",
+        "description": "ここをクリックして Google アカウントでサインインし、Easy OKAPI に Drive へのアクセスを許可します。接続後は Drive フォルダを選んでデータファイルを Push / Pull できます。"
+      }
+    ],
+    "queries": [
+      "google drive 接続",
+      "ドライブ連携",
+      "グーグルドライブ",
+      "drive に接続"
+    ]
+  },
+  {
+    "id": "google_drive_sync",
+    "steps": [
+      {
+        "target": "#drive-section",
+        "title": "Google Drive 同期",
+        "description": "アカウントを接続して Drive フォルダを選んだら、同期コントロールでローカルのデータをクラウドへ送るか、Drive のファイルをセッションに取り込みます。"
+      },
+      {
+        "target": "#drive-sync-section",
+        "title": "Push / Pull コントロール",
+        "description": "Drive フォルダを選ぶと、ここに Push と Pull ボタンが表示されます。Push はデータファイルをアップロードし、Pull は Drive のファイルをセッションにダウンロードします。"
+      },
+      {
+        "target": "#auto-sync-checkbox",
+        "title": "自動同期",
+        "description": "自動同期を有効にすると、測定が終わるたびに新しいデータファイルが Google Drive へ自動的に送られます。"
+      }
+    ],
+    "queries": [
+      "drive 同期",
+      "自動同期",
+      "ドライブに送る",
+      "ドライブから取得"
+    ]
+  },
+  {
+    "id": "upload_file",
+    "steps": [
+      {
+        "target": "#upload-file-btn",
+        "title": "CSV ファイルをアップロード",
+        "description": "ここをクリックして、デバイスの CSV データファイルをアプリのセッションにアップロードします。ファイル一覧に追加され、すぐに選択して分析できます。"
+      }
+    ],
+    "queries": [
+      "ファイルをアップロード",
+      "csv アップロード",
+      "ファイルを取り込む",
+      "データをアップロード"
+    ]
+  },
+  {
+    "id": "upload_calibration_json",
+    "steps": [
+      {
+        "target": "#upload-json-btn",
+        "title": "校正 JSON をアップロード",
+        "description": "ここをクリックして、デバイスの校正係数 JSON ファイルをアップロードします。校正 JSON の一覧に表示され、濃度計算用の検量線として選択できます。"
+      }
+    ],
+    "queries": [
+      "json アップロード",
+      "校正ファイルをアップロード",
+      "検量線をアップロード",
+      "校正を取り込む"
+    ]
   }
 ]

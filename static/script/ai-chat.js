@@ -347,13 +347,22 @@
                 const pl = AI.settings.preferred_languages
                     || (AI.settings.preferred_language ? [AI.settings.preferred_language] : null)
                     || ['en'];
-                AI.activeLang = pl[0] || 'en';
+                // First visit (no chat language picked yet): follow the page's
+                // UI language, so a /vi/ page opens a Vietnamese chat.
+                const uiLang = window.UI_LANG;
+                const supported = data.supported_languages || AI.LANG_NAMES;
+                if (!data.language_chosen && uiLang && Object.prototype.hasOwnProperty.call(supported, uiLang)) {
+                    AI.activeLang = uiLang;
+                } else {
+                    AI.activeLang = pl[0] || 'en';
+                }
                 _updateLangBtn();
                 _showWelcomeIfNeeded();
+                // Guides load only once the language is known; loading them
+                // first fetched the English set for every first-time visitor.
+                _loadGuides();
             })
-            .catch(() => { });
-
-        _loadGuides();
+            .catch(() => { _loadGuides(); });
     }
 
     function _loadGuides() {
@@ -922,6 +931,9 @@
 
                     if (!resp.ok || !resp.body) {
                         const err = await resp.json().catch(() => ({}));
+                        if (resp.status === 429 || err.code === 'rate_limit') {
+                            err.message = _trChat('ai.err.rate_limit', 'AI rate limit reached. Please wait a moment and try again.');
+                        }
                         _finalizeStreamingMsg(msgDiv, null, '⚠ ' + (err.message || _trChat('ai.msg.request_failed', 'Request failed')));
                         _rearmPending(pending);
                         return;
@@ -962,12 +974,16 @@
                                 }
                             } else if (event.type === 'error') {
                                 const errMap = {
-                                    api_key_invalid: '⚠ AI API key is invalid. Please contact the administrator.',
-                                    rate_limit: '⚠ AI rate limit reached. Please wait a moment and try again.',
-                                    groq_not_installed: '⚠ AI service is not configured on this server.',
-                                    max_iterations: '⚠ Could not complete the request. Please try again.',
-                                };
-                                const errMsg = errMap[event.error] || ('⚠ ' + event.error);
+                                    api_key_invalid: ['ai.err.api_key_invalid', 'AI API key is invalid. Please contact the administrator.'],
+                                    rate_limit: ['ai.err.rate_limit', 'AI rate limit reached. Please wait a moment and try again.'],
+                                    groq_not_installed: ['ai.err.not_configured', 'AI service is not configured on this server.'],
+                                    max_iterations: ['ai.err.max_iterations', 'Could not complete the request. Please try again.'],
+                                    tool_call_failed: ['ai.err.max_iterations', 'Could not complete the request. Please try again.'],
+                                    upstream_error: ['ai.err.upstream_error', 'The AI service had a problem. Please try again.'],
+                                }[event.error];
+                                const errMsg = '⚠ ' + (errMap
+                                    ? _trChat(errMap[0], errMap[1])
+                                    : _trChat('ai.err.upstream_error', 'The AI service had a problem. Please try again.'));
                                 _finalizeStreamingMsg(msgDiv, null, errMsg);
                                 return;
                             }

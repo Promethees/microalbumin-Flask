@@ -106,6 +106,9 @@ def ai_status():
         'api_ready': api_ready,
         'settings': settings,
         'supported_languages': ai_settings.SUPPORTED_LANGUAGES,
+        # False until the visitor picks a chat language; the widget then seeds
+        # it from the page's UI language instead of defaulting to English.
+        'language_chosen': ai_settings.language_chosen(),
     })
 
 
@@ -124,6 +127,8 @@ def save_settings():
     current = ai_settings.load()
     allowed = {'enabled', 'preferred_languages', 'preferred_language', 'first_run_shown'}
     updates = {k: v for k, v in data.items() if k in allowed}
+    if 'preferred_languages' in updates or 'preferred_language' in updates:
+        updates['language_chosen'] = True
     merged = {**current, **updates}
     if ai_settings.save(merged):
         return jsonify({'status': 'success', 'settings': ai_settings.load()})

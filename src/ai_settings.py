@@ -17,6 +17,15 @@ SUPPORTED_LANGUAGES = {
 }
 
 
+def language_chosen() -> bool:
+    """True once this session explicitly saved a chat language."""
+    try:
+        stored = session.get('ai_settings', {}) or {}
+    except Exception:
+        return False
+    return bool(stored.get('language_chosen'))
+
+
 def load() -> dict:
     try:
         stored = dict(session.get('ai_settings', {}))
@@ -43,8 +52,11 @@ def save(settings: dict) -> bool:
         elif 'preferred_language' in settings:
             del settings['preferred_language']
 
-        allowed = {'enabled', 'preferred_languages', 'first_run_shown'}
+        allowed = {'enabled', 'preferred_languages', 'first_run_shown', 'language_chosen'}
         clean = {k: v for k, v in settings.items() if k in allowed}
+        langs = clean.get('preferred_languages')
+        if isinstance(langs, list):
+            clean['preferred_languages'] = [l for l in langs if l in SUPPORTED_LANGUAGES]
         merged = {**DEFAULTS, **clean}
         langs = merged.get('preferred_languages')
         if not isinstance(langs, list) or not langs:

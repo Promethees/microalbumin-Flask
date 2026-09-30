@@ -1284,5 +1284,12 @@
   "a11y.points": "个数据点",
   "a11y.caption_report_table": "报告主题文件夹，每行含选择、删除和编辑操作",
   "display.load_failed_title": "无法打开此文件",
-  "display.load_failed": "无法加载所选文件。"
+  "display.load_failed": "无法加载所选文件。",
+  "ai.msg.request_failed": "请求失败",
+  "ai.msg.network_error": "网络错误",
+  "ai.err.api_key_invalid": "AI API 密钥无效。请联系管理员。",
+  "ai.err.rate_limit": "已达到 AI 请求频率上限。请稍候再试。",
+  "ai.err.not_configured": "此服务器未配置 AI 服务。",
+  "ai.err.max_iterations": "无法完成请求。请重试。",
+  "ai.err.upstream_error": "AI 服务出现问题。请重试。"
 }

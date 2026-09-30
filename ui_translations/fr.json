@@ -1284,5 +1284,12 @@
   "a11y.points": "points",
   "a11y.caption_report_table": "Dossiers de sujets de rapport, avec les actions sélectionner, supprimer et modifier sur chaque ligne",
   "display.load_failed_title": "Impossible d'ouvrir ce fichier",
-  "display.load_failed": "Impossible de charger le fichier sélectionné."
+  "display.load_failed": "Impossible de charger le fichier sélectionné.",
+  "ai.msg.request_failed": "Échec de la requête",
+  "ai.msg.network_error": "Erreur réseau",
+  "ai.err.api_key_invalid": "La clé API de l'IA n'est pas valide. Veuillez contacter l'administrateur.",
+  "ai.err.rate_limit": "Limite de requêtes IA atteinte. Patientez un instant puis réessayez.",
+  "ai.err.not_configured": "Le service d'IA n'est pas configuré sur ce serveur.",
+  "ai.err.max_iterations": "Impossible de terminer la requête. Veuillez réessayer.",
+  "ai.err.upstream_error": "Le service d'IA a rencontré un problème. Veuillez réessayer."
 }

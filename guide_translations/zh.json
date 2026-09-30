@@ -785,5 +785,84 @@
       "删除报告主题",
       "报告"
     ]
+  },
+  {
+    "id": "google_drive_connect",
+    "steps": [
+      {
+        "target": "#drive-section",
+        "title": "Google Drive 集成",
+        "description": "Google Drive 区域位于侧边栏此处。连接您的 Google 帐户后，即可在 Easy OKAPI 与 Drive 之间同步数据文件。"
+      },
+      {
+        "target": "#drive-connect-btn",
+        "title": "连接 Google Drive",
+        "description": "点击此处使用 Google 帐户登录，并授权 Easy OKAPI 访问您的 Drive。连接后即可选择 Drive 文件夹并 Push 或 Pull 数据文件。"
+      }
+    ],
+    "queries": [
+      "连接 google drive",
+      "连接云盘",
+      "谷歌云端硬盘",
+      "关联 drive"
+    ]
+  },
+  {
+    "id": "google_drive_sync",
+    "steps": [
+      {
+        "target": "#drive-section",
+        "title": "Google Drive 同步",
+        "description": "连接帐户并选择 Drive 文件夹后，使用同步控件将本地数据推送到云端，或将 Drive 中的文件拉取到当前会话。"
+      },
+      {
+        "target": "#drive-sync-section",
+        "title": "Push / Pull 控件",
+        "description": "选择 Drive 文件夹后，Push 和 Pull 按钮会出现在此处。Push 上传本地数据文件；Pull 将 Drive 中的文件下载到当前会话。"
+      },
+      {
+        "target": "#auto-sync-checkbox",
+        "title": "自动同步",
+        "description": "启用自动同步后，每次测量完成时新的数据文件都会自动推送到 Google Drive。"
+      }
+    ],
+    "queries": [
+      "同步到 drive",
+      "自动同步",
+      "从 drive 拉取",
+      "推送到云端"
+    ]
+  },
+  {
+    "id": "upload_file",
+    "steps": [
+      {
+        "target": "#upload-file-btn",
+        "title": "上传 CSV 文件",
+        "description": "点击此处从您的设备上传 CSV 数据文件到应用会话。文件会加入文件列表，可立即选择并分析。"
+      }
+    ],
+    "queries": [
+      "上传文件",
+      "上传 csv",
+      "导入文件",
+      "上传数据"
+    ]
+  },
+  {
+    "id": "upload_calibration_json",
+    "steps": [
+      {
+        "target": "#upload-json-btn",
+        "title": "上传校准 JSON",
+        "description": "点击此处从您的设备上传校准系数 JSON 文件。它会出现在校准 JSON 列表中，可选作计算浓度的标准曲线。"
+      }
+    ],
+    "queries": [
+      "上传 json",
+      "上传校准文件",
+      "导入校准",
+      "上传标准曲线"
+    ]
   }
 ]

@@ -32,6 +32,7 @@
     <script>
         window.UI_LANG = {{ ui_lang()|tojson }};
         window.UI_STRINGS = {{ ui_strings()|tojson }};
+        window.AI_CHAT_STRINGS = {{ ai_chat_strings()|tojson }};
     </script>
     {% if config.PRODUCTION_MODE %}
     <script src="{{ url_for('static', filename='dist/i18n.min.js') }}"></script>

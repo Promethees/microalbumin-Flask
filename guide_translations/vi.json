@@ -751,5 +751,84 @@
       "report subject là gì",
       "xóa chủ đề báo cáo"
     ]
+  },
+  {
+    "id": "google_drive_connect",
+    "steps": [
+      {
+        "target": "#drive-section",
+        "title": "Tích hợp Google Drive",
+        "description": "Mục Google Drive nằm ở đây trên thanh bên. Bạn có thể kết nối tài khoản Google để đồng bộ tệp dữ liệu giữa Easy OKAPI và Drive."
+      },
+      {
+        "target": "#drive-connect-btn",
+        "title": "Kết nối Google Drive",
+        "description": "Nhấp vào đây để đăng nhập bằng tài khoản Google và cấp quyền cho Easy OKAPI truy cập Drive. Sau khi kết nối, bạn có thể chọn một thư mục Drive và Push hoặc Pull tệp dữ liệu."
+      }
+    ],
+    "queries": [
+      "kết nối google drive",
+      "kết nối drive",
+      "liên kết google drive",
+      "google drive"
+    ]
+  },
+  {
+    "id": "google_drive_sync",
+    "steps": [
+      {
+        "target": "#drive-section",
+        "title": "Đồng bộ Google Drive",
+        "description": "Sau khi kết nối tài khoản và chọn thư mục Drive, dùng các nút đồng bộ để đẩy dữ liệu lên đám mây hoặc lấy tệp từ Drive vào phiên làm việc."
+      },
+      {
+        "target": "#drive-sync-section",
+        "title": "Nút Push / Pull",
+        "description": "Nút Push và Pull xuất hiện ở đây khi đã chọn thư mục Drive. Push tải tệp dữ liệu lên; Pull tải tệp từ Drive về phiên làm việc."
+      },
+      {
+        "target": "#auto-sync-checkbox",
+        "title": "Tự động đồng bộ",
+        "description": "Bật tự động đồng bộ để mỗi lần đo xong, tệp dữ liệu mới được tự động đẩy lên Google Drive."
+      }
+    ],
+    "queries": [
+      "đồng bộ drive",
+      "tự động đồng bộ",
+      "đẩy lên drive",
+      "tải từ drive"
+    ]
+  },
+  {
+    "id": "upload_file",
+    "steps": [
+      {
+        "target": "#upload-file-btn",
+        "title": "Tải lên tệp CSV",
+        "description": "Nhấp vào đây để tải tệp dữ liệu CSV từ thiết bị của bạn vào phiên làm việc. Tệp sẽ được thêm vào danh sách và có thể chọn để phân tích ngay."
+      }
+    ],
+    "queries": [
+      "tải lên tệp",
+      "tải lên csv",
+      "nhập tệp csv",
+      "tải dữ liệu lên"
+    ]
+  },
+  {
+    "id": "upload_calibration_json",
+    "steps": [
+      {
+        "target": "#upload-json-btn",
+        "title": "Tải lên JSON hiệu chuẩn",
+        "description": "Nhấp vào đây để tải tệp JSON hệ số hiệu chuẩn từ thiết bị. Tệp sẽ xuất hiện trong danh sách JSON hiệu chuẩn và có thể chọn làm đường chuẩn để tính nồng độ."
+      }
+    ],
+    "queries": [
+      "tải lên json",
+      "tải lên hiệu chuẩn",
+      "nhập tệp hiệu chuẩn",
+      "tải lên đường chuẩn"
+    ]
   }
 ]
