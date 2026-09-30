@@ -11,6 +11,7 @@ Covers the matcher (`_match_guide_example`) and the firing gate
     marker;
   * greedy single-shared-word keywords no longer hijacking unrelated queries.
 """
+import json
 import os
 import sys
 
@@ -394,15 +395,35 @@ def test_save_linearity_range_no_switch_mode_in_kinetics():
     assert steps[0]["target"] != "#meas-mode-section"
 
 
-def test_save_linearity_range_button_uses_data_hint_selector():
-    # The real button carries data-hint (native title= is stripped by tooltip.js),
-    # so a button[title=...] target would spotlight nothing.
+def test_save_linearity_range_button_uses_a_language_neutral_selector():
+    # B7: the old target was button[data-hint="<English hint>"], and data-hint
+    # is written through t() — so in vi/ja the guide spotlighted nothing. Both
+    # render paths now carry the .save-linearity-btn class.
     _, steps = ai_assistant.resolve_guide(
         "how to save linearity range",
         {"mode": "kinetics", "data_loaded": True, "app_started": True}, "en")
     targets = [s["target"] for s in steps]
-    assert any('data-hint="Save the linearity range' in t for t in targets)
-    assert not any("[title=" in t for t in targets)
+    assert ".save-linearity-btn" in targets
+    assert not any("data-hint=" in t or "[title=" in t for t in targets)
+    js = open(os.path.join(os.path.dirname(__file__), "..", "static", "script", "data-display.js"),
+              encoding="utf-8").read()
+    assert js.count('class="utility-btn save-linearity-btn"') == 2
+
+
+def test_no_guide_target_depends_on_translated_text():
+    """No static target may select on text that goes through t(): the English
+    value of any catalog string appearing inside a target means the selector
+    only works in English."""
+    with open(os.path.join(os.path.dirname(__file__), "..", "ui_translations", "en.json"),
+              encoding="utf-8") as f:
+        english = {v for v in json.load(f).values() if isinstance(v, str) and len(v) >= 8}
+    offenders = []
+    for ex in ai_assistant._load_guide_examples("en"):
+        for st in ex["steps"]:
+            target = st["target"]
+            if any(v in target for v in english):
+                offenders.append((ex["id"], target))
+    assert not offenders, offenders
 
 
 @pytest.mark.parametrize("lang", ["vi", "zh", "fr", "ja", "ru"])
@@ -733,3 +754,22 @@ def test_phrase_hit_boundaries(kw, query, hit):
 def test_strong_launch_needs_a_multi_word_hit():
     assert ai_assistant._should_launch_guide("switch to point mode", 9.0, strong_hit=False) is False
     assert ai_assistant._should_launch_guide("switch to point mode", 1.6, strong_hit=True) is True
+
+
+# ── B7: targets that work in every language ──────────────────────────────────
+
+@pytest.mark.parametrize("lang, query", [("vi", "how to save linearity range"),
+                                         ("ja", "how to save linearity range")])
+def test_linearity_guide_targets_the_real_button_in_any_language(lang, query):
+    _, steps = ai_assistant.resolve_guide(query, KIN_DATA, lang)
+    assert steps and steps[-1]["target"] == ".save-linearity-btn"
+
+
+def test_clear_report_subject_highlights_the_real_button():
+    ctx = {"mode": "report", "data_loaded": False, "app_started": True}
+    gid, steps = ai_assistant.resolve_guide("clear report subject", ctx, "en")
+    assert gid == "report_subject_management"
+    step = next(s for s in steps if "clearReport" in s["target"])
+    assert step["target"] == 'button[onclick="clearReportItems()"]'
+    assert "deleted from disk" not in step["description"]
+    assert "stay on disk" in step["description"]

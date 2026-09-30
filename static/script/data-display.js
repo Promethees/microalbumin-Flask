@@ -440,7 +440,10 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
         // Linearity range is a kinetics concept — not shown in point mode.
         if (AppState.currentMeasurementMode !== 'point' && analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
             analysisEl.insertAdjacentHTML('beforeend',
-                `<button class="utility-btn" style="margin-top:4px;"
+                // .save-linearity-btn is the guide's target: a data-hint selector
+                // matched the ENGLISH hint only, so the guide found nothing in
+                // any other UI language (B7).
+                `<button class="utility-btn save-linearity-btn" style="margin-top:4px;"
                     data-hint="${escapeAttrText(t('hint.save_linearity_range', 'Save the linearity range rows for this source to a new CSV file'))}"
                     onclick="saveLinearityRangeCsvForSource(${i}, ${analysis.linearXMin}, ${analysis.linearXMax})">${t('display.save_linearity_btn', '📐 Save Linearity Range')}</button>`
             );
@@ -492,7 +495,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
         const rawA = analyses[i];
         // Linearity range is a kinetics concept — not shown in point mode.
         if (AppState.currentMeasurementMode !== 'point' && rawA && rawA.linearXMin != null && rawA.linearXMax != null) {
-            html += `<button class="utility-btn" style="margin-top:4px;"
+            html += `<button class="utility-btn save-linearity-btn" style="margin-top:4px;"
                 data-hint="${escapeAttrText(t('hint.save_linearity_range', 'Save the linearity range rows for this source to a new CSV file'))}"
                 onclick="saveLinearityRangeCsvForSource(${i}, ${rawA.linearXMin}, ${rawA.linearXMax})">${t('display.save_linearity_btn', '📐 Save Linearity Range')}</button>`;
         }

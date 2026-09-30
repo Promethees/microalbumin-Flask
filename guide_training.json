@@ -2134,9 +2134,9 @@
           "skipInteraction": true
         },
         {
-          "target": "button[onclick=\"clearReportSubject()\"]",
-          "title": "Clear Selected Subject",
-          "description": "Click here to remove all items from the currently selected subject folder. The subject folder itself is deleted from disk. This cannot be undone.",
+          "target": "button[onclick=\"clearReportItems()\"]",
+          "title": "Deselect the Subject",
+          "description": "Click here to deselect the current subject. Its saved items stay on disk — nothing is deleted.",
           "position": "top",
           "skipInteraction": true
         }
@@ -2310,7 +2310,7 @@
           "skipInteraction": false
         },
         {
-          "target": "button[data-hint=\"Save the linearity range rows for this source to a new CSV file\"]",
+          "target": ".save-linearity-btn",
           "title": "Save Linearity Range",
           "description": "Click '📐 Save Linearity Range' to export just the rows that fall within the detected linear phase of this source to a new CSV file. The filename is pre-filled based on the current file and source index. This subset is ideal input for building a calibration standard curve.",
           "position": "right",

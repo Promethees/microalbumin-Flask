@@ -1219,8 +1219,9 @@
         "description": "导出到当前主题的所有快照都列在此处。在生成最终报告之前，您可以查看并删除单个项目。"
       },
       {
-        "target": "button[onclick=\"clearReportSubject()\"]",
-        "description": "点击此处删除当前选定主题文件夹中的所有项目。主题文件夹本身将从磁盘中删除，此操作无法撤销。"
+        "target": "button[onclick=\"clearReportItems()\"]",
+        "description": "点击此处取消选择当前主题。其已保存的项目仍保留在磁盘上——不会删除任何内容。",
+        "title": "取消选择主题"
       }
     ],
     "queries": [
@@ -1237,7 +1238,7 @@
         "description": "点击 +/− 开关展开某个来源的 kinetics 分析面板。当数据中自动检测到线性阶段时，Save Linearity Range 按钮会出现在此处。"
       },
       {
-        "target": "button[data-hint=\"Save the linearity range rows for this source to a new CSV file\"]",
+        "target": ".save-linearity-btn",
         "description": "点击「📐 Save Linearity Range」，仅将该来源检测到的线性阶段内的数据行导出到新的 CSV 文件。文件名会根据当前文件和来源索引自动预填。此子集是构建校准标准曲线的理想输入。"
       }
     ],

@@ -1219,8 +1219,9 @@
         "description": "現在の主題にエクスポートされたすべてのスナップショットがここに表示されます。最終レポートを生成する前に個別のアイテムを確認・削除できます。"
       },
       {
-        "target": "button[onclick=\"clearReportSubject()\"]",
-        "description": "ここをクリックして、現在選択されている主題フォルダからすべてのアイテムを削除します。主題フォルダ自体もディスクから削除されます。元に戻せません。"
+        "target": "button[onclick=\"clearReportItems()\"]",
+        "description": "ここをクリックすると現在のサブジェクトの選択が解除されます。保存済みの項目はディスクに残り、何も削除されません。",
+        "title": "サブジェクトの選択を解除"
       }
     ],
     "queries": [
@@ -1237,7 +1238,7 @@
         "description": "+/− トグルをクリックして、あるソースの kinetics 分析パネルを展開します。データ内で線形フェーズが自動的に検出されると、Save Linearity Range ボタンがここに表示されます。"
       },
       {
-        "target": "button[data-hint=\"Save the linearity range rows for this source to a new CSV file\"]",
+        "target": ".save-linearity-btn",
         "description": "「📐 Save Linearity Range」をクリックすると、このソースで検出された線形フェーズ内の行だけを新しい CSV ファイルにエクスポートします。ファイル名は現在のファイルとソース番号に基づいて事前入力されます。このサブセットは校正標準曲線を作成するための理想的な入力です。"
       }
     ],

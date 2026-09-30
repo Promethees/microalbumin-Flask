@@ -1240,8 +1240,9 @@
         "description": "Tất cả ảnh chụp đã xuất vào chủ đề hiện tại được liệt kê ở đây. Bạn có thể xem lại và xóa từng mục trước khi tạo báo cáo."
       },
       {
-        "target": "button[onclick=\"clearReportSubject()\"]",
-        "description": "Nhấp vào đây để xóa tất cả mục khỏi thư mục chủ đề đang chọn. Thư mục chủ đề bị xóa khỏi đĩa. Không thể hoàn tác."
+        "target": "button[onclick=\"clearReportItems()\"]",
+        "description": "Nhấp vào đây để bỏ chọn chủ đề hiện tại. Các mục đã lưu vẫn còn trên đĩa — không có gì bị xóa.",
+        "title": "Bỏ chọn chủ đề"
       }
     ],
     "queries": [
@@ -1258,7 +1259,7 @@
         "description": "Nhấp nút bật/tắt +/− để mở bảng phân tích kinetics cho một nguồn. Nút Save Linearity Range xuất hiện ở đây khi pha tuyến tính được tự động phát hiện trong dữ liệu của bạn."
       },
       {
-        "target": "button[data-hint=\"Save the linearity range rows for this source to a new CSV file\"]",
+        "target": ".save-linearity-btn",
         "description": "Nhấp '📐 Save Linearity Range' để xuất chỉ những hàng nằm trong pha tuyến tính được phát hiện của nguồn này ra một tệp CSV mới. Tên tệp được điền sẵn dựa trên tệp hiện tại và chỉ số nguồn. Tập con này là đầu vào lý tưởng để xây dựng đường chuẩn hiệu chuẩn."
       }
     ],

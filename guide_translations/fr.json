@@ -1244,8 +1244,9 @@
         "description": "Tous les snapshots exportés vers le sujet actuel sont listés ici. Vous pouvez les examiner et en supprimer avant de générer le rapport."
       },
       {
-        "target": "button[onclick=\"clearReportSubject()\"]",
-        "description": "Cliquez pour supprimer tous les éléments du dossier sujet sélectionné. Le dossier est supprimé du disque — action irréversible."
+        "target": "button[onclick=\"clearReportItems()\"]",
+        "description": "Cliquez ici pour désélectionner le sujet actuel. Ses éléments enregistrés restent sur le disque — rien n'est supprimé.",
+        "title": "Désélectionner le sujet"
       }
     ],
     "queries": [
@@ -1262,7 +1263,7 @@
         "description": "Cliquez sur le bouton +/− pour développer le panneau d'analyse kinetics d'une source. Le bouton Save Linearity Range apparaît ici lorsqu'une phase linéaire est automatiquement détectée dans vos données."
       },
       {
-        "target": "button[data-hint=\"Save the linearity range rows for this source to a new CSV file\"]",
+        "target": ".save-linearity-btn",
         "description": "Cliquez sur '📐 Save Linearity Range' pour exporter uniquement les lignes situées dans la phase linéaire détectée de cette source vers un nouveau fichier CSV. Le nom de fichier est pré-rempli à partir du fichier actuel et de l'indice de la source. Ce sous-ensemble constitue une entrée idéale pour construire une courbe d'étalonnage."
       }
     ],
