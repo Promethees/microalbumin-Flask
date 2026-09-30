@@ -1144,8 +1144,68 @@ def _is_out_of_scope(query: str) -> bool:
 
 # ── Groq chat ─────────────────────────────────────────────────────────────────
 
+# Completion budget. 500 was too tight: a tool call whose JSON arguments run
+# long (trigger_custom_steps with several steps) could be cut mid-object, which
+# Groq rejects as tool_use_failed; a long coefficient explanation stopped
+# mid-sentence. 2048 leaves headroom (GPT-OSS reasoning tokens count against it
+# too), and _TRUNCATION_NOTICE flags the rare remaining overrun. Same value as
+# main's ai_assistant._MAX_COMPLETION_TOKENS.
+_MAX_COMPLETION_TOKENS = 2048
+
+# Appended to a plain-text answer that Groq stopped for length (finish_reason ==
+# "length"), so an over-budget reply reads as continuable instead of an
+# unexplained mid-sentence cut-off. Kept identical to main's table.
+_TRUNCATION_NOTICE = {
+    "en": "\n\n…(response cut off — ask me to continue for the rest.)",
+    "vi": "\n\n…(phản hồi bị cắt — hãy yêu cầu tôi tiếp tục để xem phần còn lại.)",
+    "zh": "\n\n…（回复被截断 — 让我继续以查看其余内容。）",
+    "fr": "\n\n…(réponse tronquée — demandez-moi de continuer pour la suite.)",
+    "ja": "\n\n…(応答が途中で切れました — 続きを知りたい場合は「続けて」と入力してください。)",
+    "ru": "\n\n…(ответ обрезан — попросите меня продолжить, чтобы увидеть остальное.)",
+    "ko": "\n\n…(응답이 잘렸습니다 — 나머지를 보려면 계속해 달라고 요청하세요.)",
+}
+
+# Substrings that mark a Groq 400 where the model emitted an invalid tool call
+# (bad JSON, arguments failing the schema/enum, or a tool that is not in
+# request.tools). Recoverable by re-asking the same turn with tools disabled.
+_TOOL_FAILURE_MARKERS = (
+    "tool_use_failed",
+    "tool call validation failed",
+    "did not match schema",
+    "failed to call a function",
+)
+
+# The stable error codes the chat clients map to a localized message. Anything
+# else collapses to "upstream_error": a raw upstream exception string can carry
+# request ids, internal hostnames or prompt fragments, so it is logged here and
+# never sent to a browser or a desktop build. Old desktop builds show an unknown
+# code as "⚠ <code>", which is acceptable for upstream_error.
+STABLE_ERROR_CODES = frozenset({
+    "api_key_invalid", "rate_limit", "tool_call_failed", "max_iterations",
+    "groq_not_installed", "service_unavailable", "upstream_error",
+})
+
+
+def _map_groq_error(err: str) -> str:
+    """Collapse a raw Groq/SDK exception string to a stable error code."""
+    low = err.lower()
+    if "401" in err or "api_key" in low or "authentication" in low:
+        return "api_key_invalid"
+    if "429" in err or "rate_limit" in low:
+        return "rate_limit"
+    if any(m in low for m in _TOOL_FAILURE_MARKERS):
+        return "tool_call_failed"
+    logging.warning("Groq call failed (reported to client as upstream_error): %s", err)
+    return "upstream_error"
+
+
 def _groq_chat(api_key: str, model: str, messages: list, tools: list) -> dict:
-    """Call Groq API and return the response message dict."""
+    """Call Groq API and return the response message dict.
+
+    The result carries ``finish_reason`` as an out-of-band key; chat_stream pops
+    it before the message is ever appended to the history sent back upstream
+    (Groq 400s on an unknown message property).
+    """
     try:
         from groq import Groq
         client = Groq(api_key=api_key)
@@ -1153,20 +1213,21 @@ def _groq_chat(api_key: str, model: str, messages: list, tools: list) -> dict:
             "model": model,
             "messages": messages,
             "temperature": 0.1,
-            "max_tokens": 500,
+            "max_tokens": _MAX_COMPLETION_TOKENS,
         }
         # GPT-OSS are reasoning models: reasoning tokens count against the
-        # completion budget, so keep effort low and give the answer headroom
-        # (otherwise max_tokens is spent reasoning and content comes back empty).
+        # completion budget, so keep effort low (otherwise max_tokens is spent
+        # reasoning and content comes back empty).
         if model.startswith("openai/gpt-oss"):
             kwargs["reasoning_effort"] = "low"
-            kwargs["max_tokens"] = 1500
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
         response = client.chat.completions.create(**kwargs)
-        msg = response.choices[0].message
-        result = {"role": "assistant", "content": msg.content or ""}
+        choice = response.choices[0]
+        msg = choice.message
+        result = {"role": "assistant", "content": msg.content or "",
+                  "finish_reason": getattr(choice, "finish_reason", None)}
         if msg.tool_calls:
             result["tool_calls"] = [
                 {
@@ -1183,12 +1244,7 @@ def _groq_chat(api_key: str, model: str, messages: list, tools: list) -> dict:
     except ImportError:
         return {"role": "assistant", "content": "", "error": "groq_not_installed"}
     except Exception as e:
-        err = str(e)
-        if "401" in err or "api_key" in err.lower() or "authentication" in err.lower():
-            return {"role": "assistant", "content": "", "error": "api_key_invalid"}
-        if "429" in err or "rate_limit" in err.lower():
-            return {"role": "assistant", "content": "", "error": "rate_limit"}
-        return {"role": "assistant", "content": "", "error": err}
+        return {"role": "assistant", "content": "", "error": _map_groq_error(str(e))}
 
 
 def chat_stream(messages: list, language: str, api_key: str, model: str,
@@ -1274,23 +1330,38 @@ def chat_stream(messages: list, language: str, api_key: str, model: str,
     guide_action = None
     ud = user_data or {}
 
+    # A tool call the model botches (tool_use_failed) or an empty reply is
+    # recoverable: re-ask the same turn once with tools off so the user gets a
+    # plain-text answer instead of a raw upstream error or an empty bubble.
+    # Nothing is streamed before a retry (_groq_chat is not streaming), so no
+    # "clear" event is needed here.
+    tools_enabled = True
+    empty_retry_used = False
+
     for _ in range(6):
-        result = _groq_chat(api_key, model, full_messages, active_tools)
+        result = _groq_chat(api_key, model, full_messages, active_tools if tools_enabled else None)
+        finish_reason = result.pop("finish_reason", None)
         if "error" in result:
-            error_map = {
-                "groq_not_installed": "groq_not_installed",
-                "api_key_invalid": "api_key_invalid",
-                "rate_limit": "rate_limit",
-            }
-            yield {"type": "error", "error": error_map.get(result["error"], result["error"])}
+            if result["error"] == "tool_call_failed" and tools_enabled:
+                tools_enabled = False
+                continue
+            code = result["error"]
+            yield {"type": "error", "error": code if code in STABLE_ERROR_CODES else "upstream_error"}
             return
 
         tool_calls = result.get("tool_calls") or []
 
         if not tool_calls:
             content = result.get("content", "")
+            if not content.strip() and not empty_retry_used:
+                empty_retry_used = True
+                tools_enabled = False
+                continue
             if content:
                 yield {"type": "chunk", "content": content}
+                if finish_reason == "length":
+                    yield {"type": "chunk",
+                           "content": _TRUNCATION_NOTICE.get(language, _TRUNCATION_NOTICE["en"])}
             if guide_action:
                 yield {"type": "guide", "guide_action": guide_action}
             return
