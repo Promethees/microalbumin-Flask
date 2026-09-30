@@ -108,7 +108,8 @@
                 <div id="okapi-music-head">
                     <span id="okapi-music-title">🎧 ${_escape(_t('music.title', 'Chill Radio'))}</span>
                     <button id="okapi-music-close" type="button"
-                        data-hint="${_escape(_t('music.close', 'Close'))}">&#10005;</button>
+                        data-hint="${_escape(_t('music.close', 'Close'))}"
+                        aria-label="${_escape(_t('music.close', 'Close'))}">&#10005;</button>
                 </div>
 
                 <div id="okapi-music-tabs" role="tablist">
@@ -132,7 +133,8 @@
                             placeholder="${_escape(_t('music.paste_ph', 'Paste a YouTube link…'))}"
                             aria-label="${_escape(_t('music.paste_ph', 'Paste a YouTube link…'))}">
                         <button id="okapi-music-add-btn" type="button"
-                            data-hint="${_escape(_t('music.add', 'Add to queue'))}">＋</button>
+                            data-hint="${_escape(_t('music.add', 'Add to queue'))}"
+                        aria-label="${_escape(_t('music.add', 'Add to queue'))}">＋</button>
                     </div>
                     <p id="okapi-music-track"></p>
                     <div id="okapi-music-queue-head">
@@ -146,21 +148,26 @@
 
                 <div id="okapi-music-controls">
                     <button id="okapi-music-prev" type="button" class="okapi-music-btn okapi-music-btn--ghost okapi-music-hidden"
-                        data-hint="${_escape(_t('music.previous', 'Previous'))}">⏮</button>
+                        data-hint="${_escape(_t('music.previous', 'Previous'))}"
+                        aria-label="${_escape(_t('music.previous', 'Previous'))}">⏮</button>
                     <button id="okapi-music-play" type="button" class="okapi-music-btn"
-                        data-hint="${_escape(_t('music.play', 'Play'))}">
+                        data-hint="${_escape(_t('music.play', 'Play'))}"
+                        aria-label="${_escape(_t('music.play', 'Play'))}">
                         <span class="okapi-music-icon-play">▶</span>
                         <span class="okapi-music-icon-stop">■</span>
                     </button>
                     <button id="okapi-music-next" type="button" class="okapi-music-btn okapi-music-btn--ghost okapi-music-hidden"
-                        data-hint="${_escape(_t('music.next', 'Next'))}">⏭</button>
+                        data-hint="${_escape(_t('music.next', 'Next'))}"
+                        aria-label="${_escape(_t('music.next', 'Next'))}">⏭</button>
                     <input id="okapi-music-vol" type="range" min="0" max="100" step="1"
                         aria-label="${_escape(_t('music.aria.volume', 'Volume'))}">
                     <span id="okapi-music-vol-value"></span>
                     <button id="okapi-music-loop" type="button" class="okapi-music-toggle okapi-music-hidden"
-                        data-hint="${_escape(_t('music.loop', 'Repeat'))}">🔁</button>
+                        data-hint="${_escape(_t('music.loop', 'Repeat'))}"
+                        aria-label="${_escape(_t('music.loop', 'Repeat'))}" aria-pressed="false">🔁</button>
                     <button id="okapi-music-shuffle" type="button" class="okapi-music-toggle okapi-music-hidden"
-                        data-hint="${_escape(_t('music.shuffle', 'Shuffle'))}">🔀</button>
+                        data-hint="${_escape(_t('music.shuffle', 'Shuffle'))}"
+                        aria-label="${_escape(_t('music.shuffle', 'Shuffle'))}" aria-pressed="false">🔀</button>
                 </div>
 
                 <p id="okapi-music-status" aria-live="polite"></p>
@@ -203,6 +210,15 @@
             const removeBtn = e.target.closest('.okapi-music-q-remove');
             if (removeBtn) { removeAt(parseInt(removeBtn.dataset.index, 10)); return; }
             const row = e.target.closest('.okapi-music-q-item');
+            if (row) playIndex(parseInt(row.dataset.index, 10));
+        });
+        // Keyboard: each entry's title is its play control (role=button).
+        document.getElementById('okapi-music-queue').addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const title = e.target.closest('.okapi-music-q-title');
+            if (!title) return;
+            e.preventDefault();
+            const row = title.closest('.okapi-music-q-item');
             if (row) playIndex(parseInt(row.dataset.index, 10));
         });
 
@@ -249,9 +265,14 @@
                 ? _t('music.loop.off', 'Repeat: off')
                 : (loopMode === 'one' ? _t('music.loop.one', 'Repeat: this item')
                                       : _t('music.loop.all', 'Repeat: whole queue'));
+            loopBtn.setAttribute('aria-label', loopBtn.dataset.hint);
+            loopBtn.setAttribute('aria-pressed', loopMode !== 'off' ? 'true' : 'false');
         }
         const shuffleBtn = document.getElementById('okapi-music-shuffle');
-        if (shuffleBtn) shuffleBtn.classList.toggle('is-active', shuffle);
+        if (shuffleBtn) {
+            shuffleBtn.classList.toggle('is-active', shuffle);
+            shuffleBtn.setAttribute('aria-pressed', shuffle ? 'true' : 'false');
+        }
     }
 
     function _renderQueue() {
@@ -261,16 +282,29 @@
         if (count) {
             count.textContent = _t('music.queue_count', 'Queue ({n})').replace('{n}', queue.length);
         }
+        // The list is rebuilt on every change; keep a keyboard user's place.
+        const focused = list.contains(document.activeElement) ? document.activeElement : null;
+        const focusIndex = focused ? focused.closest('.okapi-music-q-item')?.dataset.index : null;
+        const focusRemove = !!(focused && focused.classList.contains('okapi-music-q-remove'));
+        // The title is the entry's play control: focusable, operable by key
+        // (the list's keydown handler) and hinted with data-hint, not a
+        // native title= (Rule.md §2.36).
         list.innerHTML = queue.map(function (item, i) {
             const badge = item.kind === 'playlist'
                 ? `<span class="okapi-music-q-badge">${_escape(_t('music.playlist', 'playlist'))}</span>` : '';
-            return `<li class="okapi-music-q-item${i === queueIndex ? ' is-current' : ''}" data-index="${i}"
-                        title="${_escape(item.title)}">
-                        <span class="okapi-music-q-title">${_escape(item.title)}${badge}</span>
+            return `<li class="okapi-music-q-item${i === queueIndex ? ' is-current' : ''}" data-index="${i}"${i === queueIndex ? ' aria-current="true"' : ''}>
+                        <span class="okapi-music-q-title" role="button" tabindex="0"
+                            data-hint="${_escape(item.title)}">${_escape(item.title)}${badge}</span>
                         <button type="button" class="okapi-music-q-remove" data-index="${i}"
-                            data-hint="${_escape(_t('music.remove', 'Remove'))}">&#10005;</button>
+                            data-hint="${_escape(_t('music.remove', 'Remove'))}"
+                            aria-label="${_escape(_t('music.remove', 'Remove'))}: ${_escape(item.title)}">&#10005;</button>
                     </li>`;
         }).join('');
+        if (focusIndex != null) {
+            const row = list.querySelector(`.okapi-music-q-item[data-index="${focusIndex}"]`);
+            const target = row && row.querySelector(focusRemove ? '.okapi-music-q-remove' : '.okapi-music-q-title');
+            if (target) target.focus();
+        }
     }
 
     function _renderTrack(text) {
@@ -289,7 +323,10 @@
         const root = document.getElementById('okapi-music');
         if (root) root.classList.toggle('is-playing', !!on);
         const btn = document.getElementById('okapi-music-play');
-        if (btn) btn.dataset.hint = on ? _t('music.stop', 'Stop') : _t('music.play', 'Play');
+        if (btn) {
+            btn.dataset.hint = on ? _t('music.stop', 'Stop') : _t('music.play', 'Play');
+            btn.setAttribute('aria-label', btn.dataset.hint);
+        }
     }
 
     // ── Radio playback ───────────────────────────────────────────────────────

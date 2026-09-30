@@ -423,6 +423,7 @@ class El {
     focus() { DOC.activeElement = this; }
     getBoundingClientRect() { return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }; }
     closest(sel) { let e = this; while (e) { if (MATCH(e, sel)) return e; e = e.parentElement; } return null; }
+    contains(o) { while (o) { if (o === this) return true; o = o.parentElement; } return false; }
     *walk() { for (const c of this.children) { yield c; yield* c.walk(); } }
     querySelectorAll(sel) {
         const parts = sel.trim().split(/\s+/);
@@ -1051,3 +1052,50 @@ def test_ai_panel_open_close_and_escape_go_through_the_same_switch():
     inject = inject[:inject.index('// Move lang menu')]
     assert '_setPanelOpen(false)' in inject
     assert "e.key === 'Escape' && !e.defaultPrevented" in inject
+
+
+# ---------------------------------------------------------------------------
+# music.js:264 — a queue entry played on a click of its <li> only (no
+# tabindex/role/key handler, native title=); the ✕ and transport buttons were
+# glyph-only; loop/shuffle had no aria-pressed.
+# ---------------------------------------------------------------------------
+
+MUSIC_QUEUE = PRELUDE + FAKE_DOM + r"""
+const list = new El('ul'); list.id = 'okapi-music-queue'; DOC.body.appendChild(list);
+const loop = new El('button'); loop.id = 'okapi-music-loop'; DOC.body.appendChild(loop);
+const shuf = new El('button'); shuf.id = 'okapi-music-shuffle'; DOC.body.appendChild(shuf);
+const ctx = { document: DOC };
+vm.createContext(ctx);
+vm.runInContext('let queue = [{ title: "Lo-fi <beats>", kind: "video" }, { title: "Jazz", kind: "playlist" }], queueIndex = 1,' +
+    ' loopMode = "one", shuffle = true;' +
+    'function _t(k, f) { return f; }' +
+    // _escape as in music.js (FN cannot scan its /'/ regex literal).
+    'function _escape(x) { return String(x == null ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;")' +
+    '.replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\x27/g, "&#39;"); }' +
+    FN('music.js', '_renderQueue') + FN('music.js', '_renderModes'), ctx);
+ctx._renderQueue(); ctx._renderModes();
+OUT({ html: list.innerHTML, loopPressed: loop.getAttribute('aria-pressed'), loopLabel: loop.getAttribute('aria-label'),
+      shufPressed: shuf.getAttribute('aria-pressed') });
+"""
+
+
+def test_music_queue_entries_and_toggles_are_keyboard_and_sr_ready():
+    r = _node(MUSIC_QUEUE)
+    html = r['html']
+    assert ' title="' not in html
+    assert html.count('class="okapi-music-q-title" role="button" tabindex="0"') == 2
+    assert 'aria-label="Remove: Lo-fi &lt;beats&gt;"' in html
+    assert html.count('aria-current="true"') == 1
+    assert r['loopPressed'] == 'true' and r['loopLabel'] == 'Repeat: this item'
+    assert r['shufPressed'] == 'true'
+
+
+def test_music_queue_title_plays_on_enter_and_transport_is_named():
+    src = _src('music.js')
+    assert "const title = e.target.closest('.okapi-music-q-title');" in src
+    assert "e.key !== 'Enter' && e.key !== ' '" in src
+    for hid in ['okapi-music-close', 'okapi-music-add-btn', 'okapi-music-prev', 'okapi-music-play',
+                'okapi-music-next', 'okapi-music-loop', 'okapi-music-shuffle']:
+        tag = src[src.index(f'id="{hid}"'):]
+        tag = tag[:tag.index('>')]
+        assert 'aria-label="${_escape(_t(' in tag, hid
