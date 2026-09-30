@@ -8,7 +8,7 @@
 # download — the binary is self-contained and self-creates its per-user data dirs.
 #
 # Prereq: `python tools/package.py --encode` has produced dist/EasyOKAPI/.
-# Env:    APP_VERSION (bare, e.g. 1.5.10); optional SIGNING_IDENTITY.
+# Env:    APP_VERSION (bare, e.g. 1.5.11); optional SIGNING_IDENTITY.
 
 set -euo pipefail
 
