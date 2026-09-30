@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import difflib
 import json
 import logging
 import os
+import re
 import time
 import threading
 
@@ -106,68 +108,219 @@ _STOPWORDS = frozenset({
 })
 
 
+def _is_cjk(s: str) -> bool:
+    """True when s contains CJK / kana characters (Chinese, Japanese, Korean)."""
+    return any(
+        0x2E80 <= ord(c) <= 0x9FFF or 0xF900 <= ord(c) <= 0xFAFF or 0xAC00 <= ord(c) <= 0xD7AF
+        for c in s
+    )
+
+
+# Edge punctuation stripped from query/keyword tokens before matching, so
+# "measurement?" or "(kinetics)" normalise to their bare word forms.
+_EDGE_PUNCT = ".,!?;:()[]{}\"'`…“”’"
+
+
 def _content_words(text: str) -> frozenset:
-    return frozenset(w for w in text.lower().split() if len(w) >= 4 and w not in _STOPWORDS)
+    result = set()
+    for w in text.lower().split():
+        w = w.strip(_EDGE_PUNCT)
+        min_len = 2 if _is_cjk(w) else 4
+        if len(w) >= min_len and w not in _STOPWORDS:
+            result.add(w)
+    return frozenset(result)
+
+
+def _token_match(a: str, b: str) -> bool:
+    """Prefix-aware token equality.
+
+    Two words match when they are equal or one is a *prefix* of the other, so
+    stem variants line up ('file'/'files', 'record'/'recorded'). Plain substring
+    containment is deliberately avoided: a negation/derivation prefix such as
+    'de-' or 'un-' embeds the base word as a *suffix* ('select' ⊂ 'deselect'),
+    which would otherwise produce a confidently wrong, antonymous match.
+    """
+    return a == b or a.startswith(b) or b.startswith(a)
+
+
+# ── Typo tolerance: spell-correct query words to the guide vocabulary ─────────
+# Misspellings are normalised to the nearest known keyword word BEFORE scoring,
+# so the prefix matcher above and the keyword lists keep working unchanged.
+# Guards (shared 2-char prefix, length within 2, high similarity) keep this to
+# genuine typos ('measurment'→'measurement') and never map a real out-of-domain
+# word onto a near neighbour ('internal'≁'interval', 'select'≁'deselect').
+
+def _guide_vocabulary(examples: list) -> frozenset:
+    vocab = set()
+    for ex in examples:
+        for kw in ex.get("queries", []):
+            if isinstance(kw, str):
+                vocab |= _content_words(kw)
+    return frozenset(vocab)
+
+
+def _nearest_keyword_word(word: str, vocab: frozenset) -> str:
+    if _is_cjk(word) or len(word) < 5 or word in vocab:
+        return word
+    best, best_ratio = word, 0.88
+    for v in vocab:
+        if len(v) < 5 or v[:2] != word[:2] or abs(len(v) - len(word)) > 2:
+            continue
+        ratio = difflib.SequenceMatcher(None, word, v).ratio()
+        if ratio > best_ratio:
+            best, best_ratio = v, ratio
+    return best
+
+
+def _canonicalize_content(content: frozenset, vocab: frozenset) -> frozenset:
+    return frozenset(_nearest_keyword_word(w, vocab) for w in content)
+
+
+# ── Keyword scoring (shared verbatim by main and online — keep in lockstep) ───
+# Work-list items A6/A7 (online) and B3 (main). Three rules stop the score
+# inflation that let an unrelated statement launch a guide at 6.0:
+#
+#   1. A direct phrase hit must sit on word boundaries and be a real word
+#      (>= 4 chars, >= 2 for CJK, not a stop-word). Plain substring matching let
+#      overlay keywords such as "le"/"de" hit inside "coefficient"/"mode", and
+#      "merge" hit inside "unmerge". The leading boundary also refuses a
+#      hyphenated negation/derivation prefix ("un-merge", "re-export", "de-select");
+#      short keywords (< 6 chars) must end on a boundary too, longer ones may
+#      continue as a stem ("calibrat" → "calibration").
+#   2. Each distinct set of content words counts ONCE per guide
+#      (_score_guide_keywords), so ten paraphrases of "concentration" no
+#      longer sum to 8.
+#   3. The mode bonus is added only on top of a solid baseline (see the matcher).
+
+def _phrase_hit(kw_lower: str, q_lower: str) -> bool:
+    """True when kw_lower occurs in q_lower as a phrase on word boundaries."""
+    if _is_cjk(kw_lower):
+        return kw_lower in q_lower
+    pattern = r"(?<![\w-])" + re.escape(kw_lower)
+    if len(kw_lower) < 6:
+        pattern += r"(?!\w)"
+    return re.search(pattern, q_lower) is not None
 
 
 def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
-    if kw.lower() in q_lower:
-        return 1.0
-    kw_content = _content_words(kw)
+    kw_lower = kw.lower().strip()
+    min_len = 2 if _is_cjk(kw_lower) else 4
+    kw_content = _content_words(kw_lower)
+    # Exact phrase match on word boundaries — weighted by specificity
+    # (content-word count) so one long, specific phrase ('export data to
+    # report') outranks a pile of short generic keywords.
+    if len(kw_lower) >= min_len and kw_lower not in _STOPWORDS and _phrase_hit(kw_lower, q_lower):
+        return 1.0 + 0.8 * max(0, len(kw_content) - 1)
     if not kw_content:
         return 0.0
+    # Full coverage: the query's content words are exactly the keyword's
+    # (stop-words aside, stems allowed) — "how to calibrate" vs the keyword
+    # "how calibrate". As specific as a phrase hit. A query that says MORE
+    # ("change the concentration unit" vs "get concentration") falls through
+    # to the weaker partial scores below.
+    if q_content and all(any(_token_match(k, qw) for k in kw_content) for qw in q_content) and all(
+        any(_token_match(k, qw) for qw in q_content) for k in kw_content
+    ):
+        return 1.0 + 0.8 * max(0, len(kw_content) - 1)
     if len(kw_content) == 1:
         word = next(iter(kw_content))
         if len(word) < 5:
             return 0.0
-        return 0.8 if any(word in qw or qw in word for qw in q_content) else 0.0
+        return 0.8 if any(_token_match(word, qw) for qw in q_content) else 0.0
     if all(
-        any(kw_word in qw or qw in kw_word for qw in q_content)
+        any(_token_match(kw_word, qw) for qw in q_content)
         for kw_word in kw_content
     ):
         return 0.8
     return 0.0
 
 
-def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tuple[dict, float] | tuple[None, float]:
+def _score_guide_keywords(keywords, q_lower: str, q_content: frozenset) -> tuple[float, bool]:
+    """Sum a guide's keyword scores, counting each distinct content-word set once.
+
+    Returns (score, strong_hit). ``strong_hit`` is True when at least one hit
+    came from a multi-word keyword (all its content words present, or the exact
+    phrase) or a CJK phrase — the evidence a no-"how do I" launch needs (see
+    _should_launch_guide). A single generic word ("concentration", "chart")
+    never counts as strong on its own.
+    """
+    best: dict = {}
+    strong = False
+    for kw in keywords or ():
+        if not isinstance(kw, str) or not kw.strip():
+            continue
+        kw_lower = kw.lower().strip()
+        sc = _score_keyword(kw_lower, q_lower, q_content)
+        if sc <= 0:
+            continue
+        key = _content_words(kw_lower) or frozenset([kw_lower])
+        if sc > best.get(key, 0.0):
+            best[key] = sc
+        if len(key) >= 2 or _is_cjk(kw_lower):
+            strong = True
+    return sum(best.values()), strong
+
+
+def _condition_excludes(conditions: dict, mode: str) -> bool:
+    """True when a guide's hard ``conditions`` rule it out in ``mode``."""
+    if conditions.get("mode") and mode != conditions["mode"]:
+        return True
+    if conditions.get("mode_not") and mode == conditions["mode_not"]:
+        return True
+    if conditions.get("mode_in") is not None and mode not in conditions["mode_in"]:
+        return True
+    if conditions.get("mode_not_in") and mode in conditions["mode_not_in"]:
+        return True
+    return False
+
+
+def _mode_bonus(conditions: dict, mode: str) -> float:
+    if conditions.get("mode") and mode == conditions["mode"]:
+        return 2.0
+    if conditions.get("mode_in") and mode in conditions["mode_in"]:
+        return 2.0
+    if conditions.get("mode_not"):
+        return 1.0
+    return 0.0
+
+
+def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
+    """Best guide for ``query`` as (example, score, strong_hit), or (None, 0, False).
+
+    The relevance gate (score >= 0.1) and the mode bonus both look at the
+    BASELINE keyword score only, so a guide the query never mentions cannot be
+    lifted over the launch gate by its mode condition alone.
+    """
     examples = _load_guide_examples(lang)
     if not examples:
-        return None, 0
+        return None, 0, False
 
-    q_lower = query.lower()
-    q_content = _content_words(q_lower)
+    q_lower = (query or "").lower()
+    q_content = _canonicalize_content(_content_words(q_lower), _guide_vocabulary(examples))
     mode = (ui_context or {}).get("mode", "")
     best_score: float = 0
     best = None
+    best_strong = False
 
     for ex in examples:
-        conditions = ex.get("conditions", {})
-        if conditions.get("mode") and mode != conditions["mode"]:
+        conditions = ex.get("conditions") or {}
+        if _condition_excludes(conditions, mode):
             continue
-        if conditions.get("mode_not") and mode == conditions["mode_not"]:
+        baseline, strong = _score_guide_keywords(ex.get("queries", []), q_lower, q_content)
+        if baseline < 0.1:
             continue
-        if conditions.get("mode_in") is not None and mode not in conditions["mode_in"]:
-            continue
-        if conditions.get("mode_not_in") and mode in conditions["mode_not_in"]:
-            continue
-
-        keywords = ex.get("queries", [])
-        score: float = sum(_score_keyword(kw, q_lower, q_content) for kw in keywords)
-        if score < 0.1:
-            continue
-
-        if conditions.get("mode") and mode == conditions["mode"]:
-            score += 2
-        elif conditions.get("mode_in") and mode in conditions["mode_in"]:
-            score += 2
-        elif conditions.get("mode_not"):
-            score += 1
-
+        score = baseline
+        if baseline >= _NAV_LAUNCH_SCORE:
+            score += _mode_bonus(conditions, mode)
         if score > best_score:
-            best_score = score
-            best = ex
+            best_score, best, best_strong = score, ex, strong
 
-    return (best, best_score) if best_score >= 0.1 else (None, 0)
+    return (best, best_score, best_strong) if best_score >= 0.1 else (None, 0, False)
+
+
+def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tuple[dict, float] | tuple[None, float]:
+    best, score, _strong = _match_guide_detail(query, ui_context, lang)
+    return best, score
 
 
 _FILE_SELECT_STEP = {
@@ -186,32 +339,62 @@ _FILE_SELECT_STEP = {
     "skipInteraction": False,
 }
 
-# Keywords that identify the target mode inside a mode-switch step description.
-_MODE_HINT_KEYWORDS: dict[str, list[str]] = {
-    "kinetics":  ["kinetics", "time-series", "time series"],
-    "point":     ["point mode", "endpoint", "single point"],
-    "calibrate": ["calibrat"],
-    "report":    ["report mode"],
+# Prepended (via a guide's soft ``requires_mode``) when the feature the guide
+# targets only exists in a particular measurement mode and the app is currently
+# in a different one — the mode name (a technical term) is interpolated as-is.
+# Ported from main (work-list A16): the old prose-based check dropped a leading
+# #meas-mode-section step whenever its DESCRIPTION happened to contain the
+# current mode's name, so the English and translated sequences diverged and
+# app_introduction lost its first step in kinetics mode.
+_MODE_SWITCH_STEP = {
+    "target": "#meas-mode-section",
+    "title": "Switch Measurement Mode",
+    "description": "This feature is only available in {mode} mode. Click here to switch to {mode} mode first, then click Next to continue.",
+    "descriptions": {
+        "vi": "Tính năng này chỉ có trong chế độ {mode}. Nhấp vào đây để chuyển sang chế độ {mode} trước, rồi nhấp Tiếp theo để tiếp tục.",
+        "zh": "此功能仅在 {mode} 模式下可用。请先点击此处切换到 {mode} 模式，然后点击“下一步”继续。",
+        "fr": "Cette fonction n'est disponible qu'en mode {mode}. Cliquez ici pour passer d'abord en mode {mode}, puis cliquez sur Suivant pour continuer.",
+        "ja": "この機能は {mode} モードでのみ利用できます。まずここをクリックして {mode} モードに切り替え、「次へ」をクリックして続行してください。",
+        "ru": "Эта функция доступна только в режиме {mode}. Нажмите здесь, чтобы сначала переключиться в режим {mode}, затем нажмите «Далее», чтобы продолжить.",
+        "ko": "이 기능은 {mode} 모드에서만 사용할 수 있습니다. 먼저 여기를 클릭해 {mode} 모드로 전환한 뒤 다음을 클릭해 계속하세요.",
+    },
+    "position": "right",
+    "skipInteraction": False,
 }
 
 
-def _is_redundant_mode_step(step: dict, current_mode: str) -> bool:
-    """Return True when step is a #meas-mode-section switch to the mode the user is already in."""
-    if step.get("target") != "#meas-mode-section" or not current_mode:
-        return False
-    desc = step.get("description", "").lower()
-    keywords = _MODE_HINT_KEYWORDS.get(current_mode, [])
-    return any(kw in desc for kw in keywords)
+def _mode_switch_step(mode, language: str) -> dict:
+    """A localized 'switch to <mode> mode' step (mode name kept as-is).
+
+    ``mode`` may be a single mode string or a list of acceptable modes; a list is
+    joined with ' / ' (mode names stay in English).
+    """
+    label = " / ".join(mode) if isinstance(mode, (list, tuple)) else mode
+    step = _translate_step(_MODE_SWITCH_STEP, language)
+    return {**step, "description": step["description"].format(mode=label)}
+
+
+def _requires_mode_satisfied(req_mode, mode: str) -> bool:
+    if isinstance(req_mode, (list, tuple)):
+        return mode in req_mode
+    return mode == req_mode
+
+
+def _guide_example_by_id(guide_id: str, language: str = "en"):
+    """Load a single guide example (localized) by id, or None if absent."""
+    return next(
+        (e for e in _load_guide_examples(language) if e.get("id") == guide_id), None
+    )
 
 
 def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", steps_only: bool = False):
+    ui_context = ui_context or {}
     steps = list(example["steps"])
-    current_mode = (ui_context or {}).get("mode", "")
-    # Drop a leading mode-switch step when the user is already in that mode.
-    if steps and _is_redundant_mode_step(steps[0], current_mode):
-        steps = steps[1:]
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
         steps = [_translate_step(_FILE_SELECT_STEP, language)] + steps
+    req_mode = example.get("requires_mode")
+    if req_mode and not _requires_mode_satisfied(req_mode, ui_context.get("mode")):
+        steps = [_mode_switch_step(req_mode, language)] + steps
     if steps_only:
         return steps
     steps_json = json.dumps(steps, ensure_ascii=False)
@@ -1173,6 +1356,9 @@ _IN_SCOPE_KEYWORDS = {
     "concentration", "slope", "saturation", "maxrate", "threshold", "workflow",
     "tutorial", "walkthrough", "overview", "getting started", "how to use",
     "how does this", "introduction", "guide me", "show me how",
+    # App vocabulary that used to be refused because an out-of-scope word hid
+    # inside it ("selection" ⊃ "election") or shared a word ("stock solution").
+    "selection", "select", "time point", "source",
     "hiệu chuẩn", "động học", "báo cáo", "nồng độ", "kết quả",
     "校准", "动力学", "测量", "报告", "浓度",
     "calibration", "cinétique", "mesure", "rapport", "concentration",
@@ -1181,20 +1367,183 @@ _IN_SCOPE_KEYWORDS = {
 }
 
 _OUT_OF_SCOPE_KEYWORDS = {
-    "recipe", "cooking", "weather", "stock", "bitcoin", "crypto", "football",
+    "recipe", "cooking", "weather", "stock market", "stock price", "bitcoin", "crypto", "football",
     "movie", "music", "song", "game", "politics", "election", "president",
     "write a poem", "tell me a joke", "tell a story", "translate this",
     "who is", "what is the capital", "how old is", "population of",
 }
 
 
+def _scope_kw_hit(kw: str, q: str) -> bool:
+    """A scope keyword occurs in q starting on a word boundary (CJK: anywhere).
+
+    Only the START is anchored: in-scope entries include stems ("calibrat") and
+    plurals must still hit ("movies"), but a keyword may no longer match from the
+    middle of a word ("election" inside "selection").
+    """
+    if _is_cjk(kw):
+        return kw in q
+    return re.search(r"(?<!\w)" + re.escape(kw), q) is not None
+
+
 def _is_out_of_scope(query: str) -> bool:
-    q = query.lower()
-    if any(kw in q for kw in _IN_SCOPE_KEYWORDS):
+    """Fast keyword pre-filter. Returns True only for clearly off-topic queries."""
+    q = (query or "").lower()
+    if any(_scope_kw_hit(kw, q) for kw in _IN_SCOPE_KEYWORDS):
         return False
-    if any(kw in q for kw in _OUT_OF_SCOPE_KEYWORDS):
+    if any(_scope_kw_hit(kw, q) for kw in _OUT_OF_SCOPE_KEYWORDS):
         return True
     return False
+
+
+# Phrases that indicate the user wants a conceptual explanation, not UI navigation.
+# Queries containing these should go to Groq rather than be short-circuited to a guide.
+_CONCEPTUAL_MARKERS = frozenset({
+    # English — explanatory starters ("how to" is intentionally absent; it signals navigation)
+    "what is", "what are", "what does", "what do", "what's",
+    "why", "why is", "why does", "why do",
+    "explain", "describe", "tell me about", "what does it mean",
+    "meaning of", "definition of", "difference between",
+    "how does", "how do", "how is",
+    # Vietnamese
+    "là gì", "nghĩa là", "tại sao", "giải thích", "khác nhau",
+    # Chinese
+    "什么是", "为什么", "解释", "区别", "意思",
+    # French
+    "qu'est-ce", "pourquoi", "expliquer", "signifie", "différence",
+    # Japanese
+    "とは", "なぜ", "説明", "違い", "意味",
+    # Russian
+    "что такое", "почему", "объясни", "разница", "значит",
+})
+
+# Phrases that carry an explicit navigation / how-to-do-it signal.
+# A query must contain at least one of these to be short-circuited to a guide.
+# Checked BEFORE _CONCEPTUAL_MARKERS so that more-specific phrases like
+# "how do i" take priority over the broader "how do" conceptual marker.
+_NAV_MARKERS = frozenset({
+    # English
+    "how to", "how do i", "how can i", "where is", "where do i", "where can i",
+    "show me", "take me to", "navigate to", "go to", "find the", "open the",
+    "step by step", "walk me through", "guide me", "walk me",
+    "teach me", "instruct me",
+    # Vietnamese
+    "cách", "làm thế nào", "ở đâu", "hướng dẫn tôi", "chỉ tôi", "chỉ cho tôi",
+    "dạy tôi", "hướng dẫn cho tôi",
+    # Chinese
+    "怎么", "如何", "在哪", "带我", "找到",
+    "教我", "教教我",
+    # French
+    "comment faire", "comment", "où est", "montre-moi", "guidez-moi",
+    "apprends-moi", "montrez-moi",
+    # Japanese ("方法" / "する方法" — "the method / how to …" — is the most common
+    # Japanese how-to phrasing and was previously missing, so nav queries like
+    # "csvを編集する方法" never registered as navigation).
+    "どうやって", "どこ", "やり方", "使い方", "方法",
+    "教えて", "教えてください",
+    # Russian
+    "как мне", "как", "где", "покажи", "найти",
+    "научи меня", "покажи мне",
+})
+
+
+def _has_nav_intent(query: str) -> bool:
+    """True only when the query carries an explicit navigation/how-to signal.
+
+    NAV markers are checked before conceptual markers so that precise phrases
+    like 'how do i' take priority over the broader 'how do' conceptual marker.
+    Bare topic phrases with neither marker (e.g. 'kinetics settings') return
+    False and fall through to the LLM rather than being short-circuited to a
+    guide.
+    """
+    q = query.lower()
+    if any(marker in q for marker in _NAV_MARKERS):
+        return True
+    if any(marker in q for marker in _CONCEPTUAL_MARKERS):
+        return False
+    return False
+
+
+def _is_conceptual(query: str) -> bool:
+    """True when the query is asking for an explanation rather than how to do something.
+
+    Conceptual questions ("what is R²", "why does Vmax matter") are routed to the LLM
+    so it can explain, rather than short-circuited to a UI guide.
+    """
+    q = query.lower()
+    return any(marker in q for marker in _CONCEPTUAL_MARKERS)
+
+
+# A keyword score this high (≈ two strong keyword hits) is treated as a confident
+# match, enough to launch a guide for imperative commands that carry no explicit
+# nav marker (e.g. "switch to point mode", "change the interval", "merge two files").
+_STRONG_MATCH_SCORE = 1.6
+
+# A single solid keyword hit. The nav/how-to path requires at least this much so
+# that an incidental fuzzy match (0.8) on one out-of-context word — e.g. "select"
+# in "select a regression algorithm" matching the file-selection guide — cannot
+# hijack the query into an unrelated guide.
+_NAV_LAUNCH_SCORE = 1.0
+
+# Explicit "give me the whole tour" phrasings. The intent here is unambiguous, so
+# a matched guide may launch on a weak keyword score (e.g. "walkthrough" fuzzily
+# matching "walk me through the whole app").
+_TOUR_MARKERS = frozenset({
+    "walk me through", "walkthrough", "walk through", "step by step",
+    "step-by-step", "guide me through", "full tour", "whole app", "entire app",
+    "tour of the app", "show me everything", "from scratch",
+    # Multilingual
+    "toàn bộ", "từng bước", "hướng dẫn toàn bộ",            # vi
+    "完整流程", "逐步", "整个应用",                              # zh
+    "tout le processus", "pas à pas", "visite complète",   # fr
+    "アプリ全体", "ステップバイステップ", "全体の流れ",                  # ja
+    "пошагово", "весь процесс", "всё приложение",          # ru
+})
+
+
+def _is_tour_request(query: str) -> bool:
+    """True when the query explicitly asks for a full, end-to-end walkthrough."""
+    q = query.lower()
+    return any(marker in q for marker in _TOUR_MARKERS)
+
+
+
+def _should_launch_guide(query: str, score: float, strong_hit: bool = True) -> bool:
+    """Decide whether a matched guide example should be short-circuited to the UI.
+
+    Fires on (a) an explicit full-tour request with any usable match, (b) a
+    navigation/how-to phrasing backed by at least one solid keyword hit, or
+    (c) a strong keyword match that is not a conceptual question AND rests on
+    at least one multi-word / phrase hit (``strong_hit``, from
+    _score_guide_keywords). Without (c)'s phrase requirement a statement such as
+    "my concentration results look too high" launched a guide on the single
+    word "concentration" plus the mode bonus. Conceptual questions always fall
+    through to the LLM.
+
+    Tour and nav intent are checked before the conceptual gate so that precise
+    phrasings like "how do i" take priority over the broader "how do" conceptual
+    marker.
+    """
+    if _is_tour_request(query) and score >= 0.7:
+        return True
+    if _has_nav_intent(query) and score >= _NAV_LAUNCH_SCORE:
+        return True
+    if _is_conceptual(query):
+        return False
+    return score >= _STRONG_MATCH_SCORE and strong_hit
+
+
+def resolve_guide(query: str, ui_context: dict = None, language: str = "en"):
+    """(guide_id, steps) when the web chat should launch a guide locally, else
+    (None, None). Same pipeline as main's resolve_guide (without the desktop's
+    pending/feedback handling)."""
+    ui_context = ui_context or {}
+    if not query:
+        return None, None
+    matched, score, strong = _match_guide_detail(query, ui_context, language)
+    if not matched or not _should_launch_guide(query, score, strong):
+        return None, None
+    return matched["id"], _format_fewshot_hint(matched, ui_context, language, steps_only=True)
 
 
 # ── Groq chat ─────────────────────────────────────────────────────────────────
@@ -1391,10 +1740,13 @@ def chat_stream(messages: list, language: str, api_key: str, model: str,
     # Skip server-side guide matching for a client-grounded (desktop) request —
     # it resolves guides locally against its own UI, so matching here would
     # spotlight this website's element IDs.
+    # The launch gate (work-list A6) mirrors main: a conceptual question ("what
+    # is a source?", "why is my export failing?") goes to the model even when
+    # it mentions a guide's keywords; only nav phrasing with a solid hit, a
+    # tour request, or a strong multi-word match launches a guide.
     if not client_grounded:
-        matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
-        if matched and match_score >= 0.7:
-            steps = _format_fewshot_hint(matched, ui_context or {}, language, steps_only=True)
+        _gid, steps = resolve_guide(last_user_query, ui_context or {}, language)
+        if steps:
             yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
             yield {"type": "guide", "guide_action": {"custom_steps": steps}}
             return
