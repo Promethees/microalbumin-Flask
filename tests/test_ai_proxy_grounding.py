@@ -309,3 +309,27 @@ def test_captured_payload_end_to_end_reaches_model(monkeypatch):
         tools_override=g['tools'], proxy_request=True))
     assert "model answer" in "".join(e.get("content", "") for e in events)
     assert json.loads(model.tool_results()[0])["error"] == "not_available_via_proxy"
+
+
+# ── L2 / L3: only the current turn can 413; history is trimmed ───────────────
+
+def test_long_assistant_reply_in_history_is_trimmed_not_rejected(proxy):
+    client, seen = proxy
+    r = _post(client, messages=[{'role': 'user', 'content': 'explain'},
+                                {'role': 'assistant', 'content': 'x' * 9000},
+                                {'role': 'user', 'content': 'and then?'}])
+    assert r.status_code == 200
+    r.get_data()
+    assert len(seen['messages'][1]['content']) <= 8002
+    assert seen['messages'][-1]['content'] == 'and then?'
+
+
+def test_history_over_the_total_cap_drops_oldest_turns(proxy):
+    client, seen = proxy
+    msgs = [{'role': 'user' if i % 2 == 0 else 'assistant', 'content': str(i) * 7000} for i in range(5)]
+    msgs.append({'role': 'user', 'content': 'latest'})
+    r = _post(client, messages=msgs)
+    assert r.status_code == 200
+    r.get_data()
+    assert sum(len(m['content']) for m in seen['messages']) <= 24000
+    assert seen['messages'][-1]['content'] == 'latest'

@@ -143,3 +143,14 @@ def test_ai_chat_js_sends_the_pending_key():
     assert "pending: pending || ''" in js
     assert "event.type === 'pending'" in js
     assert "_getUiContext(pending)" in js
+
+
+# ── L1: "add to report" / report settings in every language ──────────────────
+
+@pytest.mark.parametrize("query", [
+    "thêm vào báo cáo", "ajouter au rapport", "добавить в отчёт", "添加到报告",
+    "レポートに追加", "보고서에 추가", "настройки отчёта", "报告格式设置", "paramètres de rapport",
+    "report settings",
+])
+def test_add_to_report_and_report_settings_are_not_asked(query):
+    assert ai_assistant._needs_report_clarification(query, [{"role": "user", "content": query}], REPORT_CTX) is False

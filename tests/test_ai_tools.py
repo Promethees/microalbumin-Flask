@@ -152,3 +152,18 @@ def test_help_docs_have_no_stale_claims():
 def test_get_help_topic_returns_the_regression_doc():
     out = json.loads(ai_assistant._run_tool("get_help_topic", {"topic": "regression"}))
     assert out["content"] == ai_assistant._HELP_DOCS["regression"]
+
+
+# ── L4: every element id that really exists may be spotlighted ───────────────
+
+def test_whitelist_accepts_real_ids_from_the_source_and_rejects_invented():
+    ids = ai_assistant._source_element_ids()
+    assert len(ids) > 100
+    w = ai_assistant._custom_step_whitelist()
+    assert ids <= w
+    assert "#upload-file-btn" in w and "#export-analysis" in w
+    out = json.loads(ai_assistant._run_tool("trigger_custom_steps", {"steps": [
+        {"target": "#export-button", "title": "x", "description": "y"},
+        {"target": sorted(ids - {"#export-analysis"})[0], "title": "x", "description": "y"},
+    ]}))
+    assert [s["target"] for s in out["custom_steps"]] == [sorted(ids - {"#export-analysis"})[0]]

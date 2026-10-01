@@ -60,6 +60,14 @@ def _rate_limited(e):
 def _clean_messages(raw):
     """Keep only {role: user|assistant, content: str} dicts, newest N.
 
+    Only the CURRENT turn (the last message) can make the request 413. Older
+    history that is over the caps is trimmed instead (L2/L3): one long
+    assistant reply used to lock the conversation into "Message is too long"
+    for the next ten turns, and old desktop builds (no client-side caps) saw
+    any long paste in the history as an outage. An over-long older message is
+    cut to _MAX_MSG_CHARS, then the oldest turns are dropped until the total
+    fits.
+
     Returns (messages, error_response_or_None).
     """
     if not isinstance(raw, list):
@@ -74,11 +82,16 @@ def _clean_messages(raw):
     if not messages:
         return None, (jsonify({'status': 'failure', 'message': 'No messages provided'}), 400)
     messages = messages[-_MAX_MESSAGES:]
-    if sum(len(m['content']) for m in messages) > _MAX_TOTAL_CHARS or any(
-        len(m['content']) > _MAX_MSG_CHARS for m in messages
-    ):
+    if len(messages[-1]['content']) > _MAX_MSG_CHARS:
         return None, (jsonify({'status': 'failure', 'code': 'too_large',
                                'message': 'Message is too long. Please shorten it and try again.'}), 413)
+    history = [
+        {**m, 'content': m['content'][:_MAX_MSG_CHARS] + ' …'} if len(m['content']) > _MAX_MSG_CHARS else m
+        for m in messages[:-1]
+    ]
+    messages = history + [messages[-1]]
+    while len(messages) > 1 and sum(len(m['content']) for m in messages) > _MAX_TOTAL_CHARS:
+        messages.pop(0)
     return messages, None
 
 

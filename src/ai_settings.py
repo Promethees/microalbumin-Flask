@@ -18,12 +18,23 @@ SUPPORTED_LANGUAGES = {
 
 
 def language_chosen() -> bool:
-    """True once this session explicitly saved a chat language."""
+    """True once this session has a chat language of its own.
+
+    Sessions saved before the ``language_chosen`` flag existed carry only
+    ``preferred_languages`` (or the legacy ``preferred_language``): a stored
+    non-default choice counts as chosen, so those visitors keep their language
+    after the deploy instead of being re-seeded from the page language (M4).
+    """
     try:
         stored = session.get('ai_settings', {}) or {}
     except Exception:
         return False
-    return bool(stored.get('language_chosen'))
+    if stored.get('language_chosen'):
+        return True
+    langs = stored.get('preferred_languages')
+    if not langs and stored.get('preferred_language'):
+        langs = [stored.get('preferred_language')]
+    return isinstance(langs, list) and bool(langs) and langs != DEFAULTS['preferred_languages']
 
 
 def load() -> dict:

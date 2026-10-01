@@ -121,3 +121,25 @@ def test_widget_loads_guides_after_status_and_seeds_ui_language():
     assert body.index('AI.activeLang = uiLang') < body.index('_loadGuides();')
     assert 'language_chosen' in body
     assert "'⚠ ' + event.error" not in js
+
+
+@pytest.mark.parametrize("stored, chosen", [
+    ({'preferred_languages': ['vi']}, True),          # saved before the flag existed (M4)
+    ({'preferred_language': 'fr'}, True),             # legacy single-language key
+    ({'preferred_languages': ['en']}, False),         # the default — not a choice
+    ({}, False),
+    ({'preferred_languages': ['en'], 'language_chosen': True}, True),
+])
+def test_existing_session_language_counts_as_chosen(client, stored, chosen):
+    with client.session_transaction() as sess:
+        sess['ai_settings'] = stored
+    assert client.get('/ai/status').get_json()['language_chosen'] is chosen
+
+
+def test_corrupt_overlay_is_logged(tmp_path, monkeypatch, caplog):
+    (tmp_path / "vi.json").write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(ai_assistant, "_GUIDE_TRANSLATIONS_DIR", str(tmp_path))
+    with caplog.at_level("WARNING"):
+        out = ai_assistant._apply_overlay([{"id": "x", "queries": [], "steps": []}], "vi")
+    assert out[0]["id"] == "x"
+    assert "unreadable" in caplog.text

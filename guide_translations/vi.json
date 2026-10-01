@@ -776,7 +776,7 @@
     "steps": [
       "'Chủ đề báo cáo' là thư mục có tên nhóm các ảnh chụp phân tích liên quan. Nhập tên chủ đề ở đây (vd: 'Bệnh nhân A', 'Lô 1') trước khi xuất dữ liệu.",
       "Tất cả ảnh chụp đã xuất vào chủ đề hiện tại được liệt kê ở đây. Bạn có thể xem lại và xóa từng mục trước khi tạo báo cáo.",
-      "Nhấp vào đây để bỏ chọn chủ đề hiện tại. Các mục đã lưu vẫn được giữ lại — không có gì bị xóa."
+      "Nhấp vào đây để bỏ chọn chủ đề hiện tại. Các mục đã lưu vẫn được giữ lại — không có gì bị xóa. Để xóa hẳn một chủ đề, dùng nút ❌ ở hàng của nó trong danh sách chủ đề."
     ],
     "queries": [
       "quản lý chủ đề báo cáo",

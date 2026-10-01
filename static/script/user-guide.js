@@ -454,6 +454,15 @@ class UserGuide {
             clearInterval(this.waitInterval);
             this.waitInterval = null;
         }
+        // Skip in the direction the user was moving (L5): skipping forward
+        // after Previous bounced them back to the step they came from.
+        if (this._navBack && this.currentStep > 0) {
+            this.removeInteractionHandler();
+            this.currentStep--;
+            this.showStep(this.currentStep);
+            return;
+        }
+        this._navBack = false;
         if (this.currentStep < this.steps.length - 1) {
             this.removeInteractionHandler();
             this.currentStep++;
@@ -468,6 +477,7 @@ class UserGuide {
      */
     stop() {
         this.isActive = false;
+        this._navBack = false;
         this.cleanupObservers();
         if (this.waitInterval) {
             clearInterval(this.waitInterval);
@@ -769,6 +779,7 @@ class UserGuide {
      * Proceed to next step after interaction
      */
     proceedToNextStep() {
+        this._navBack = false;
         if (this.currentStep < this.steps.length - 1) {
             this.removeInteractionHandler();
             this.currentStep++;
@@ -888,6 +899,7 @@ class UserGuide {
      * Go to next step (manual navigation)
      */
     nextStep() {
+        this._navBack = false;
         if (this.currentStep < this.steps.length - 1) {
             this.removeInteractionHandler();
             this.currentStep++;
@@ -900,6 +912,7 @@ class UserGuide {
      */
     previousStep() {
         if (this.currentStep > 0) {
+            this._navBack = true;
             this.currentStep--;
             this.showStep(this.currentStep);
         }

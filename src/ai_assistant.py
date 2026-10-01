@@ -64,7 +64,11 @@ def _apply_overlay(examples: list, lang: str) -> list:
     try:
         with open(overlay_path, "r", encoding="utf-8") as f:
             overlay = json.load(f)
-    except Exception:
+    except FileNotFoundError:
+        return examples
+    except Exception as exc:
+        # A corrupt overlay silently serving English is hard to notice (L6).
+        logging.warning("Guide translation overlay %s unreadable: %s", overlay_path, exc)
         return examples
     index = {item["id"]: item for item in overlay if isinstance(item, dict) and "id" in item}
     result = []
@@ -1090,6 +1094,28 @@ def _custom_step_whitelist() -> frozenset:
             target = st.get("target")
             if isinstance(target, str) and target.strip():
                 ids.add(target.strip())
+    return frozenset(ids) | _source_element_ids()
+
+
+_ID_IN_SOURCE = re.compile(r"""(?:\bid\s*=\s*|\.id\s*=\s*)\\?["']([A-Za-z][\w-]*)\\?["']""")
+
+
+@functools.lru_cache(maxsize=1)
+def _source_element_ids() -> frozenset:
+    """'#id' for every element id written literally in templates/ and
+    static/script/ — derived from the source, not a hand list (L4), so an LLM
+    step may spotlight any element the app really has, and still nothing
+    invented. Read once per process."""
+    import glob
+    root = os.path.dirname(_GUIDE_TRAINING_PATH)
+    ids = set()
+    for pattern in ("templates/*.html", "templates/**/*.html", "static/script/*.js"):
+        for path in glob.glob(os.path.join(root, pattern), recursive=True):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    ids |= {"#" + m for m in _ID_IN_SOURCE.findall(f.read())}
+            except OSError:
+                continue
     return frozenset(ids)
 
 
@@ -1323,7 +1349,14 @@ _FULL_KWS = frozenset({
 
 # Phrases that already pin the report kind, so the clarification is skipped.
 _REPORT_SPECIFIC_KEYWORDS = _QUICK_KWS | _FULL_KWS | frozenset({
-    "export to report", "save to report", "export data to report",
+    "export to report", "save to report", "export data to report", "add to report",
+    # The same "put this INTO a report" phrasings in the other six languages (L1).
+    "thêm vào báo cáo", "xuất vào báo cáo", "lưu vào báo cáo",
+    "添加到报告", "导出到报告", "保存到报告",
+    "ajouter au rapport", "exporter vers le rapport", "enregistrer dans le rapport",
+    "レポートに追加", "レポートにエクスポート", "レポートに保存",
+    "добавить в отчёт", "добавить в отчет", "экспорт в отчёт", "сохранить в отчёт",
+    "보고서에 추가", "보고서로 내보내기", "보고서에 저장",
 })
 
 # ── Pending-clarification state (explicit, not prose-matched) ────────────────
@@ -1420,6 +1453,13 @@ _REPORT_WORD_PATTERNS = tuple(re.compile(p) for p in (
 # languages; matched from a word start (substring for CJK).
 _REPORT_MANAGEMENT_WORDS = frozenset({
     "subject", "layout", "watermark", "logo", "item", "delete", "rename", "title", "excel",
+    "setting", "format", "option",                                                       # en
+    "cài đặt", "định dạng", "tùy chọn",                                                    # vi
+    "设置", "格式", "选项",                                                                 # zh
+    "paramètre", "réglage",                                                              # fr
+    "設定", "フォーマット", "形式", "オプション",                                              # ja
+    "настройк", "формат", "параметр",                                                     # ru
+    "설정", "형식", "옵션",                                                                  # ko
     "chủ đề", "bố cục", "hình mờ", "mục", "xóa", "đổi tên", "tiêu đề",                 # vi
     "主题", "布局", "水印", "标志", "项目", "删除", "重命名", "标题",                     # zh
     "sujet", "mise en page", "filigrane", "élément", "supprimer", "renommer", "titre",  # fr

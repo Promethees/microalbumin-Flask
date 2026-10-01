@@ -763,7 +763,7 @@
     "steps": [
       "Un 'sujet de rapport' est un dossier nommé regroupant des snapshots d'analyse liés. Entrez un nom (ex : 'Patient A', 'Lot 1') avant d'exporter.",
       "Tous les snapshots exportés vers le sujet actuel sont listés ici. Vous pouvez les examiner et en supprimer avant de générer le rapport.",
-      "Cliquez ici pour désélectionner le sujet actuel. Ses éléments enregistrés sont conservés — rien n'est supprimé."
+      "Cliquez ici pour désélectionner le sujet actuel. Ses éléments enregistrés sont conservés — rien n'est supprimé. Pour supprimer définitivement un sujet, utilisez le bouton ❌ sur sa ligne dans la liste des sujets."
     ],
     "queries": [
       "gérer les sujets de rapport",
