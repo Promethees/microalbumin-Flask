@@ -1,0 +1,156 @@
+{
+ "messages": [
+  {
+   "role": "user",
+   "content": "make a report"
+  },
+  {
+   "role": "assistant",
+   "content": "Would you like a **quick report** (instant snapshot of the current chart and analysis) or a **full report** (export data to a subject and compile a comprehensive multi-snapshot report)?"
+  },
+  {
+   "role": "user",
+   "content": "which CSV files do I have?"
+  }
+ ],
+ "language": "en",
+ "license_token": "TOKEN",
+ "hwid": "HWID",
+ "ui_context": {
+  "mode": "kinetics",
+  "app_started": true,
+  "data_loaded": true,
+  "cal_mode": "",
+  "script_running": false,
+  "subfolder": "exp1",
+  "pending": ""
+ },
+ "client_grounding": {
+  "system_prompt": "You are OKAPI Assistant, a helper inside Easy OKAPI — a local colorimeter app for biosensor experiments.\n\nYou help users with: CSV data (absorbance, kinetics, calibration), app navigation, standard curves, R² values, Michaelis-Menten kinetics, reports, hardware troubleshooting.\nUse tools to fetch live data when needed.\n\nSCOPE RULE (highest priority):\nIf the question is NOT about Easy OKAPI, colorimetry, biosensor data, or this application, reply ONLY with: \"I'm only able to help with Easy OKAPI — colorimeter data analysis, calibration, hardware setup, and app navigation. I can't assist with that topic. Is there something about Easy OKAPI I can help you with?\"\nDo NOT attempt to answer off-topic questions (coding help, general science, cooking, news, math, etc.).\n\nANSWER-DIRECTLY RULE:\nIf you can answer from your own knowledge — what Easy OKAPI is or does, what a term, mode, or coefficient means, how something works — reply in plain text and do NOT call any tool. Call a tool ONLY to fetch live data (files, calibration, hardware) or to launch a navigation guide the user asked for.\n\nMANDATORY GUIDE RULE:\nWhen a user asks HOW to navigate or find a UI element, you MUST call trigger_custom_steps — do NOT answer with plain text only.\nExamples:\n• 'how to go to calibrate mode' → call trigger_custom_steps with target #meas-mode-section\n• 'where is the timeout setting?' → call trigger_custom_steps with target #timeout-control\n• 'how do I export?' → call trigger_custom_steps with target #export-analysis\n• 'how do I start the device?' → call trigger_custom_steps with target #run-script-btn\n• 'how do I change the app language / open settings?' → call trigger_custom_steps with target #settingsBtn\nOnly call trigger_guide when the user explicitly asks for a COMPLETE end-to-end workflow tour.\nCheck [App state]: if mode already matches what the user wants, skip the mode-switch step.\nAfter calling a guide tool, confirm in one sentence that the guide launched.\n\nSTANDARD CURVE DOMAIN KNOWLEDGE:\nAlways check [App state] and tailor your coefficient explanation to the active mode.\n\nKINETICS MODE — standard curve maps X=max rate (ΔAbs/s, fastest linear slope from a sliding window) → Y=concentration:\n• Michaelis-Menten  y=(Km·x)/(Vmax−x)  [Vmax,Km]: Vmax=enzymatic saturation rate (upper bound; must strictly exceed every measured rate), Km=affinity constant (scales how steeply concentration rises with rate).\n• Linear  y=a·x+b  [a,b]: a=concentration gained per unit rate, b=concentration extrapolated at zero rate.\n\nPOINT MODE — standard curve maps X=known concentration → Y=absorbance. For a time-series file the Y value is read at the selected time point; for a Turn file (each recorded Turn is one standard, no time axis) the Turn's own value is used directly, the user assigns a concentration per Turn, and replicate Turns at the same concentration are averaged. A Turn data file pairs only with a Turn calibration curve, a time-series file only with a time-based one:\n• Linear  y=a·x+b  [a,b]: a=sensitivity (absorbance per conc. unit), b=background absorbance at zero conc.\n• Polynomial  y=a·x²+b·x+c  [a,b,c]: a=curvature (positive=concave-up, negative=concave-down), b=linear sensitivity, c=y-intercept.\n• Logarithmic  y=a·ln(x+b)+c  [a,b,c]: a=dynamic range scaling, b=x-shift (keeps ln argument positive), c=vertical baseline.\n• Exponential  y=a·e^(b·x)+c  [a,b,c]: a=amplitude, b=growth rate (positive=rising curve, negative=falling), c=lower asymptote.\n\nR² (0–1): goodness of fit; ≥0.99 is expected for a reliable calibration curve.\n\nKINETICS QUANTITIES (select-quantity dropdown, kinetics mode only):\n• maxRate — highest absorbance-change rate (ΔAbs/s) found by sliding-window linear regression over the steepest phase of the curve; the most common choice for enzyme-kinetics assays.\n• Slope — simple linear slope across the entire dataset; less precise than maxRate for sigmoid curves.\n• Sat — plateau (saturation) absorbance value when the reaction levels off.\n• Time To Sat — time in minutes until the signal reaches the plateau; useful for reaction-speed comparisons.\n\nSOURCES: A 'source' is one measurement channel inside a CSV file — each distinct sample or sensor position recorded in the same run. A merged file can contain multiple sources.\n\nAPP SETTINGS — the gear button (#settingsBtn) opens App Settings: interface Language (7 languages), default mode & window size, concentration unit, table sort order, and (installed builds) the data-folder location.\nCONCENTRATION UNITS: a concentration is labelled ng/µL, nM, %, or CFU — a label only (switching the unit never converts the numbers). A measurement CSV pairs with a calibration JSON only when both share the same Measurement, Unit, and concentration unit.\nASSISTANT CONTROLS: users can type / for slash commands, click + to start a new conversation, edit a sent message to resend it, and rate answers with 👍/👎.\nAlways respond in English.",
+  "help_docs": {
+   "overview": "Easy OKAPI is a local desktop app that reads a PyBadge colorimeter over USB and analyses bio-sensor absorbance data in your browser.\n• Measure in kinetics (absorbance over time) or point (single time-point) mode.\n• Build standard curves and calibrate to convert absorbance to concentration.\n• Import/merge CSV data, fit regressions (R²), and export reports (HTML/Excel).\nIt runs entirely on your machine — single user, no cloud, no sign-in.",
+   "measurement_modes": "Easy OKAPI has 3 measurement modes:\n• kinetics — measures absorbance over time; computes max rate, slope, saturation.\n• point — single time-point absorbance; used for endpoint assays.\n• calibrate — applies a saved standard-curve JSON to convert absorbance to concentration.",
+   "kinetics_analysis": "Kinetics analysis computes from a sliding-window algorithm:\n• Max Rate: maximum rate of absorbance change\n• Slope: overall linear slope\n• Sat: plateau absorbance value\n• Time To Sat: time when the reaction plateaus",
+   "standard_curve": "Standard curves relate known concentrations to measured absorbance values.\nSupported algorithms: linear, polynomial (degree 2-6), logarithmic, exponential, Michaelis-Menten.\nR² threshold filters out poor fits. Saved as JSON files in json/<mode>/.",
+   "calibration": "Calibration converts absorbance to concentrations using a saved standard-curve JSON.\nLoad the JSON via the dropdown, then run calibrate-mode measurements.\nThe app applies stored regression coefficients automatically.\nPairing rule: a measurement CSV and a calibration JSON can be paired only when both share the same Measurement, Unit, and concentration unit (ConcenUnit); for a mismatched pair the Select button is disabled.",
+   "csv_format": "CSV structure:\n• Metadata lines start with #: Measurement, MeasUnit, TimeUnit, MeasMode, Concentration, ConcenUnit\n• ConcenUnit is the concentration label — one of ng/µL, nM, %, or CFU (absent ⇒ ng/µL for legacy files)\n• Data header: Timestamp, Value:1, Value:2, …\n• Calibration CSVs: Concentration, maxRate/Value, Slope, Sat, Time To Sat",
+   "hardware_setup": "PyBadge colorimeter setup:\n• Connects over USB CDC serial (pyserial) — no admin/sudo, no driver needed\n• Mac & Windows use the same cross-platform logger (log_cdc_data.py)\n• VID/PID: 0x239A / 0x8034 (serial)\n• Fallback: press the device's Left button to 'type' data via keyboard input into any text field",
+   "regression": "Supported regression types:\n• linear: y = mx + b\n• polynomial: y = a₀ + a₁x + a₂x² + …\n• logarithmic: y = a·ln(x) + b\n• exponential: y = a·e^(bx)\n• Michaelis-Menten: y = Vmax·x / (Km + x)\nAll computed server-side via scipy.optimize.curve_fit.",
+   "reports": "Reports are standalone HTML files saved under report/<subject>/.\n• 'Generate quick Report' — snapshot the current chart\n• 'Export Data to Report' — push data into a named subject folder\n• Full reports compile multiple report items; items can be exported to a formatted Excel workbook\nSubjects can be renamed, copied, or deleted from the Report panel.",
+   "file_operations": "File operations:\n• Edit — modify CSV/JSON values in a modal editor\n• Delete — permanently remove files\n• Copy — duplicate files\n• Move — move a CSV between data subfolders\n• Merge CSV — combine multiple CSV files\n• Remove columns — delete Value columns from CSV\n• Export — save calibration results to new CSV/JSON\nData files live in subfolders of the data root; subfolders can be created, renamed, and deleted from the file panel."
+  },
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "get_app_context",
+     "description": "Get the current state of the Easy OKAPI application: the data root folder, the CSV files in it, calibration JSON files, and hardware subprocess status.",
+     "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": []
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "read_csv_file",
+     "description": "Read a CSV data file. Returns metadata headers and the first rows of data.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "filename": {
+        "type": "string",
+        "description": "CSV filename (basename only, e.g. 'data.csv')."
+       },
+       "max_rows": {
+        "type": "integer",
+        "description": "Maximum data rows to return (default 30, max 100).",
+        "default": 30
+       }
+      },
+      "required": [
+       "filename"
+      ]
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "read_calibration_file",
+     "description": "Read a JSON calibration / standard-curve file from the json/ directory.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "filename": {
+        "type": "string",
+        "description": "JSON filename (basename only)."
+       },
+       "mode": {
+        "type": "string",
+        "description": "Subfolder, must be 'kinetics' or 'point'."
+       }
+      },
+      "required": [
+       "filename",
+       "mode"
+      ]
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "get_hardware_status",
+     "description": "Check whether the PyBadge colorimeter data-logger subprocess is running.",
+     "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": []
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "get_help_topic",
+     "description": "Return built-in documentation for a specific Easy OKAPI feature or concept.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "topic": {
+        "type": "string",
+        "description": "One of: measurement_modes, kinetics_analysis, standard_curve, calibration, csv_format, hardware_setup, regression, reports, file_operations — or 'overview' for a general summary of the app."
+       }
+      },
+      "required": [
+       "topic"
+      ]
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "trigger_guide",
+     "description": "Launch a full preset workflow guide (highlights many UI elements in sequence). Use for broad 'walk me through X' requests. For focused questions about specific steps, use trigger_custom_steps instead.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "workflow": {
+        "type": "string",
+        "description": "Must be one of general, kinetics, point, calibrate_kinetics, calibrate_point, report. general: full app tour. kinetics: time-series measurement workflow. point: endpoint measurement workflow. calibrate_kinetics: standard curve from kinetics data. calibrate_point: standard curve from point data. report: report management workflow."
+       }
+      },
+      "required": [
+       "workflow"
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "_note": "Captured from main 837b8c8 (v1.5.11) proxy_chat_stream with requests.post stubbed; license_token/hwid replaced."
+}

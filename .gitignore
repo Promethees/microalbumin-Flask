@@ -28,6 +28,7 @@ npm-debug.log
 !testimonials.json
 !publications.json
 !organizations.json
+!tests/fixtures/*.json
 
 # Google Drive API credentials (DO NOT COMMIT)
 credentials.json
