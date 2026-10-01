@@ -10,6 +10,7 @@ allow-listed by pattern.
 import glob
 import json
 import os
+import sys
 import re
 
 import pytest
@@ -81,7 +82,12 @@ def _exists(piece):
 
 
 # Placeholders in the tool schema's prose, not real targets.
-NOT_TARGETS = {"#element-id"}
+# Placeholders in the tool schema's prose, and the N2 deny-list (ids an LLM
+# step must NOT spotlight; it names ids from both branches), are not targets.
+sys.path.insert(0, os.path.join(ROOT, "src"))
+import ai_assistant  # noqa: E402
+
+NOT_TARGETS = {"#element-id"} | set(ai_assistant._DENIED_TARGETS)
 
 TARGETS = sorted((s, t) for s, t in set(_guide_targets()) | set(_code_targets()) if t not in NOT_TARGETS)
 

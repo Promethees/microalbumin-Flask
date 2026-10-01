@@ -451,7 +451,7 @@ Current state: keyword scan in `_match_guide_example()` (`src/ai_assistant.py:25
 
 ### 5.x Release notes — AI guide matching (ai-reliability)
 
-- **Taught phrasings no longer open a guide by themselves.** A 👍 on a matched guide still makes similar questions rank that guide higher, but words the assistant learned from your 👍 can no longer open a guide on their own — the question has to mention the feature too. Existing feedback files keep working. (Rule.md §2.13, decision M2.)
+- **Taught phrasings no longer open a guide by themselves.** A 👍 on a matched guide still makes similar questions rank that guide higher, but words the assistant learned from your 👍 can no longer open a guide on their own — the question has to mention the feature too. Negated statements ("not export", "不要导出数据") and vague one-word questions ("data", "source") are answered in text rather than opening a guide. Existing feedback files keep working. (Rule.md §2.13, decision M2.)
 - Bare commands ("set timeout", "chart"), English mode names typed in any language, and Chinese/Japanese phrasings that mix in English terms ("切换到kinetics模式") open the right guide; explanation questions ("what is a source?") are answered in text.
 - The `[Local context]` block sent with each proxied chat is capped at 4 KB, so very large data folders can no longer make the assistant unavailable.
 

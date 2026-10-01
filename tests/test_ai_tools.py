@@ -373,7 +373,9 @@ def test_whitelist_includes_every_guide_target():
     w = ai_assistant._custom_step_whitelist()
     for ex in ai_assistant._load_guide_examples("en"):
         for st in ex["steps"]:
-            assert st["target"] in w
+            # Denied controls (N2: e.g. #shutdown-btn) stay reachable through
+            # their own local guide, never through an LLM-written step.
+            assert st["target"] in w or ai_assistant._is_denied_target(st["target"])
 
 
 # ── B14: a retry after streamed text clears it first ─────────────────────────
@@ -470,7 +472,7 @@ def test_whitelist_accepts_every_real_id_and_rejects_invented():
     ids = ai_assistant._source_element_ids()
     assert len(ids) > 100 and "#run-script-btn" in ids
     w = ai_assistant._custom_step_whitelist()
-    assert ids <= w and "#made-up" not in w
+    assert {i for i in ids if not ai_assistant._is_denied_target(i)} <= w and "#made-up" not in w
 
 
 def test_corrupt_overlay_is_logged(tmp_path, monkeypatch, caplog):
@@ -479,3 +481,24 @@ def test_corrupt_overlay_is_logged(tmp_path, monkeypatch, caplog):
     with caplog.at_level("WARNING"):
         out = ai_assistant._apply_overlay([{"id": "x", "queries": [], "steps": []}], "vi")
     assert out[0]["id"] == "x" and "unreadable" in caplog.text
+
+
+# ── N2: credential / destructive controls are never spotlightable ────────────
+
+DENIED = ["#password", "#confirm", "#swal-delete-pw", "#token-display", "#activation",
+          "#shutdown-btn", "#activateBtn", "#okapi-ai-token-input", "#delete-row-btn",
+          "#update-banner", "#token"]
+
+
+@pytest.mark.parametrize("target", DENIED)
+def test_sensitive_targets_are_rejected(target):
+    assert target not in ai_assistant._custom_step_whitelist()
+    out = json.loads(ai_assistant._run_tool("trigger_custom_steps", {"steps": [
+        {"target": target, "title": "x", "description": "enter it here"}]}))
+    assert out.get("error") == "no_valid_steps"
+
+
+def test_every_source_id_matching_the_deny_pattern_is_excluded():
+    w = ai_assistant._custom_step_whitelist()
+    leaked = [i for i in ai_assistant._source_element_ids() if ai_assistant._is_denied_target(i) and i in w]
+    assert not leaked, leaked

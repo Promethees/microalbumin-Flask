@@ -117,8 +117,6 @@ def context_for(example: dict) -> dict:
 # keyword lists or thresholds. "loses to X" means X outscored the guide that
 # lists the query; "loses to None" means nothing cleared the 0.1 baseline gate.
 KNOWN_MISROUTES = {
-    ("expand_collapse_analyses", "show all charts"):
-        "loses to view_chart (1.0): 'charts' is view_chart's core keyword",
 
     # ── Only visible once the harness stopped using mode="unknown" ──────────
     # `concentration_calc_generic` carries no conditions, so it was queried in a
@@ -150,8 +148,6 @@ KNOWN_MISROUTES = {
         "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
     ("concentration_calc_generic", "show concentration"):
         "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
-    ("create_calibration_curve_workflow", "build calibration from kinetics"):
-        "loses to calibrate_kinetics_workflow (2.6): 'kinetics' + 'calibration' is that guide's own phrase once duplicate keywords stop summing (B3)",
 }
 
 
@@ -441,7 +437,7 @@ def test_own_query_launch_rate():
     assert launched / total >= LAUNCH_RATE_FLOOR, f"{launched}/{total}"
 
 
-LAUNCH_RATE_FLOOR = 0.92   # 95.4 % at the fix round
+LAUNCH_RATE_FLOOR = 0.92   # 95.2 % at fix round 2 (2344 / 2463)
 
 
 @pytest.mark.parametrize("query, expected", [
@@ -450,3 +446,60 @@ LAUNCH_RATE_FLOOR = 0.92   # 95.4 % at the fix round
 ])
 def test_bare_commands_launch(query, expected):
     assert ai_assistant.resolve_guide(query, _ctx("kinetics"), "en")[0] == expected
+
+
+# ── Fix round 2 (N1/N4): negations, pronouns and vague keywords never launch ──
+# The exact-keyword launch compares tokens with only a small filler list
+# removed (negations and pronouns are kept), refuses a negated query, and
+# ignores keywords that are one generic word or shared by 3+ guides.
+
+NEGATIVE_PROBES_EXACT = [
+    ("en", q) for q in (
+        "not export", "do not export", "so export", "then export", "could export",
+        "no merge", "we merge", "not calibrate", "not the chart", "no chart", "my chart",
+        "my concentration", "is it my concentration?", "my source", "it is the source",
+        "no timeout", "my settings", "data", "my data", "all data", "data please",
+        "r2", "source", "log", "don't export the data",
+    )
+] + [
+    ("ko", "데이터"), ("vi", "đường chuẩn"), ("zh", "模式"),
+    ("zh", "不要导出数据"), ("zh", "别合并csv"), ("ja", "データをエクスポートしない"),
+    ("ru", "не экспортировать данные"), ("fr", "ne pas exporter les données"),
+    ("vi", "không xuất dữ liệu"), ("ko", "데이터 내보내기 안 해요"),
+]
+
+
+@pytest.mark.parametrize("lang, query", NEGATIVE_PROBES_EXACT,
+                         ids=[f"{p[0]}-{p[1]}" for p in NEGATIVE_PROBES_EXACT])
+def test_negated_pronoun_and_vague_queries_do_not_launch(lang, query):
+    ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
+    assert ai_assistant.resolve_guide(query, ctx, lang)[0] is None
+
+
+def test_nav_phrasing_still_launches_with_a_negation():
+    # "how do I not show popups" is a request; the negation guard only covers
+    # statements without how-to phrasing.
+    ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
+    assert ai_assistant._should_launch_guide("how do i not export", 2.0, 0) is True
+    assert ai_assistant._should_launch_guide("not export", 9.0, ai_assistant._HIT_EXACT) is False
+
+
+# ── Test gaps: CJK weighting and exact-first ranking are pinned ──────────────
+
+@pytest.mark.parametrize("lang, query, expected", [
+    # Launch ONLY through the CJK ~1-word-per-2-chars weighting: no nav marker,
+    # the query is not itself a keyword (so no _HIT_EXACT), one CJK phrase hit.
+    ("zh", "我要导出数据", "export_data"),
+    ("ja", "今すぐデータをエクスポート", "export_data"),
+])
+def test_cjk_phrase_weighting_launches(lang, query, expected):
+    ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
+    _best, _score, evidence = ai_assistant._match_guide_detail(query, ctx, lang)
+    assert evidence != ai_assistant._HIT_EXACT and not ai_assistant._has_nav_intent(query)
+    assert ai_assistant.resolve_guide(query, ctx, lang)[0] == expected
+
+
+def test_specificity_units_weights_cjk_runs():
+    assert ai_assistant._specificity_units(frozenset({"导出数据"})) == 2
+    assert ai_assistant._specificity_units(frozenset({"export", "data"})) == 2
+    assert ai_assistant._specificity_units(frozenset({"图表"})) == 1

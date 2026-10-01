@@ -440,6 +440,8 @@ class UserGuide {
      * Start the user guide
      */
     start() {
+        // A fresh run / a forward skip: never inherit Previous's direction (N1).
+        this._navBack = false;
         if (!this.initialized) {
             this.init();
         }
@@ -613,6 +615,8 @@ class UserGuide {
     /** Skip the whole contiguous dialog run and resume at the next non-dialog
      *  step (or stop) — used when a dialog is dismissed. */
     _skipDialogRun() {
+        // A fresh run / a forward skip: never inherit Previous's direction (N1).
+        this._navBack = false;
         let next = this.currentStep + 1;
         while (next < this.steps.length && this._isSwalStep(this.steps[next])) next++;
         this.removeInteractionHandler();
@@ -1195,6 +1199,8 @@ class UserGuide {
      * Each step: { target, title, description, position }
      */
     startCustomSteps(aiSteps) {
+        // A fresh run / a forward skip: never inherit Previous's direction (N1).
+        this._navBack = false;
         if (!this.initialized) this.init();
         if (!aiSteps || !aiSteps.length) return;
 
@@ -1231,6 +1237,8 @@ class UserGuide {
      *   calibrate_kinetics, calibrate_point, report
      */
     startWorkflow(workflowName) {
+        // A fresh run / a forward skip: never inherit Previous's direction (N1).
+        this._navBack = false;
         if (!this.initialized) this.init();
         const steps = this._buildWorkflowSteps(workflowName);
         if (!steps || !steps.length) {

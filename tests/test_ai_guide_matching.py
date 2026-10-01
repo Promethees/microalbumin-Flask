@@ -847,3 +847,16 @@ def test_report_subject_step_says_how_to_delete():
     ex = ai_assistant._guide_example_by_id("report_subject_management", "en")
     step = next(s for s in ex["steps"] if "clearReportItems" in s["target"])
     assert "❌" in step["description"] and "stay on disk" in step["description"]
+
+
+def test_user_guide_resets_skip_direction_on_every_start():
+    """N1: Previous sets _navBack; every fresh run (and main's dialog skip)
+    must clear it, or the next missing step is skipped backwards."""
+    import re as _re
+    js = open(os.path.join(os.path.dirname(__file__), "..", "static", "script", "user-guide.js"),
+              encoding="utf-8").read()
+    for name in ("start", "startWorkflow", "startCustomSteps", "_skipDialogRun"):
+        m = _re.search(r"\n    " + name + r"\([^)]*\) \{\n(.{0,400})", js, _re.S)
+        if m is None and name == "_skipDialogRun":
+            continue          # online has no dialog-run skip
+        assert m and "this._navBack = false" in m.group(1), name
