@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import difflib
+import functools
 import json
 import os
 import re
@@ -126,12 +127,12 @@ _STOPWORDS = frozenset({
 })
 
 
+_CJK_RE = re.compile("[\u2e80-\u9fff\uf900-\ufaff\uac00-\ud7af]")
+
+
 def _is_cjk(s: str) -> bool:
     """True when s contains CJK / kana characters (Chinese, Japanese, Korean)."""
-    return any(
-        0x2E80 <= ord(c) <= 0x9FFF or 0xF900 <= ord(c) <= 0xFAFF or 0xAC00 <= ord(c) <= 0xD7AF
-        for c in s
-    )
+    return _CJK_RE.search(s) is not None
 
 
 # Edge punctuation stripped from query/keyword tokens before matching, so
@@ -169,11 +170,17 @@ def _token_match(a: str, b: str) -> bool:
 # word onto a near neighbour ('internal'≁'interval', 'select'≁'deselect').
 
 def _guide_vocabulary(examples: list) -> frozenset:
+    return _vocabulary_of(tuple(
+        kw for ex in examples for kw in ex.get("queries", []) if isinstance(kw, str)
+    ))
+
+
+@functools.lru_cache(maxsize=32)
+def _vocabulary_of(keywords: tuple) -> frozenset:
+    """Cached per keyword set (one per language) — M3."""
     vocab = set()
-    for ex in examples:
-        for kw in ex.get("queries", []):
-            if isinstance(kw, str):
-                vocab |= _content_words(kw)
+    for kw in keywords:
+        vocab |= _content_words(kw)
     return frozenset(vocab)
 
 
@@ -210,14 +217,29 @@ def _canonicalize_content(content: frozenset, vocab: frozenset) -> frozenset:
 #      longer sum to 8.
 #   3. The mode bonus is added only on top of a solid baseline (see the matcher).
 
+# A "word character" for phrase boundaries: a letter/digit/underscore that is
+# NOT CJK, kana or Hangul. Chinese/Japanese users write English terms with no
+# spaces ("切换到kinetics模式", "pointモード"), so a CJK neighbour must count as
+# a boundary; plain \w (Unicode) would treat it as part of the word (H1).
+_WORDCH = r"[^\W\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff]"
+
+
+@functools.lru_cache(maxsize=8192)
+def _keyword_regex(kw_lower: str):
+    """Compiled boundary pattern for one keyword, cached (M3): the vi guide set
+    has ~900 keywords, more than re's own 512-entry cache, so building the
+    pattern string per call recompiled almost every keyword on every query."""
+    pattern = r"(?<!" + _WORDCH + r")(?<!-)" + re.escape(kw_lower)
+    if len(kw_lower) < 6:
+        pattern += r"(?!" + _WORDCH + r")"
+    return re.compile(pattern)
+
+
 def _phrase_hit(kw_lower: str, q_lower: str) -> bool:
     """True when kw_lower occurs in q_lower as a phrase on word boundaries."""
     if _is_cjk(kw_lower):
         return kw_lower in q_lower
-    pattern = r"(?<![\w-])" + re.escape(kw_lower)
-    if len(kw_lower) < 6:
-        pattern += r"(?!\w)"
-    return re.search(pattern, q_lower) is not None
+    return _keyword_regex(kw_lower).search(q_lower) is not None
 
 
 def _phrase_tokens(text: str) -> frozenset:
@@ -246,38 +268,61 @@ def _same_token_set(a: frozenset, b: frozenset) -> bool:
     )
 
 
-def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset):
-    """(score, dedup_key, strong) for one keyword against the query."""
+# Evidence levels for the launch gate (returned as the "strong" value; 0 is falsy).
+_HIT_STRONG = 1   # a multi-word keyword (or a CJK phrase) matched
+_HIT_EXACT = 2    # the WHOLE query is one keyword ("set timeout", "导出数据")
+
+
+def _specificity_units(kw_tokens: frozenset) -> int:
+    """Word count of a keyword; a CJK run (no spaces) counts ~1 word per 2
+    characters, so '导出数据' weighs like 'export data' (H2)."""
+    return sum(max(1, len(t) // 2) if _is_cjk(t) else 1 for t in kw_tokens)
+
+
+@functools.lru_cache(maxsize=8192)
+def _keyword_features(kw: str):
+    """Query-independent facts about one keyword, cached (M3)."""
     kw_lower = kw.lower().strip()
-    min_len = 2 if _is_cjk(kw_lower) else 4
-    kw_content = _content_words(kw_lower)
     kw_tokens = _phrase_tokens(kw_lower)
-    specificity = 1.0 + 0.8 * max(0, len(kw_tokens) - 1)
+    return kw_lower, _is_cjk(kw_lower), _content_words(kw_lower), kw_tokens, _specificity_units(kw_tokens)
+
+
+def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset):
+    """(score, dedup_key, evidence) for one keyword against the query.
+
+    evidence is 0, _HIT_STRONG or _HIT_EXACT (see _should_launch_guide).
+    """
+    kw_lower, kw_cjk, kw_content, kw_tokens, units = _keyword_features(kw)
+    min_len = 2 if kw_cjk else 4
+    specificity = 1.0 + 0.8 * max(0, units - 1)
+    exact = bool(kw_tokens and q_tokens and _same_token_set(kw_tokens, q_tokens))
     # 1. Exact phrase on word boundaries — weighted by specificity so one long,
     #    specific phrase ('export data to report') outranks a pile of short
     #    generic keywords.
     if len(kw_lower) >= min_len and kw_lower not in _STOPWORDS and _phrase_hit(kw_lower, q_lower):
         key = kw_tokens or frozenset([kw_lower])
-        return specificity, key, len(kw_tokens) >= 2 or _is_cjk(kw_lower)
+        if exact:
+            return specificity, key, _HIT_EXACT
+        return specificity, key, _HIT_STRONG if (units >= 2 or kw_cjk) else 0
     # 2. Full coverage: the query says exactly what the keyword says, stop-words
     #    and plurals aside ('how to calibrate' vs the keyword 'how calibrate').
     #    A query that says MORE ('change the concentration unit' vs 'get
     #    concentration') falls through to the partial scores below.
-    if kw_tokens and q_tokens and _same_token_set(kw_tokens, q_tokens):
-        return specificity, kw_tokens, len(kw_tokens) >= 2
+    if exact:
+        return specificity, kw_tokens, _HIT_EXACT
     if not kw_content:
-        return 0.0, None, False
+        return 0.0, None, 0
     # 3. Partial (fuzzy, prefix-aware) content-word matches.
     if len(kw_content) == 1:
         word = next(iter(kw_content))
         if len(word) < 5:
-            return 0.0, None, False
+            return 0.0, None, 0
         if any(_token_match(word, qw) for qw in q_content):
-            return 0.8, kw_content, False
-        return 0.0, None, False
+            return 0.8, kw_content, 0
+        return 0.0, None, 0
     if all(any(_token_match(kw_word, qw) for qw in q_content) for kw_word in kw_content):
-        return 0.8, kw_content, True
-    return 0.0, None, False
+        return 0.8, kw_content, _HIT_STRONG
+    return 0.0, None, 0
 
 
 def _score_keyword(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset = None) -> float:
@@ -290,17 +335,17 @@ def _score_guide_keywords(keywords, q_lower: str, q_content: frozenset,
                           q_tokens: frozenset = None) -> tuple[float, bool, int]:
     """Sum a guide's keyword scores, counting each distinct word set once.
 
-    Returns (score, strong_hit, hits). ``strong_hit`` is True when at least one
-    hit came from a multi-word keyword (exact phrase, full coverage, or all its
-    content words present) or a CJK phrase — the evidence a no-"how do I"
-    launch needs (see _should_launch_guide); a single generic word
-    ("concentration", "chart") never counts as strong on its own. ``hits`` (the
-    raw number of matching keywords) only breaks ties between guides.
+    Returns (score, evidence, hits). ``evidence`` is the best of the keyword
+    hits: _HIT_EXACT when the whole query IS one of the keywords, _HIT_STRONG
+    when a multi-word keyword (or a CJK phrase) matched, else 0 — the evidence
+    a no-"how do I" launch needs (see _should_launch_guide); a single generic
+    word inside a longer statement ("my chart is empty") is never enough.
+    ``hits`` (the raw number of matching keywords) only breaks ties.
     """
     if q_tokens is None:
         q_tokens = _phrase_tokens(q_lower)
     best: dict = {}
-    strong = False
+    strong = 0
     hits = 0
     for kw in keywords or ():
         if not isinstance(kw, str) or not kw.strip():
@@ -309,7 +354,7 @@ def _score_guide_keywords(keywords, q_lower: str, q_content: frozenset,
         if sc <= 0:
             continue
         hits += 1
-        strong = strong or is_strong
+        strong = max(strong, int(is_strong))
         if sc > best.get(key, 0.0):
             best[key] = sc
     return sum(best.values()), strong, hits
@@ -348,7 +393,7 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
     """
     examples = _load_guide_examples(lang)
     if not examples:
-        return None, 0, False
+        return None, 0, 0
 
     q_lower = (query or "").lower()
     vocab = _guide_vocabulary(examples)
@@ -358,7 +403,7 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
     best_score: float = 0
     best_hits = 0
     best = None
-    best_strong = False
+    best_strong = 0
     # Learned feedback weights apply only while the opt-out toggle is on. Read it
     # once here, never inside the per-guide loop below.
     fb_on = ai_feedback.is_enabled()
@@ -388,7 +433,7 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
         if (score, hits) > (best_score, best_hits):
             best_score, best_hits, best, best_strong = score, hits, ex, strong
 
-    return (best, best_score, best_strong) if best_score >= 0.1 else (None, 0, False)
+    return (best, best_score, best_strong) if best_score >= 0.1 else (None, 0, 0)
 
 
 def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tuple[dict, float] | tuple[None, float]:
@@ -1857,13 +1902,15 @@ def _is_tour_request(query: str) -> bool:
     return any(marker in q for marker in _TOUR_MARKERS)
 
 
-def _should_launch_guide(query: str, score: float, strong_hit: bool = True) -> bool:
+def _should_launch_guide(query: str, score: float, strong_hit: int = True) -> bool:
     """Decide whether a matched guide example should be short-circuited to the UI.
 
     Fires on (a) an explicit full-tour request with any usable match, (b) a
-    navigation/how-to phrasing backed by at least one solid keyword hit, or
-    (c) a strong keyword match that is not a conceptual question AND rests on
-    at least one multi-word / phrase hit (``strong_hit``, from
+    navigation/how-to phrasing backed by at least one solid keyword hit,
+    (c) a query that IS one of the guide's keywords (``strong_hit ==
+    _HIT_EXACT``: "set timeout", "导出数据", a bare mode name) with a solid
+    hit, or (d) a strong keyword match that is not a conceptual question AND
+    rests on at least one multi-word / phrase hit (``strong_hit``, from
     _score_guide_keywords). Without (c)'s phrase requirement a statement such as
     "my concentration results look too high" launched a guide on the single
     word "concentration" plus the mode bonus. Conceptual questions always fall
@@ -1879,7 +1926,11 @@ def _should_launch_guide(query: str, score: float, strong_hit: bool = True) -> b
         return True
     if _is_conceptual(query):
         return False
-    return score >= _STRONG_MATCH_SCORE and strong_hit
+    # The whole query IS one of the guide's keywords ("set timeout", "chart",
+    # "导出数据", a bare mode name): unambiguous, so a solid hit is enough (M1/H2).
+    if strong_hit == _HIT_EXACT and score >= _NAV_LAUNCH_SCORE:
+        return True
+    return score >= _STRONG_MATCH_SCORE and bool(strong_hit)
 
 
 def resolve_guide(query: str, ui_context: dict = None, language: str = "en"):

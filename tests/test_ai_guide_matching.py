@@ -746,6 +746,11 @@ def test_mode_bonus_needs_a_baseline_hit():
     ("calibrat", "calibration mode", True),
     ("mode", "model fitting", False),
     ("校准", "如何校准", True),
+    # H1: a CJK / kana neighbour is a boundary for a Latin keyword.
+    ("kinetics", "切换到kinetics模式", True),
+    ("point", "pointモードに切り替える方法", True),
+    ("chart", "如何查看chart", True),
+    ("point", "endpoint", False),
 ])
 def test_phrase_hit_boundaries(kw, query, hit):
     assert ai_assistant._phrase_hit(kw, query) is hit
@@ -804,3 +809,28 @@ def test_new_feature_guides_are_translated(lang):
         en = ai_assistant._guide_example_by_id(gid, "en")
         loc = ai_assistant._guide_example_by_id(gid, lang)
         assert all(a["description"] != b["description"] for a, b in zip(en["steps"], loc["steps"])), (lang, gid)
+
+
+# ── M3: matcher latency guard ────────────────────────────────────────────────
+
+def test_matcher_latency_and_regex_cache():
+    """A match over the largest guide set must stay fast. The keyword regexes
+    are compiled once (lru_cache): re's own 512-entry cache is smaller than the
+    vi keyword set, so per-call patterns recompiled on every query (5-7x
+    slower). The bound is generous — it only catches that kind of regression."""
+    import time
+    ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True}
+    queries = ["how do i export data", "merge files", "show me the chart",
+               "change the interval", "calibrate"]
+    for lang in ("en", "vi", "zh"):
+        ai_assistant._match_guide_example("warm up", ctx, lang)
+    before = ai_assistant._keyword_regex.cache_info()
+    t = time.perf_counter()
+    for lang in ("en", "vi", "zh"):
+        for q in queries:
+            ai_assistant._match_guide_example(q, ctx, lang)
+    per_match = (time.perf_counter() - t) / (3 * len(queries))
+    after = ai_assistant._keyword_regex.cache_info()
+    assert after.hits > before.hits
+    assert after.misses - before.misses < 50      # nothing recompiled per query
+    assert per_match < 0.2, f"{per_match * 1000:.0f} ms per match"

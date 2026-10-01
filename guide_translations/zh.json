@@ -94,7 +94,10 @@
       "校准模式",
       "进入校准",
       "校准",
-      "标定模式"
+      "标定模式",
+      "calibrate模式",
+      "切换到calibrate",
+      "进入calibrate模式"
     ]
   },
   {
@@ -110,7 +113,9 @@
       "动力学模式",
       "进入kinetics",
       "动力学",
-      "kinetics模式"
+      "kinetics模式",
+      "切换到kinetics",
+      "进入kinetics模式"
     ]
   },
   {
@@ -126,7 +131,10 @@
       "点模式",
       "进入point",
       "单点模式",
-      "endpoint"
+      "endpoint",
+      "point模式",
+      "切换到point",
+      "进入point模式"
     ]
   },
   {
