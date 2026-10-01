@@ -542,7 +542,11 @@
     "queries": [
       "xuất excel trong báo cáo",
       "tải bảng tính excel",
-      "export excel từ báo cáo"
+      "export excel từ báo cáo",
+      "xuất excel",
+      "tải workbook excel",
+      "export excel",
+      "tải về excel"
     ]
   },
   {
