@@ -122,7 +122,7 @@ devtools/                  ← DEV ONLY: the --monitor performance monitor; neve
 - All routes go in blueprints under `src/routes/`. Never add one to `main.py`.
 - `@validate_json` (from `validators.py`) is mandatory on every POST route that accepts
   JSON. Documented exemption: `/download_event_logs` (GET+POST, validates inline).
-- Tests live in `tests/` (47 files). CI runs the whole suite on 3.12 before any build.
+- Tests live in `tests/` (51 files). CI runs the whole suite on 3.12 before any build.
 - **The dev monitor is a package, not a feature.** `--monitor` attaches `devtools/` (its own
   blueprint at `/__dev/monitor`, its own page, attach-time wrappers instead of production
   hooks). It never opens the serial port, 404s when off, and never ships — excluded in
@@ -180,7 +180,8 @@ devtools/                  ← DEV ONLY: the --monitor performance monitor; neve
   means adding its key to **all seven** in lockstep. Technical terms stay in English.
   **§2.22**
 - **User-guide translations:** `guide_training.json` (EN baseline) +
-  `guide_translations/<lang>.json` for the other six. Edit a step → edit all seven.
+  `guide_translations/<lang>.json` for the other six, steps keyed by `target`. Edit a step → edit all seven.
+  Guide scoring/gate code is shared verbatim with `online`. **§2.13**
 - **AI answer feedback:** 👍/👎 → `ai_feedback.jsonl`; a rating on a **locally matched
   guide** also tunes `ai_guide_weights.json`, which the matcher folds into its score.
   LLM answers are logged only. Opt-out: `ai_feedback_enabled`. **§2.13**
