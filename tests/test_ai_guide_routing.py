@@ -437,7 +437,7 @@ def test_own_query_launch_rate():
     assert launched / total >= LAUNCH_RATE_FLOOR, f"{launched}/{total}"
 
 
-LAUNCH_RATE_FLOOR = 0.92   # 95.2 % at fix round 2 (2344 / 2463)
+LAUNCH_RATE_FLOOR = 0.92   # 96.9 % at fix round 2 (2386 / 2463)
 
 
 @pytest.mark.parametrize("query, expected", [
