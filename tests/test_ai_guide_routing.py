@@ -480,8 +480,9 @@ def test_nav_phrasing_still_launches_with_a_negation():
     # "how do I not show popups" is a request; the negation guard only covers
     # statements without how-to phrasing.
     ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
-    assert ai_assistant._should_launch_guide("how do i not export", 2.0, 0) is True
-    assert ai_assistant._should_launch_guide("not export", 9.0, ai_assistant._HIT_EXACT) is False
+    assert ai_assistant.resolve_guide("how do i not show popups", ctx, "en")[0] == "disable_popups"
+    # A keyword that is itself negated still launches ("no popup", "不要弹窗").
+    assert ai_assistant.resolve_guide("no popup", ctx, "en")[0] == "disable_popups"
 
 
 # ── Test gaps: CJK weighting and exact-first ranking are pinned ──────────────

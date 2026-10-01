@@ -300,6 +300,9 @@ def _keyword_features(kw: str):
 # the bare keyword and launched a guide.
 _EXACT_FILLER = frozenset({
     "how", "to", "the", "a", "an", "i", "me", "do", "please",
+    # Imperative verbs that only say "take me there" ("go to kinetics",
+    # "get concentration", "show graph") — never a negation or a pronoun.
+    "go", "get", "find", "show", "see", "open",
     "của", "và", "là", "cho", "trong", "với", "để",                       # vi
     "le", "la", "les", "des", "du", "de", "pour", "dans", "est", "un", "une",  # fr
     "的", "了", "和", "是", "就", "都", "而", "及",                           # zh
@@ -319,7 +322,7 @@ _NEGATION_SUBSTRINGS = ("n't", "n'", "不", "别", "没", "ない", "しない",
 # Keywords that reduce to one of these single generic words are too vague to
 # open a guide on their own ("data", "source", "r2", ko "데이터").
 _GENERIC_EXACT = frozenset({
-    "data", "source", "sources", "r2", "log", "logs", "file", "files", "mode",
+    "data", "source", "sources", "r2", "log", "logs", "mode",
     "dữ liệu", "données", "数据", "データ", "данные", "데이터", "모드", "файл",
     "模式", "モード", "режим",
 })
@@ -341,18 +344,42 @@ def _has_negation(query: str) -> bool:
     return any(sub in q for sub in _NEGATION_SUBSTRINGS)
 
 
-@functools.lru_cache(maxsize=64)
-def _shared_exact_keys(keyword_sets: tuple) -> frozenset:
-    """Exact-token sets listed under 3+ guides in one language's guide set.
+# Mode names are never "vague": a bare "kinetics" / "point" means "switch to
+# that mode" even though several workflow guides also list the word.
+_MODE_WORDS = frozenset({
+    "kinetics", "point", "calibrate", "report", "endpoint",
+    "动力学", "点模式", "校准", "キネティクス", "ポイント", "キャリブレーション", "校正",
+    "캘리브레이션", "종말점", "кинетика", "калибровка",
+})
 
-    Such a keyword ("đường chuẩn" in vi) cannot say which guide is meant, so it
-    never counts as _HIT_EXACT. ``keyword_sets`` is one tuple of keywords per
-    guide (hashable, so the result is cached per language)."""
-    from collections import Counter
-    counts = Counter()
-    for kws in keyword_sets:
-        counts.update({_keyword_features(k)[5] for k in kws if isinstance(k, str) and k.strip()})
-    return frozenset(k for k, n in counts.items() if n >= 3 and k)
+
+_VARIANT_SUFFIX_RE = re.compile(r"_(kinetics|point|wrong_mode|generic)$")
+
+
+def _guide_family(guide_id: str) -> str:
+    """concentration_calc_kinetics → concentration_calc (mode variants)."""
+    return _VARIANT_SUFFIX_RE.sub("", guide_id) if guide_id.startswith("concentration_calc_") else guide_id
+
+
+@functools.lru_cache(maxsize=256)
+def _shared_exact_keys(keyword_sets: tuple) -> frozenset:
+    """Exact-token sets listed under 3+ guide FAMILIES in one language's set.
+
+    Mode variants of one feature (concentration_calc_kinetics / _point /
+    _wrong_mode / _generic) are one family — only one of them is ever active —
+    so they do not make their own keywords "shared". Such a keyword
+    ("đường chuẩn" in vi) cannot say which guide is meant, so it never counts
+    as launch evidence. ``keyword_sets`` is ((family, keywords), …), hashable
+    so the result is cached per language."""
+    from collections import defaultdict
+    families = defaultdict(set)
+    for family, kws in keyword_sets:
+        for k in kws:
+            if isinstance(k, str) and k.strip():
+                families[_keyword_features(k)[5]].add(family)
+    counts = {k: len(f) for k, f in families.items()}
+    return frozenset(k for k, n in counts.items()
+                     if n >= 3 and k and not (len(k) == 1 and next(iter(k)) in _MODE_WORDS))
 
 
 def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset,
@@ -371,6 +398,10 @@ def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozense
     # A generic one-word keyword, or one listed under 3+ guides, carries no
     # launch evidence at all (it still scores, so it can rank a nav request).
     vague = (len(kw_exact) == 1 and next(iter(kw_exact)) in _GENERIC_EXACT) or kw_exact in shared
+    # A negated query ("not export", "不要导出数据") is a statement, not a
+    # request — unless the keyword itself is negated ("no popup", "不要弹窗").
+    if _has_negation(q_lower) and not _has_negation(kw_lower):
+        vague = True
     strict = bool(kw_exact and q_exact and _same_token_set(kw_exact, q_exact)) and not vague
     exact = cover and strict
     # 1. Exact phrase on word boundaries — weighted by specificity so one long,
@@ -398,7 +429,7 @@ def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozense
             return 0.8, kw_content, 0
         return 0.0, None, 0
     if all(any(_token_match(kw_word, qw) for qw in q_content) for kw_word in kw_content):
-        return 0.8, kw_content, _HIT_STRONG
+        return 0.8, kw_content, 0 if vague else _HIT_STRONG
     return 0.0, None, 0
 
 
@@ -478,8 +509,10 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
     q_content = _canonicalize_content(_content_words(q_lower), vocab)
     q_tokens = _canonicalize_content(_phrase_tokens(q_lower), vocab)
     q_exact = _canonicalize_content(_exact_tokens(q_lower), vocab)
-    shared = _shared_exact_keys(tuple(tuple(ex.get("queries", [])) for ex in examples))
     mode = (ui_context or {}).get("mode", "")
+    shared = _shared_exact_keys(tuple(
+        (_guide_family(ex.get("id", "")), tuple(ex.get("queries", []))) for ex in examples
+    ))
     best_score: float = 0
     best_hits = 0
     best = None
@@ -2106,10 +2139,7 @@ def _should_launch_guide(query: str, score: float, strong_hit: int = True) -> bo
         return False
     # The whole query IS one of the guide's keywords ("set timeout", "chart",
     # "导出数据", a bare mode name): unambiguous, so a solid hit is enough (M1/H2).
-    # Without how-to phrasing, a negated query never launches ("not export",
-    # "不要导出数据", "ne pas exporter") — it is a statement, not a request.
-    if _has_negation(query):
-        return False
+    # (A negated statement carries no launch evidence — see _keyword_hit.)
     if strong_hit == _HIT_EXACT and score >= _NAV_LAUNCH_SCORE:
         return True
     return score >= _STRONG_MATCH_SCORE and bool(strong_hit)
