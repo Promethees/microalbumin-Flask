@@ -1125,7 +1125,14 @@
     },
     {
       "id": "export_excel_in_report",
-      "queries": [],
+      "queries": [
+        "export excel",
+        "download excel",
+        "excel workbook",
+        "excel export",
+        "export to excel",
+        "save as excel"
+      ],
       "conditions": {
         "mode": "report"
       },
