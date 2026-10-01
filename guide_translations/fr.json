@@ -1450,5 +1450,98 @@
       "exporter une plage de temps",
       "enregistrer une partie des données"
     ]
+  },
+  {
+    "id": "pause_reading",
+    "steps": [
+      {
+        "target": "#run-script-btn",
+        "title": "Lancer une acquisition automatique",
+        "description": "La pause n'est possible que pendant une acquisition automatique en cours. Lancez d'abord une lecture (Run mode : Automatic)."
+      },
+      {
+        "target": "#log-cdc-data",
+        "title": "Pause et reprise",
+        "description": "Pendant l'acquisition, un bouton 'Pause reading' apparaît à côté de 'Stop reading' (et dans la barre flottante quand vous faites défiler). La pause suspend l'acquisition sans la terminer — l'appareil cesse de mesurer et l'horloge de session se fige. Cliquez sur 'Resume reading' pour reprendre ; les horodatages restent continus."
+      }
+    ],
+    "queries": [
+      "mettre en pause la lecture",
+      "pause de la mesure",
+      "reprendre la lecture",
+      "reprendre la mesure"
+    ]
+  },
+  {
+    "id": "device_controller",
+    "steps": [
+      {
+        "target": "#device-control-section",
+        "title": "Contrôleur de l'appareil",
+        "description": "Le Device Controller pilote l'appareil connecté depuis l'application — mêmes boutons, menus et choix de canal que son clavier. Cliquez sur le titre pour l'ouvrir. Il est désactivé pendant une acquisition : arrêtez-la d'abord."
+      }
+    ],
+    "queries": [
+      "contrôleur de l'appareil",
+      "contrôleur virtuel",
+      "piloter l'appareil",
+      "changer le canal"
+    ]
+  },
+  {
+    "id": "quick_concentration",
+    "steps": [
+      {
+        "target": "#quick-concentration-btn",
+        "title": "Concentration rapide",
+        "description": "Cliquez sur '🧮 Quick concentration' pour calculer une concentration à partir des coefficients de la courbe étalon et d'une valeur mesurée — sans fichier de données."
+      }
+    ],
+    "queries": [
+      "calculer la concentration rapidement",
+      "calculatrice de concentration",
+      "concentration rapide"
+    ]
+  },
+  {
+    "id": "export_excel_formula",
+    "steps": [
+      {
+        "target": "#export-coef",
+        "title": "Panneau d'export des coefficients",
+        "description": "La formule Excel se trouve dans le panneau 'Export coefficients for standard curve'. Cliquez sur son titre pour l'ouvrir."
+      },
+      {
+        "target": "#export-excel-formula-btn",
+        "title": "Formule Excel",
+        "description": "Cliquez sur '📐 Excel formula' pour générer des formules Excel prêtes à coller à partir des coefficients ajustés de la courbe étalon."
+      }
+    ],
+    "queries": [
+      "formule excel",
+      "exporter la formule excel",
+      "formule de la courbe étalon"
+    ]
+  },
+  {
+    "id": "measure_now",
+    "steps": [
+      {
+        "target": "#cdc-axis-control",
+        "title": "Enregistrer en Turns",
+        "description": "Cochez 'Record as Turns (1, 2, 3 …)' — chaque Turn est un étalon, enregistré à la demande. Le choix Run mode apparaît une fois la case cochée."
+      },
+      {
+        "target": "#run-script-btn",
+        "title": "Acquisition manuelle",
+        "description": "Choisissez Run mode 'Manual', puis cliquez sur Start reading. L'appareil reste en attente ; chaque appui sur 'Measure now' enregistre un Turn. Appuyez sur Stop quand vous avez fini."
+      }
+    ],
+    "queries": [
+      "mesurer maintenant",
+      "mesure manuelle",
+      "enregistrer un turn",
+      "mesure à la demande"
+    ]
   }
 ]

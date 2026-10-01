@@ -773,3 +773,34 @@ def test_clear_report_subject_highlights_the_real_button():
     assert step["target"] == 'button[onclick="clearReportItems()"]'
     assert "deleted from disk" not in step["description"]
     assert "stay on disk" in step["description"]
+
+
+# ── B12: guides for desktop features the assistant used to miss ──────────────
+
+CAL_CTX = {"mode": "calibrate", "data_loaded": True, "app_started": True}
+
+
+@pytest.mark.parametrize("query, ctx, expected", [
+    ("how to export the excel formula", CAL_CTX, "export_excel_formula"),
+    ("how do i pause the reading", KIN_DATA, "pause_reading"),
+    ("how to calculate concentration quickly", KIN_DATA, "quick_concentration"),
+    ("how do I use the device controller", KIN_DATA, "device_controller"),
+    ("how do I record one turn", KIN_DATA, "measure_now"),
+])
+def test_new_feature_guides_launch(query, ctx, expected):
+    assert ai_assistant.resolve_guide(query, ctx, "en")[0] == expected
+
+
+def test_excel_formula_outside_calibrate_prepends_the_mode_switch():
+    _, steps = ai_assistant.resolve_guide("how to export the excel formula", KIN_DATA, "en")
+    assert steps[0]["target"] == "#meas-mode-section"
+    assert "calibrate" in steps[0]["description"]
+
+
+@pytest.mark.parametrize("lang", ["vi", "zh", "fr", "ja", "ru", "ko"])
+def test_new_feature_guides_are_translated(lang):
+    for gid in ("pause_reading", "device_controller", "quick_concentration",
+                "export_excel_formula", "measure_now"):
+        en = ai_assistant._guide_example_by_id(gid, "en")
+        loc = ai_assistant._guide_example_by_id(gid, lang)
+        assert all(a["description"] != b["description"] for a, b in zip(en["steps"], loc["steps"])), (lang, gid)

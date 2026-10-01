@@ -1434,5 +1434,98 @@
       "导出时间范围",
       "保存部分数据"
     ]
+  },
+  {
+    "id": "pause_reading",
+    "steps": [
+      {
+        "target": "#run-script-btn",
+        "title": "开始自动运行",
+        "description": "只有在自动读数运行进行中才能暂停。请先开始读数（Run mode：Automatic）。"
+      },
+      {
+        "target": "#log-cdc-data",
+        "title": "暂停与继续",
+        "description": "运行期间，“Stop reading”旁会出现“Pause reading”按钮（滚动离开时也会出现在浮动读数栏中）。暂停会保持运行而不结束——设备停止读数，会话时钟冻结。点击“Resume reading”继续，时间戳保持连续。"
+      }
+    ],
+    "queries": [
+      "暂停读数",
+      "暂停测量",
+      "继续读数",
+      "恢复测量"
+    ]
+  },
+  {
+    "id": "device_controller",
+    "steps": [
+      {
+        "target": "#device-control-section",
+        "title": "设备控制器",
+        "description": "Device Controller 可在应用中操作已连接的设备——与设备键盘相同的按钮、菜单和通道选择。点击标题展开。读数会话运行时它不可用：请先停止运行。"
+      }
+    ],
+    "queries": [
+      "设备控制器",
+      "虚拟控制器",
+      "控制设备",
+      "切换设备通道"
+    ]
+  },
+  {
+    "id": "quick_concentration",
+    "steps": [
+      {
+        "target": "#quick-concentration-btn",
+        "title": "快速浓度",
+        "description": "点击“🧮 Quick concentration”，用标准曲线系数和一个测量值计算浓度——无需数据文件。"
+      }
+    ],
+    "queries": [
+      "快速计算浓度",
+      "浓度计算器",
+      "快速浓度"
+    ]
+  },
+  {
+    "id": "export_excel_formula",
+    "steps": [
+      {
+        "target": "#export-coef",
+        "title": "导出系数面板",
+        "description": "Excel 公式位于“Export coefficients for standard curve”面板中。点击其标题展开。"
+      },
+      {
+        "target": "#export-excel-formula-btn",
+        "title": "Excel 公式",
+        "description": "点击“📐 Excel formula”，根据拟合的标准曲线系数生成可直接粘贴的 Excel 公式。"
+      }
+    ],
+    "queries": [
+      "excel 公式",
+      "导出 excel 公式",
+      "标准曲线公式"
+    ]
+  },
+  {
+    "id": "measure_now",
+    "steps": [
+      {
+        "target": "#cdc-axis-control",
+        "title": "按 Turn 记录",
+        "description": "勾选“Record as Turns (1, 2, 3 …)”——每个 Turn 是一个标准品，按需记录。勾选后会出现 Run mode 选项。"
+      },
+      {
+        "target": "#run-script-btn",
+        "title": "手动运行",
+        "description": "选择 Run mode“Manual”，然后点击 Start reading。设备保持待机；每按一次“Measure now”记录一个 Turn。完成后按 Stop。"
+      }
+    ],
+    "queries": [
+      "立即测量",
+      "手动测量",
+      "记录一个 turn",
+      "按需测量"
+    ]
   }
 ]

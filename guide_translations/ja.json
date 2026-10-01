@@ -1437,5 +1437,98 @@
       "時間範囲をエクスポート",
       "データの一部を保存"
     ]
+  },
+  {
+    "id": "pause_reading",
+    "steps": [
+      {
+        "target": "#run-script-btn",
+        "title": "自動測定を開始",
+        "description": "一時停止は自動測定の実行中のみ利用できます。まず読み取りを開始してください（Run mode：Automatic）。"
+      },
+      {
+        "target": "#log-cdc-data",
+        "title": "一時停止と再開",
+        "description": "実行中は「Stop reading」の隣に「Pause reading」ボタンが表示されます（スクロールすると浮動の読み取りバーにも表示）。一時停止は実行を終了せずに保持します — デバイスは読み取りを止め、セッションの時計も止まります。「Resume reading」で再開すると、タイムスタンプは連続したままです。"
+      }
+    ],
+    "queries": [
+      "読み取りを一時停止",
+      "測定を一時停止",
+      "読み取りを再開",
+      "測定を再開"
+    ]
+  },
+  {
+    "id": "device_controller",
+    "steps": [
+      {
+        "target": "#device-control-section",
+        "title": "デバイスコントローラー",
+        "description": "Device Controller はアプリから接続中のデバイスを操作します — キーパッドと同じボタン、メニュー、チャンネル選択です。見出しをクリックして開きます。読み取りセッション中は使用できないため、先に実行を停止してください。"
+      }
+    ],
+    "queries": [
+      "デバイスコントローラー",
+      "仮想コントローラー",
+      "デバイスを操作",
+      "チャンネルを変更"
+    ]
+  },
+  {
+    "id": "quick_concentration",
+    "steps": [
+      {
+        "target": "#quick-concentration-btn",
+        "title": "クイック濃度",
+        "description": "「🧮 Quick concentration」をクリックすると、検量線の係数と測定値ひとつから濃度を計算します — データファイルは不要です。"
+      }
+    ],
+    "queries": [
+      "濃度をすばやく計算",
+      "濃度計算機",
+      "クイック濃度"
+    ]
+  },
+  {
+    "id": "export_excel_formula",
+    "steps": [
+      {
+        "target": "#export-coef",
+        "title": "係数エクスポートパネル",
+        "description": "Excel 数式は「Export coefficients for standard curve」パネルにあります。見出しをクリックして開きます。"
+      },
+      {
+        "target": "#export-excel-formula-btn",
+        "title": "Excel 数式",
+        "description": "「📐 Excel formula」をクリックすると、フィットした検量線の係数から貼り付け可能な Excel 数式を作成します。"
+      }
+    ],
+    "queries": [
+      "excel 数式",
+      "excel 数式をエクスポート",
+      "検量線の数式"
+    ]
+  },
+  {
+    "id": "measure_now",
+    "steps": [
+      {
+        "target": "#cdc-axis-control",
+        "title": "Turn として記録",
+        "description": "「Record as Turns (1, 2, 3 …)」にチェックします — 各 Turn はひとつの標準で、必要なときに記録します。チェックすると Run mode の選択が表示されます。"
+      },
+      {
+        "target": "#run-script-btn",
+        "title": "手動測定",
+        "description": "Run mode で「Manual」を選び、Start reading をクリックします。デバイスは待機し、「Measure now」を押すたびに Turn をひとつ記録します。終わったら Stop を押します。"
+      }
+    ],
+    "queries": [
+      "今すぐ測定",
+      "手動測定",
+      "turn を記録",
+      "オンデマンド測定"
+    ]
   }
 ]

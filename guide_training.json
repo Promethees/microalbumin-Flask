@@ -2441,6 +2441,147 @@
           "skipInteraction": true
         }
       ]
+    },
+    {
+      "id": "pause_reading",
+      "queries": [
+        "pause reading",
+        "pause the reading",
+        "pause measurement",
+        "pause the measurement",
+        "resume reading",
+        "resume measurement",
+        "pause the run",
+        "hold the run",
+        "pause recording",
+        "resume the run"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#run-script-btn",
+          "title": "Start an Automatic Run",
+          "description": "Pause is only available during a live automatic reading run. Start a reading first (Run mode: Automatic).",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#log-cdc-data",
+          "title": "Pause and Resume",
+          "description": "While the run is live, a 'Pause reading' button appears next to 'Stop reading' (and in the floating reading bar when you scroll away). Pause holds the run without ending it — the device stops taking readings and the session clock freezes. Click 'Resume reading' to continue; timestamps stay continuous.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "device_controller",
+      "queries": [
+        "device controller",
+        "virtual controller",
+        "control the device",
+        "device keypad",
+        "press device buttons",
+        "change device channel",
+        "device menu",
+        "remote control the device",
+        "control device from app"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#device-control-section",
+          "title": "Device Controller",
+          "description": "The Device Controller drives the connected device from the app — the same buttons, menus and channel choices as its keypad. Click the heading to expand it. It is disabled while a reading session runs: stop the run first.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "quick_concentration",
+      "queries": [
+        "quick concentration",
+        "calculate concentration quickly",
+        "concentration calculator",
+        "quick concentration calculator",
+        "concentration without a file",
+        "concentration from one value",
+        "concentration quickly",
+        "quick calculator"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#quick-concentration-btn",
+          "title": "Quick Concentration",
+          "description": "Click '🧮 Quick concentration' to compute a concentration from standard-curve coefficients and one measured value — no data file needed.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "export_excel_formula",
+      "queries": [
+        "excel formula",
+        "export excel formula",
+        "export the excel formula",
+        "formula for excel",
+        "paste formula into excel",
+        "standard curve formula excel",
+        "excel formula for the curve",
+        "curve formula"
+      ],
+      "requires_mode": "calibrate",
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#export-coef",
+          "title": "Export Coefficients Panel",
+          "description": "The Excel formula lives in the 'Export coefficients for standard curve' panel. Click its heading to expand it.",
+          "position": "top",
+          "skipInteraction": false
+        },
+        {
+          "target": "#export-excel-formula-btn",
+          "title": "Excel Formula",
+          "description": "Click '📐 Excel formula' to build paste-ready Excel formulas from the fitted standard-curve coefficients.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "measure_now",
+      "queries": [
+        "measure now button",
+        "measure one turn",
+        "record one turn",
+        "manual measurement",
+        "take a single reading",
+        "manual run mode",
+        "measure on demand",
+        "capture a turn",
+        "press measure now"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#cdc-axis-control",
+          "title": "Record as Turns",
+          "description": "Tick 'Record as Turns (1, 2, 3 …)' — each Turn is one standard, recorded on demand. The Run mode choice appears once it is ticked.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#run-script-btn",
+          "title": "Manual Run",
+          "description": "Choose Run mode 'Manual', then click Start reading. The device stays idle; each press of 'Measure now' records one Turn. Press Stop when you are done.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
     }
   ]
 }

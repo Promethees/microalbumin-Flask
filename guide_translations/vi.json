@@ -1446,5 +1446,98 @@
       "lưu phạm vi",
       "xuất khoảng dữ liệu"
     ]
+  },
+  {
+    "id": "pause_reading",
+    "steps": [
+      {
+        "target": "#run-script-btn",
+        "title": "Bắt đầu lượt đo tự động",
+        "description": "Tạm dừng chỉ có trong một lượt đo tự động đang chạy. Hãy bắt đầu đo trước (Run mode: Automatic)."
+      },
+      {
+        "target": "#log-cdc-data",
+        "title": "Tạm dừng và tiếp tục",
+        "description": "Khi lượt đo đang chạy, nút 'Pause reading' xuất hiện cạnh 'Stop reading' (và trong thanh đo nổi khi bạn cuộn đi). Tạm dừng giữ lượt đo mà không kết thúc — thiết bị ngừng đọc và đồng hồ phiên đứng yên. Nhấp 'Resume reading' để tiếp tục; dấu thời gian vẫn liên tục."
+      }
+    ],
+    "queries": [
+      "tạm dừng đo",
+      "tiếp tục đo",
+      "tạm dừng lượt đo",
+      "dừng tạm thời"
+    ]
+  },
+  {
+    "id": "device_controller",
+    "steps": [
+      {
+        "target": "#device-control-section",
+        "title": "Bộ điều khiển thiết bị",
+        "description": "Device Controller điều khiển thiết bị đang kết nối ngay từ ứng dụng — cùng các nút, menu và lựa chọn kênh như bàn phím của thiết bị. Nhấp vào tiêu đề để mở. Nó bị tắt khi đang có phiên đo: hãy dừng lượt đo trước."
+      }
+    ],
+    "queries": [
+      "bộ điều khiển thiết bị",
+      "điều khiển thiết bị",
+      "bàn phím thiết bị",
+      "đổi kênh thiết bị"
+    ]
+  },
+  {
+    "id": "quick_concentration",
+    "steps": [
+      {
+        "target": "#quick-concentration-btn",
+        "title": "Tính nồng độ nhanh",
+        "description": "Nhấp '🧮 Quick concentration' để tính nồng độ từ hệ số đường chuẩn và một giá trị đo — không cần tệp dữ liệu."
+      }
+    ],
+    "queries": [
+      "tính nồng độ nhanh",
+      "máy tính nồng độ",
+      "nồng độ nhanh"
+    ]
+  },
+  {
+    "id": "export_excel_formula",
+    "steps": [
+      {
+        "target": "#export-coef",
+        "title": "Bảng xuất hệ số",
+        "description": "Công thức Excel nằm trong bảng 'Export coefficients for standard curve'. Nhấp vào tiêu đề để mở bảng."
+      },
+      {
+        "target": "#export-excel-formula-btn",
+        "title": "Công thức Excel",
+        "description": "Nhấp '📐 Excel formula' để tạo công thức Excel dán được ngay từ các hệ số đường chuẩn đã khớp."
+      }
+    ],
+    "queries": [
+      "công thức excel",
+      "xuất công thức excel",
+      "công thức đường chuẩn excel"
+    ]
+  },
+  {
+    "id": "measure_now",
+    "steps": [
+      {
+        "target": "#cdc-axis-control",
+        "title": "Ghi theo Turn",
+        "description": "Đánh dấu 'Record as Turns (1, 2, 3 …)' — mỗi Turn là một mẫu chuẩn, được ghi theo yêu cầu. Lựa chọn Run mode sẽ xuất hiện sau khi đánh dấu."
+      },
+      {
+        "target": "#run-script-btn",
+        "title": "Lượt đo thủ công",
+        "description": "Chọn Run mode 'Manual' rồi nhấp Start reading. Thiết bị chờ sẵn; mỗi lần nhấn 'Measure now' ghi một Turn. Nhấn Stop khi xong."
+      }
+    ],
+    "queries": [
+      "đo ngay",
+      "đo thủ công",
+      "ghi một turn",
+      "đo từng turn"
+    ]
   }
 ]
