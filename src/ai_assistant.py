@@ -433,9 +433,12 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
             # negative weight can push a genuine match below the launch gate.
             score += ai_feedback.learned_bonus(ex_id)
 
-        # Ties go to the guide with more matching keywords (breadth of
-        # evidence) — dedup no longer lets that breadth inflate the score.
-        if (score, hits) > (best_score, best_hits):
+        # A guide one of whose keywords IS the whole query outranks guides
+        # that only share a word with it (a mode bonus must not let 'charger la
+        # calibration' lose to nav_calibrate_mode); then score; then ties go to
+        # the guide with more matching keywords (breadth of evidence).
+        rank = (strong == _HIT_EXACT, score, hits)
+        if rank > (best_strong == _HIT_EXACT, best_score, best_hits):
             best_score, best_hits, best, best_strong = score, hits, ex, strong
 
     return (best, best_score, best_strong) if best_score >= 0.1 else (None, 0, 0)

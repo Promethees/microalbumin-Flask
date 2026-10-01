@@ -117,16 +117,8 @@ def context_for(example: dict) -> dict:
 # keyword lists or thresholds. "loses to X" means X outscored the guide that
 # lists the query; "loses to None" means nothing cleared the 0.1 baseline gate.
 KNOWN_MISROUTES = {
-    ("measurement_guide", "start measuring data"):
-        "loses to start_device (2.6): 'start' phrases are start_device's specialty",
-    ("live_view_inactive", "browse data folder"):
-        "loses to navigate_directory (2.6): 'folder'/'browse' are the directory guide's keywords",
-    ("live_view_inactive", "open data folder"):
-        "loses to navigate_directory (2.6): same folder-navigation collision",
     ("expand_collapse_analyses", "show all charts"):
         "loses to view_chart (1.0): 'charts' is view_chart's core keyword",
-    ("save_range_csv", "cut data to range"):
-        "loses to set_analysis_range (2.6): 'cut data' is that guide's own keyword",
 
     # ── Only visible once the harness stopped using mode="unknown" ──────────
     # `concentration_calc_generic` carries no conditions, so it was queried in a
@@ -158,8 +150,6 @@ KNOWN_MISROUTES = {
         "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
     ("concentration_calc_generic", "show concentration"):
         "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
-    ("app_settings", "change window size default"):
-        "loses to window_size (7.2) in kinetics: the feature guide outranks the settings panel for its own noun (app_settings wins at 3.4 in the other three modes)",
     ("create_calibration_curve_workflow", "build calibration from kinetics"):
         "loses to calibrate_kinetics_workflow (2.6): 'kinetics' + 'calibration' is that guide's own phrase once duplicate keywords stop summing (B3)",
 }
@@ -284,16 +274,21 @@ def _route(query, ctx=NAV_CTX):
 def test_learned_weights_can_re_route_when_enabled(monkeypatch):
     """The isolation fixture is load-bearing: prove feedback CAN move routing.
 
-    Simulates a machine where the user thumbed "end measurement" up on the
-    measurement guide: both guides have a baseline keyword hit for the query,
+    Simulates a machine where the user thumbed the measurement guide up: both
+    guides have a baseline keyword hit for the query,
     and the learned coefficient carries measurement_guide past stop_device.
     Without the module fixture this is what a developer's own
     ai_guide_weights.json could do to these tests.
     """
     monkeypatch.setattr(ai_feedback, "is_enabled", lambda: True)
+    monkeypatch.setattr(ai_feedback, "learned_terms", lambda gid: [])
+    monkeypatch.setattr(ai_feedback, "learned_bonus", lambda gid: 0.0)
+    # Neither guide has a keyword that IS the whole query (an exact keyword
+    # outranks any weight), so the learned coefficient decides.
+    assert _route("measurement stop button") == "stop_device"
     monkeypatch.setattr(ai_feedback, "learned_bonus",
                         lambda gid: 2.0 if gid == "measurement_guide" else 0.0)
-    assert _route("end measurement") == "measurement_guide"
+    assert _route("measurement stop button") == "measurement_guide"
 
 
 def test_learned_terms_cannot_create_a_baseline(monkeypatch):

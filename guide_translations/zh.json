@@ -899,7 +899,9 @@
     "queries": [
       "在报告中导出Excel",
       "下载Excel工作簿",
-      "从报告导出Excel"
+      "从报告导出Excel",
+      "导出Excel",
+      "Excel导出"
     ]
   },
   {

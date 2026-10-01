@@ -912,7 +912,10 @@
     "queries": [
       "exporter Excel depuis le rapport",
       "télécharger le classeur Excel",
-      "export Excel rapport"
+      "export Excel rapport",
+      "exporter Excel",
+      "télécharger Excel",
+      "classeur Excel"
     ]
   },
   {
