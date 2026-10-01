@@ -438,8 +438,7 @@
     "queries": [
       "xem nhật ký",
       "nhật ký thiết bị",
-      "xem log thiết bị",
-      "log"
+      "xem log thiết bị"
     ]
   },
   {
@@ -1242,7 +1241,7 @@
       },
       {
         "target": "button[onclick=\"clearReportItems()\"]",
-        "description": "Nhấp vào đây để bỏ chọn chủ đề hiện tại. Các mục đã lưu vẫn còn trên đĩa — không có gì bị xóa.",
+        "description": "Nhấp vào đây để bỏ chọn chủ đề hiện tại. Các mục đã lưu vẫn còn trên đĩa — không có gì bị xóa. Để xóa hẳn một chủ đề, dùng nút ❌ ở hàng của nó trong danh sách chủ đề.",
         "title": "Bỏ chọn chủ đề"
       }
     ],

@@ -3,6 +3,7 @@ from __future__ import annotations
 import difflib
 import functools
 import json
+import logging
 import os
 import re
 from file_path import DATA_ROOT, validate_in_data_root, validate_in_json_root
@@ -62,7 +63,11 @@ def _apply_overlay(examples: list, lang: str) -> list:
     try:
         with open(overlay_path, "r", encoding="utf-8") as f:
             overlay = json.load(f)
-    except Exception:
+    except FileNotFoundError:
+        return examples
+    except Exception as exc:
+        # A corrupt overlay silently serving English is hard to notice (L6).
+        logging.warning("Guide translation overlay %s unreadable: %s", overlay_path, exc)
         return examples
     index = {item["id"]: item for item in overlay if isinstance(item, dict) and "id" in item}
     result = []
@@ -1089,8 +1094,13 @@ _PROXY_TRIGGER_GUIDE_DESCRIPTION = (
 )
 
 # Snapshot size: enough to answer "which files do I have" without shipping a
-# huge folder listing to the proxy on every turn.
-_SNAPSHOT_MAX_FILES = 50
+# huge folder listing to the proxy on every turn. Per-list caps, plus a TOTAL
+# byte budget (X1): the online proxy 413s a client prompt over 16 KB, and a
+# lab with many long (or CJK/Vietnamese, 2-3 bytes/char) file names pushed the
+# ~6.6 KB prompt over it — every chat turn then failed as "unavailable".
+_SNAPSHOT_MAX_FILES = 30          # CSV files in the selected folder
+_SNAPSHOT_MAX_OTHER = 20          # subfolders / calibration JSONs per mode
+_SNAPSHOT_MAX_BYTES = 4096        # whole [Local context: …] block, UTF-8
 
 
 def _proxy_tools() -> list:
@@ -1169,17 +1179,43 @@ def _local_context_block(ui_context: dict = None) -> str:
         ctx = _local_context(ui_context)
     except Exception:
         return "[Local context: unavailable]"
-    csv = ctx["csv_files"]
-    more = f", …+{len(csv) - _SNAPSHOT_MAX_FILES} more" if len(csv) > _SNAPSHOT_MAX_FILES else ""
-    return (
-        "[Local context: "
-        f"subfolder={ctx['subfolder'] or '(data root)'}, "
-        f"csv_files=[{', '.join(csv[:_SNAPSHOT_MAX_FILES])}{more}], "
-        f"subfolders=[{', '.join(ctx['subfolders'][:_SNAPSHOT_MAX_FILES])}], "
-        f"calibration_json={{kinetics:[{', '.join(ctx['json_calibration_kinetics'][:_SNAPSHOT_MAX_FILES])}], "
-        f"point:[{', '.join(ctx['json_calibration_point'][:_SNAPSHOT_MAX_FILES])}]}}, "
-        f"session_running={'yes' if ctx['session_running'] else 'no'}]"
-    )
+    lists = {
+        "csv_files": list(ctx["csv_files"]),
+        "subfolders": list(ctx["subfolders"]),
+        "kinetics": list(ctx["json_calibration_kinetics"]),
+        "point": list(ctx["json_calibration_point"]),
+    }
+    shown = {
+        "csv_files": min(len(lists["csv_files"]), _SNAPSHOT_MAX_FILES),
+        "subfolders": min(len(lists["subfolders"]), _SNAPSHOT_MAX_OTHER),
+        "kinetics": min(len(lists["kinetics"]), _SNAPSHOT_MAX_OTHER),
+        "point": min(len(lists["point"]), _SNAPSHOT_MAX_OTHER),
+    }
+
+    def fmt(key):
+        items = [str(n)[:120] for n in lists[key][:shown[key]]]
+        hidden = len(lists[key]) - shown[key]
+        if hidden > 0:
+            items.append(f"…+{hidden} more")
+        return "[" + ", ".join(items) + "]"
+
+    def render():
+        return (
+            "[Local context: "
+            f"subfolder={(ctx['subfolder'] or '(data root)')[:120]}, "
+            f"csv_files={fmt('csv_files')}, "
+            f"subfolders={fmt('subfolders')}, "
+            f"calibration_json={{kinetics:{fmt('kinetics')}, point:{fmt('point')}}}, "
+            f"session_running={'yes' if ctx['session_running'] else 'no'}]"
+        )
+
+    block = render()
+    # Over budget: drop names from the currently longest list until it fits.
+    while len(block.encode("utf-8")) > _SNAPSHOT_MAX_BYTES and any(shown.values()):
+        key = max(shown, key=lambda k: shown[k])
+        shown[key] -= 1
+        block = render()
+    return block
 
 
 def _proxy_system_prompt(language: str, ui_context: dict = None) -> str:
@@ -1224,6 +1260,28 @@ def _custom_step_whitelist() -> frozenset:
             target = st.get("target")
             if isinstance(target, str) and target.strip():
                 ids.add(target.strip())
+    return frozenset(ids) | _source_element_ids()
+
+
+_ID_IN_SOURCE = re.compile(r"""(?:\bid\s*=\s*|\.id\s*=\s*)\\?["']([A-Za-z][\w-]*)\\?["']""")
+
+
+@functools.lru_cache(maxsize=1)
+def _source_element_ids() -> frozenset:
+    """'#id' for every element id written literally in templates/ and
+    static/script/ — derived from the source, not a hand list (L4), so an LLM
+    step may spotlight any element the app really has, and still nothing
+    invented. Read once per process."""
+    import glob
+    root = os.path.dirname(_GUIDE_TRAINING_PATH)
+    ids = set()
+    for pattern in ("templates/*.html", "templates/**/*.html", "static/script/*.js"):
+        for path in glob.glob(os.path.join(root, pattern), recursive=True):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    ids |= {"#" + m for m in _ID_IN_SOURCE.findall(f.read())}
+            except OSError:
+                continue
     return frozenset(ids)
 
 
@@ -1576,7 +1634,14 @@ _FULL_KWS = frozenset({
 
 # Phrases that already pin the report kind, so the clarification is skipped.
 _REPORT_SPECIFIC_KEYWORDS = _QUICK_KWS | _FULL_KWS | frozenset({
-    "export to report", "save to report", "export data to report",
+    "export to report", "save to report", "export data to report", "add to report",
+    # The same "put this INTO a report" phrasings in the other six languages (L1).
+    "thêm vào báo cáo", "xuất vào báo cáo", "lưu vào báo cáo",
+    "添加到报告", "导出到报告", "保存到报告",
+    "ajouter au rapport", "exporter vers le rapport", "enregistrer dans le rapport",
+    "レポートに追加", "レポートにエクスポート", "レポートに保存",
+    "добавить в отчёт", "добавить в отчет", "экспорт в отчёт", "сохранить в отчёт",
+    "보고서에 추가", "보고서로 내보내기", "보고서에 저장",
 })
 
 # ── Pending-clarification state (explicit, not prose-matched) ────────────────
@@ -1673,6 +1738,13 @@ _REPORT_WORD_PATTERNS = tuple(re.compile(p) for p in (
 # languages; matched from a word start (substring for CJK).
 _REPORT_MANAGEMENT_WORDS = frozenset({
     "subject", "layout", "watermark", "logo", "item", "delete", "rename", "title", "excel",
+    "setting", "format", "option",                                                       # en
+    "cài đặt", "định dạng", "tùy chọn",                                                    # vi
+    "设置", "格式", "选项",                                                                 # zh
+    "paramètre", "réglage",                                                              # fr
+    "設定", "フォーマット", "形式", "オプション",                                              # ja
+    "настройк", "формат", "параметр",                                                     # ru
+    "설정", "형식", "옵션",                                                                  # ko
     "chủ đề", "bố cục", "hình mờ", "mục", "xóa", "đổi tên", "tiêu đề",                 # vi
     "主题", "布局", "水印", "标志", "项目", "删除", "重命名", "标题",                     # zh
     "sujet", "mise en page", "filigrane", "élément", "supprimer", "renommer", "titre",  # fr

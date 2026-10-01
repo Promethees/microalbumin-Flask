@@ -1576,7 +1576,14 @@
     },
     {
       "id": "export_excel_in_report",
-      "queries": [],
+      "queries": [
+        "export excel",
+        "download excel",
+        "excel workbook",
+        "excel export",
+        "export to excel",
+        "save as excel"
+      ],
       "conditions": {
         "mode": "report"
       },
@@ -1600,7 +1607,9 @@
         "export to excel",
         "save as excel"
       ],
-      "conditions": {},
+      "conditions": {
+        "mode_not": "report"
+      },
       "steps": [
         {
           "target": "#measurement-mode button[data-mode=\"report\"]",
@@ -2136,7 +2145,7 @@
         {
           "target": "button[onclick=\"clearReportItems()\"]",
           "title": "Deselect the Subject",
-          "description": "Click here to deselect the current subject. Its saved items stay on disk — nothing is deleted.",
+          "description": "Click here to deselect the current subject. Its saved items stay on disk — nothing is deleted. To delete a subject for good, use the ❌ button in its row of the subject list.",
           "position": "top",
           "skipInteraction": true
         }

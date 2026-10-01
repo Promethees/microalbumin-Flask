@@ -449,6 +449,12 @@ Current state: keyword scan in `_match_guide_example()` (`src/ai_assistant.py:25
 
 ---
 
+### 5.x Release notes — AI guide matching (ai-reliability)
+
+- **Taught phrasings no longer open a guide by themselves.** A 👍 on a matched guide still makes similar questions rank that guide higher, but words the assistant learned from your 👍 can no longer open a guide on their own — the question has to mention the feature too. Existing feedback files keep working. (Rule.md §2.13, decision M2.)
+- Bare commands ("set timeout", "chart"), English mode names typed in any language, and Chinese/Japanese phrasings that mix in English terms ("切换到kinetics模式") open the right guide; explanation questions ("what is a source?") are answered in text.
+- The `[Local context]` block sent with each proxied chat is capped at 4 KB, so very large data folders can no longer make the assistant unavailable.
+
 ## 9. AI Proxy Architecture
 
 **Proxy payload (`proxy_chat_stream`, Rule.md §2.13).** `{messages, language, license_token, hwid, ui_context (always carries `pending`), client_grounding: {system_prompt, help_docs, tools}}` — no `model`. `system_prompt` = `_proxy_system_prompt(language, ui_context)`: translated intro + `_proxy_rules()` (names only the tools in `_PROXY_TOOL_NAMES` = get_help_topic, trigger_guide) + `_PROMPT_DOMAIN` + reply-language line + `[Local context: subfolder, csv_files (≤50), subfolders, calibration_json, session_running]` — relative names only. `tools` = `_proxy_tools()`; the data/hardware tools are never sent (the `online` server refuses them for proxied calls anyway). Proxy HTTP 429 → `rate_limit`, 403 → `license_machine`.

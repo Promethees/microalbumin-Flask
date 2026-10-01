@@ -834,3 +834,16 @@ def test_matcher_latency_and_regex_cache():
     assert after.hits > before.hits
     assert after.misses - before.misses < 50      # nothing recompiled per query
     assert per_match < 0.2, f"{per_match * 1000:.0f} ms per match"
+
+
+# ── X5 / X7 ──────────────────────────────────────────────────────────────────
+
+def test_report_mode_excel_question_uses_the_in_report_guide():
+    ctx = {"mode": "report", "data_loaded": False, "app_started": True}
+    assert ai_assistant.resolve_guide("how to export excel", ctx, "en")[0] == "export_excel_in_report"
+
+
+def test_report_subject_step_says_how_to_delete():
+    ex = ai_assistant._guide_example_by_id("report_subject_management", "en")
+    step = next(s for s in ex["steps"] if "clearReportItems" in s["target"])
+    assert "❌" in step["description"] and "stay on disk" in step["description"]

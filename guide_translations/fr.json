@@ -1245,7 +1245,7 @@
       },
       {
         "target": "button[onclick=\"clearReportItems()\"]",
-        "description": "Cliquez ici pour désélectionner le sujet actuel. Ses éléments enregistrés restent sur le disque — rien n'est supprimé.",
+        "description": "Cliquez ici pour désélectionner le sujet actuel. Ses éléments enregistrés restent sur le disque — rien n'est supprimé. Pour supprimer définitivement un sujet, utilisez le bouton ❌ sur sa ligne dans la liste des sujets.",
         "title": "Désélectionner le sujet"
       }
     ],

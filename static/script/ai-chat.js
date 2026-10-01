@@ -182,8 +182,6 @@
         ko: '⚠ 답변하는 데 문제가 있었습니다. 질문을 다시 표현해 보세요.',
     };
 
-    // True for a raw upstream error string that means "the model emitted an
-    // invalid tool call" — matched loosely so any Groq phrasing is caught.
     // Chat error lines follow the chat language (B18): stable code → catalog
     // key under ai.err.*, English kept as the fallback. An unknown code shows
     // the generic upstream_error line instead of the raw code.
@@ -209,6 +207,8 @@
     // server's own read timeout is 120 s, so 150 s only fires on a stalled link.
     const _STREAM_IDLE_MS = 150000;
 
+    // True for a raw upstream error string that means "the model emitted an
+    // invalid tool call" — matched loosely so any Groq phrasing is caught.
     function _isToolFailure(raw) {
         return /tool_use_failed|tool call validation failed|did not match schema|failed to call a function/i
             .test(String(raw || ''));

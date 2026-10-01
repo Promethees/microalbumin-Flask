@@ -629,3 +629,15 @@ def test_slash_command_uses_the_same_guide_ids():
               encoding='utf-8').read()
     for mode in ("kinetics", "report"):
         assert f"'{ai_assistant._full_report_guide_id(mode)}'" in js
+
+
+# ── L1 (shared with online): "add to report" / report settings ───────────────
+
+@pytest.mark.parametrize("query", [
+    "thêm vào báo cáo", "ajouter au rapport", "добавить в отчёт", "添加到报告",
+    "レポートに追加", "보고서에 추가", "настройки отчёта", "报告格式设置", "paramètres de rapport",
+    "report settings",
+])
+def test_add_to_report_and_report_settings_are_not_asked(query):
+    assert ai_assistant._needs_report_clarification(
+        query, [{"role": "user", "content": query}], REPORT_MODE) is False

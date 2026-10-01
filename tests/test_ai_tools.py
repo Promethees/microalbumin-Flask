@@ -236,14 +236,24 @@ def test_proxy_sends_no_data_tools_and_a_local_snapshot(monkeypatch, data_root):
     assert str(data_root) not in prompt
 
 
-def test_proxy_prompt_fits_the_server_cap(monkeypatch, data_root):
-    for i in range(200):
-        (data_root / "exp1" / f"sample_with_a_long_descriptive_name_{i:03d}.csv").write_text("x", encoding="utf-8")
-    payload = _capture_payload(monkeypatch)
+@pytest.mark.parametrize("lang", ["en", "vi", "zh", "fr", "ja", "ru", "ko"])
+def test_proxy_prompt_fits_the_server_cap(monkeypatch, data_root, lang):
+    # X1: fill ALL FOUR lists with long non-ASCII names (2-3 bytes per char).
+    stem = "mẫu_chuẩn_động_học_đường_chuẩn_标准曲线_キャリブレーション"
+    for i in range(80):
+        (data_root / "exp1" / f"{stem}_{i:03d}.csv").write_text("x", encoding="utf-8")
+        (data_root / f"{stem}_thư_mục_{i:03d}").mkdir()
+        (data_root.parent / "json" / "kinetics" / f"{stem}_k_{i:03d}.json").write_text("{}", encoding="utf-8")
+        (data_root.parent / "json" / "point" / f"{stem}_p_{i:03d}.json").write_text("{}", encoding="utf-8")
+    payload = _capture_payload(monkeypatch, lang)
     g = payload["client_grounding"]
-    assert len(g["system_prompt"].encode("utf-8")) < 16 * 1024
+    # Measured exactly as the online server does (_utf8_len: json, UTF-8).
+    assert len(json.dumps(g["system_prompt"], ensure_ascii=False).encode("utf-8")) < 16 * 1024
     assert len(json.dumps(g["help_docs"], ensure_ascii=False).encode("utf-8")) < 16 * 1024
-    assert "more" in g["system_prompt"]     # the listing is truncated, not dropped
+    block = g["system_prompt"][g["system_prompt"].index("[Local context:"):]
+    assert len(block.encode("utf-8")) <= ai_assistant._SNAPSHOT_MAX_BYTES
+    assert "more]" in block or "more," in block     # truncated with a count, not dropped
+    assert "csv_files=[" in block and ".csv" in block
 
 
 def test_proxy_payload_omits_model_and_keeps_pending(monkeypatch, data_root):
@@ -452,3 +462,20 @@ def test_mode_switch_step_text():
     js = open(os.path.join(os.path.dirname(__file__), '..', 'static', 'script', 'ai-chat.js'),
               encoding='utf-8').read()
     assert "then reopen this guide" not in js and "then click Next to continue" in js
+
+
+# ── L4 / L6 (shared with online) ─────────────────────────────────────────────
+
+def test_whitelist_accepts_every_real_id_and_rejects_invented():
+    ids = ai_assistant._source_element_ids()
+    assert len(ids) > 100 and "#run-script-btn" in ids
+    w = ai_assistant._custom_step_whitelist()
+    assert ids <= w and "#made-up" not in w
+
+
+def test_corrupt_overlay_is_logged(tmp_path, monkeypatch, caplog):
+    (tmp_path / "vi.json").write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(ai_assistant, "_GUIDE_TRANSLATIONS_DIR", str(tmp_path))
+    with caplog.at_level("WARNING"):
+        out = ai_assistant._apply_overlay([{"id": "x", "queries": [], "steps": []}], "vi")
+    assert out[0]["id"] == "x" and "unreadable" in caplog.text

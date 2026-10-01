@@ -124,9 +124,9 @@ KNOWN_MISROUTES = {
     ("live_view_inactive", "open data folder"):
         "loses to navigate_directory (2.6): same folder-navigation collision",
     ("expand_collapse_analyses", "show all charts"):
-        "loses to view_chart (1.8): 'charts' is view_chart's core keyword",
+        "loses to view_chart (1.0): 'charts' is view_chart's core keyword",
     ("save_range_csv", "cut data to range"):
-        "loses to set_analysis_range (1.8): 'cut data' is that guide's own keyword",
+        "loses to set_analysis_range (2.6): 'cut data' is that guide's own keyword",
 
     # ── Only visible once the harness stopped using mode="unknown" ──────────
     # `concentration_calc_generic` carries no conditions, so it was queried in a
@@ -137,27 +137,27 @@ KNOWN_MISROUTES = {
     # finding about the corpus, recorded rather than hidden.
     # See test_concentration_calc_generic_is_unreachable_in_every_real_mode.
     ("concentration_calc_generic", "calculate concentration"):
-        "loses to concentration_calc_kinetics (7.8): the mode variant takes the +2 mode boost",
+        "loses to concentration_calc_kinetics (4.6): the mode variant takes the +2 mode boost",
     ("concentration_calc_generic", "get concentration"):
-        "loses to concentration_calc_kinetics (6.2): same mode-variant boost",
+        "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
     ("concentration_calc_generic", "derive concentration"):
-        "loses to concentration_calc_kinetics (7.8): same mode-variant boost",
+        "loses to concentration_calc_kinetics (4.6): same mode-variant boost",
     ("concentration_calc_generic", "measure concentration"):
-        "loses to concentration_calc_kinetics (7.8): same mode-variant boost",
+        "loses to concentration_calc_kinetics (4.6): same mode-variant boost",
     ("concentration_calc_generic", "find concentration"):
-        "loses to concentration_calc_kinetics (6.2): same mode-variant boost",
+        "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
     ("concentration_calc_generic", "how to get concentration"):
-        "loses to concentration_calc_kinetics (6.4): same mode-variant boost",
+        "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
     ("concentration_calc_generic", "concentration from sample"):
-        "loses to concentration_calc_kinetics (7.8): same mode-variant boost",
+        "loses to concentration_calc_kinetics (4.6): same mode-variant boost",
     ("concentration_calc_generic", "apply standard curve"):
         "loses to concentration_calc_kinetics (4.6): same mode-variant boost",
     ("concentration_calc_generic", "calibration calculation"):
         "loses to concentration_calc_kinetics (3.8): same mode-variant boost",
     ("concentration_calc_generic", "what is the concentration"):
-        "loses to concentration_calc_kinetics (6.2): same mode-variant boost",
+        "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
     ("concentration_calc_generic", "show concentration"):
-        "loses to concentration_calc_kinetics (6.2): same mode-variant boost",
+        "loses to concentration_calc_kinetics (3.0): same mode-variant boost",
     ("app_settings", "change window size default"):
         "loses to window_size (7.2) in kinetics: the feature guide outranks the settings panel for its own noun (app_settings wins at 3.4 in the other three modes)",
     ("create_calibration_curve_workflow", "build calibration from kinetics"):

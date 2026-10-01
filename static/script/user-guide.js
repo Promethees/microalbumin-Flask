@@ -480,6 +480,7 @@ class UserGuide {
      */
     stop() {
         this.isActive = false;
+        this._navBack = false;
         this.cleanupObservers();
         this.cleanupSwalWatch();
         if (this.waitInterval) {
@@ -778,12 +779,7 @@ class UserGuide {
         // overlay is already up (B13).
         if (!this._isValidSelector(step.target)) {
             console.warn(`Invalid guide target selector, skipping step: ${step.target}`);
-            if (this.currentStep < this.steps.length - 1) {
-                this.currentStep++;
-                this.showStep(this.currentStep);
-            } else {
-                this.stop();
-            }
+            this._skipStep();
             return;
         }
         const targetElement = document.querySelector(step.target);
@@ -823,12 +819,7 @@ class UserGuide {
                     if (checkCount >= maxChecks) {
                         clearInterval(checkInterval);
                         this.waitInterval = null;
-                        if (this.currentStep < this.steps.length - 1) {
-                            this.currentStep++;
-                            this.showStep(this.currentStep);
-                        } else {
-                            this.stop();
-                        }
+                        this._skipStep();
                     }
                 }
             }, 100);
@@ -950,6 +941,7 @@ class UserGuide {
      * Proceed to next step after interaction
      */
     proceedToNextStep() {
+        this._navBack = false;
         if (this.currentStep < this.steps.length - 1) {
             this.removeInteractionHandler();
             this.currentStep++;
@@ -1145,6 +1137,7 @@ class UserGuide {
      * Go to next step (manual navigation)
      */
     nextStep() {
+        this._navBack = false;
         // Manual forward navigation, driven by the Next/Skip button. Works on
         // interactive steps too (acts as "Skip") so the user always has a way
         // forward regardless of the step's interaction state.
@@ -1160,8 +1153,29 @@ class UserGuide {
      */
     previousStep() {
         if (this.currentStep > 0) {
+            this._navBack = true;
             this.currentStep--;
             this.showStep(this.currentStep);
+        }
+    }
+
+    /**
+     * Skip the current (invalid or missing-target) step in the direction the
+     * user was moving (L5): after Previous, skipping forward bounced them back
+     * to the step they came from. At the end of the guide, stop.
+     */
+    _skipStep() {
+        if (this._navBack && this.currentStep > 0) {
+            this.currentStep--;
+            this.showStep(this.currentStep);
+            return;
+        }
+        this._navBack = false;
+        if (this.currentStep < this.steps.length - 1) {
+            this.currentStep++;
+            this.showStep(this.currentStep);
+        } else {
+            this.stop();
         }
     }
 
