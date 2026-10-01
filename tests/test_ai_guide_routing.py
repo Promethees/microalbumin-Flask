@@ -244,7 +244,7 @@ def test_own_query_launch_rate():
     assert launched / total >= LAUNCH_RATE_FLOOR, f"{launched}/{total}"
 
 
-LAUNCH_RATE_FLOOR = 0.88   # 93.6 % at fix round 2 (1584 / 1692)
+LAUNCH_RATE_FLOOR = 0.88   # 96.4 % at fix round 2 (1631 / 1692)
 
 
 # ── Fix round 2 (N1/N4): negations, pronouns and vague keywords never launch ──
