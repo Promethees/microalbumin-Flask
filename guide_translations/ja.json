@@ -38,7 +38,10 @@
       "校正モードに移動",
       "校正",
       "キャリブレーション",
-      "修正"
+      "修正",
+      "calibrateモード",
+      "calibrateモードに切り替え",
+      "calibrateモードへ"
     ]
   },
   {
@@ -52,7 +55,10 @@
       "時系列モードに移動",
       "キネティクス",
       "時系列",
-      "kinetics"
+      "kinetics",
+      "kineticsモード",
+      "kineticsモードに切り替え",
+      "kineticsモードへ"
     ]
   },
   {
@@ -67,7 +73,10 @@
       "ポイント",
       "point",
       "定点",
-      "endpoint"
+      "endpoint",
+      "pointモード",
+      "pointモードに切り替え",
+      "pointモードへ"
     ]
   },
   {

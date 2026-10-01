@@ -22,7 +22,11 @@
       "giới thiệu ứng dụng",
       "hướng dẫn cho người mới",
       "hướng dẫn sử dụng",
-      "tổng quan ứng dụng"
+      "tổng quan ứng dụng",
+      "hoạt động",
+      "sử dụng",
+      "giới thiệu",
+      "hướng dẫn"
     ]
   },
   {
@@ -75,7 +79,10 @@
       "bắt đầu đo",
       "khởi động thiết bị",
       "chạy máy so màu",
-      "bắt đầu ghi dữ liệu"
+      "bắt đầu ghi dữ liệu",
+      "bắt đầu",
+      "khởi động",
+      "ghi dữ liệu"
     ]
   },
   {
@@ -99,7 +106,9 @@
       "chọn tệp dữ liệu",
       "tải tệp dữ liệu",
       "mở tệp csv",
-      "chọn file dữ liệu"
+      "chọn file dữ liệu",
+      "chọn tệp",
+      "tải tệp"
     ]
   },
   {
@@ -111,7 +120,8 @@
       "thay đổi thư mục",
       "duyệt thư mục",
       "điều hướng tệp",
-      "mở thư mục dữ liệu"
+      "mở thư mục dữ liệu",
+      "mở thư mục"
     ]
   },
   {
@@ -161,7 +171,8 @@
       "xuất dữ liệu",
       "lưu dữ liệu",
       "export dữ liệu",
-      "xuất kết quả phân tích"
+      "xuất kết quả phân tích",
+      "xuất kết quả"
     ]
   },
   {
@@ -177,7 +188,9 @@
       "gộp nhiều tệp",
       "cách gộp csv",
       "kết hợp csv",
-      "gộp hai tệp"
+      "gộp hai tệp",
+      "hợp nhất tệp",
+      "merge file"
     ]
   },
   {
@@ -201,7 +214,8 @@
       "xem biểu đồ",
       "đồ thị dữ liệu",
       "biểu đồ dữ liệu",
-      "hiển thị chart"
+      "hiển thị chart",
+      "đồ thị"
     ]
   },
   {
@@ -228,7 +242,9 @@
       "xuất coefficients",
       "lưu hệ số hồi quy",
       "hệ số đường chuẩn",
-      "coefficients"
+      "coefficients",
+      "hệ số",
+      "đường chuẩn"
     ]
   },
   {
@@ -253,7 +269,8 @@
       "kích thước cửa sổ trượt",
       "window size",
       "cửa sổ phân tích",
-      "đặt window size"
+      "đặt window size",
+      "đặt window"
     ]
   },
   {
@@ -276,7 +293,8 @@
     "queries": [
       "xem nhật ký",
       "nhật ký thiết bị",
-      "xem log thiết bị"
+      "xem log thiết bị",
+      "xem log"
     ]
   },
   {
@@ -294,7 +312,10 @@
       "đường chuẩn kinetics",
       "tạo đường chuẩn từ kinetics",
       "quy trình hiệu chuẩn",
-      "hiệu chuẩn kinetics"
+      "hiệu chuẩn kinetics",
+      "quy trình",
+      "hiệu chuẩn",
+      "đường chuẩn"
     ]
   },
   {
@@ -311,7 +332,10 @@
       "quy trình hiệu chuẩn point",
       "đường chuẩn point",
       "tạo đường chuẩn từ point",
-      "hiệu chuẩn point"
+      "hiệu chuẩn point",
+      "quy trình",
+      "hiệu chuẩn",
+      "đường chuẩn"
     ]
   },
   {
@@ -419,9 +443,7 @@
     "queries": [
       "báo cáo nhanh",
       "tạo báo cáo nhanh",
-      "chụp nhanh báo cáo",
-      "chụp",
-      "nhanh"
+      "chụp nhanh báo cáo"
     ]
   },
   {
@@ -433,9 +455,7 @@
     ],
     "queries": [
       "báo cáo nhanh từ báo cáo",
-      "tạo báo cáo nhanh trong chế độ report",
-      "nhanh",
-      "report"
+      "tạo báo cáo nhanh trong chế độ report"
     ]
   },
   {
@@ -452,7 +472,10 @@
       "báo cáo đầy đủ",
       "tạo báo cáo toàn diện",
       "full report từ dữ liệu",
-      "báo cáo toàn diện"
+      "báo cáo toàn diện",
+      "báo cáo",
+      "đầy đủ",
+      "toàn diện"
     ]
   },
   {
@@ -466,7 +489,8 @@
     "queries": [
       "báo cáo đầy đủ trong chế độ report",
       "tổng hợp báo cáo",
-      "full report trong report"
+      "full report trong report",
+      "tất cả"
     ]
   },
   {
@@ -478,7 +502,8 @@
       "chuẩn hóa dữ liệu",
       "trừ nền",
       "loại bỏ nền hấp thụ",
-      "normalize"
+      "normalize",
+      "loại bỏ nền"
     ]
   },
   {
@@ -490,7 +515,8 @@
       "tách nguồn",
       "chia theo nguồn",
       "phân tách biểu đồ theo nguồn",
-      "split source"
+      "split source",
+      "phân tách biểu đồ"
     ]
   },
   {
@@ -529,7 +555,8 @@
     "queries": [
       "xuất excel",
       "tải workbook excel",
-      "export excel"
+      "export excel",
+      "tải về excel"
     ]
   },
   {
@@ -540,7 +567,8 @@
     "queries": [
       "xem dữ liệu trực tiếp",
       "view live data",
-      "theo dõi trực tiếp"
+      "theo dõi trực tiếp",
+      "live view"
     ]
   },
   {
@@ -552,7 +580,8 @@
     "queries": [
       "dữ liệu trực tiếp",
       "xem trực tiếp",
-      "live data"
+      "live data",
+      "view live data"
     ]
   },
   {
@@ -606,7 +635,8 @@
       "thư mục lưu",
       "lưu ở đâu",
       "thư mục xuất tệp",
-      "vị trí lưu tệp"
+      "vị trí lưu tệp",
+      "vị trí lưu"
     ]
   },
   {
@@ -663,7 +693,9 @@
       "xóa tệp",
       "xóa file csv",
       "cách xóa file",
-      "loại bỏ tệp dữ liệu"
+      "loại bỏ tệp dữ liệu",
+      "xóa file",
+      "loại bỏ tệp"
     ]
   },
   {

@@ -162,3 +162,90 @@ def test_web_chat_uses_the_gate(monkeypatch):
         [{"role": "user", "content": "explain the Km coefficient please"}], "en", "k", "m", NAV_CTX, {}))
     assert called
     assert not any(e.get("type") == "guide" for e in events)
+
+
+# ── Launch level, not just match (fix round: H1 / H2 / M1) ──────────────────
+# The corpus sweep above asserts the MATCH. These assert the LAUNCH — what the
+# user actually sees — so a gate or threshold change can no longer silently
+# stop guides from opening while every match test stays green.
+
+def _ctx(mode):
+    return {"mode": mode, "data_loaded": True, "app_started": True, "pending": ""}
+
+
+LAUNCH_PROBES = [
+    # H1: English terms written next to CJK / kana (no spaces).
+    ("zh", "point", "切换到kinetics模式", "nav_kinetics_mode"),
+    ("zh", "point", "进入kinetics", "nav_kinetics_mode"),
+    ("zh", "kinetics", "切换到point模式", "nav_point_mode"),
+    ("ja", "point", "kineticsモードに切り替え", "nav_kinetics_mode"),
+    ("ja", "kinetics", "pointモードに切り替える方法", "nav_point_mode"),
+    ("ja", "kinetics", "calibrateモードへ移動", "nav_calibrate_mode"),
+    ("ja", "kinetics", "chartを表示する方法", "view_chart"),
+    ("zh", "kinetics", "如何查看chart", "view_chart"),
+    # H2: bare CJK phrases that are a guide's own keyword; nav phrasings.
+    ("zh", "kinetics", "导出数据", "export_data"),
+    ("ja", "kinetics", "データをエクスポート", "export_data"),
+    ("zh", "kinetics", "合并csv", "merge_files"),
+    ("ja", "kinetics", "CSVをマージ", "merge_files"),
+    ("zh", "kinetics", "打开用户指南", "open_user_guide"),
+    ("en", "kinetics", "how do i combine csv files", "merge_files"),
+    ("en", "kinetics", "how do i join csv files", "merge_files"),
+    ("ru", "kinetics", "выбрать файл", "select_file"),
+    ("vi", "kinetics", "chọn tệp", "select_file"),
+    # M1: bare commands; English mode names typed by non-English users.
+    ("en", "kinetics", "see chart", "view_chart"),
+    ("en", "kinetics", "show graph", "view_chart"),
+    ("vi", "point", "kinetics", "nav_kinetics_mode"),
+    ("fr", "kinetics", "calibrate", "nav_calibrate_mode"),
+    ("ru", "kinetics", "point", "nav_point_mode"),
+    # Representative multilingual nav phrasings.
+    ("fr", "kinetics", "comment exporter les données", "export_data"),
+    ("vi", "kinetics", "cách xuất dữ liệu", "export_data"),
+    ("ru", "kinetics", "как экспортировать данные", "export_data"),
+    ("en", "kinetics", "how to calibrate", "nav_calibrate_mode"),
+    ("en", "kinetics", "how do I export?", "export_data"),
+]
+
+
+@pytest.mark.parametrize("lang, mode, query, expected", LAUNCH_PROBES,
+                         ids=[f"{p[0]}-{p[2]}" for p in LAUNCH_PROBES])
+def test_launch_probes(lang, mode, query, expected):
+    gid, steps = ai_assistant.resolve_guide(query, _ctx(mode), lang)
+    assert gid == expected and steps, f"{lang} {query!r} launched {gid!r}"
+
+
+@pytest.mark.parametrize("query", [
+    "explain the Km coefficient please",
+    "what is a source?",
+    "why is my export failing?",
+    "my concentration results look too high",
+    "my chart is empty",
+])
+def test_explanations_and_statements_still_go_to_the_llm(query):
+    assert ai_assistant.resolve_guide(query, _ctx("kinetics"), "en")[0] is None
+
+
+def test_own_query_launch_rate():
+    """Every guide's own example queries (EN + all six overlays), typed as-is in
+    a context the guide accepts, must mostly LAUNCH that guide. The floor sits a
+    few points under today's rate so a gate change that kills launches fails."""
+    import json as _json
+    total = launched = 0
+    for lang in ("en", "vi", "zh", "fr", "ja", "ru", "ko"):
+        if lang == "en":
+            own = {e["id"]: e["queries"] for e in GUIDES}
+        else:
+            path = os.path.join(os.path.dirname(__file__), "..", "guide_translations", f"{lang}.json")
+            with open(path, encoding="utf-8") as f:
+                own = {e["id"]: e.get("queries", []) for e in _json.load(f)}
+        for ex in GUIDES:
+            for q in own.get(ex["id"], []):
+                total += 1
+                gid, _ = ai_assistant.resolve_guide(q, context_for(ex), lang)
+                launched += gid == ex["id"]
+    assert total > 1000
+    assert launched / total >= LAUNCH_RATE_FLOOR, f"{launched}/{total}"
+
+
+LAUNCH_RATE_FLOOR = 0.88   # 91.2 % at the fix round

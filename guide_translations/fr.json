@@ -184,7 +184,10 @@
       "fusionner plusieurs fichiers",
       "comment fusionner csv",
       "combiner csv",
-      "joindre des fichiers"
+      "joindre des fichiers",
+      "fusionner les fichiers",
+      "combiner les csv",
+      "regrouper les fichiers"
     ]
   },
   {
@@ -287,7 +290,8 @@
       "voir le journal",
       "afficher les logs",
       "journal appareil",
-      "logs connexion"
+      "logs connexion",
+      "où sont les logs"
     ]
   },
   {
@@ -366,7 +370,8 @@
     "queries": [
       "calcul de concentration mauvais mode",
       "concentration ne s'affiche pas",
-      "mauvais mode concentration"
+      "mauvais mode concentration",
+      "mauvais mode"
     ]
   },
   {
@@ -430,11 +435,7 @@
     "queries": [
       "rapport rapide",
       "générer rapport rapide",
-      "instantané de rapport",
-      "instantané",
-      "rapide",
-      "générer",
-      "rapport"
+      "instantané de rapport"
     ]
   },
   {
@@ -446,12 +447,7 @@
     ],
     "queries": [
       "rapport rapide depuis le rapport",
-      "générer rapport rapide en mode rapport",
-      "mode",
-      "depuis",
-      "rapide",
-      "générer",
-      "rapport"
+      "générer rapport rapide en mode rapport"
     ]
   },
   {
@@ -492,7 +488,8 @@
       "normaliser les données",
       "soustraire le blanc",
       "retirer le fond absorbance",
-      "normaliser données"
+      "normaliser données",
+      "retirer le fond"
     ]
   },
   {
@@ -504,7 +501,8 @@
       "séparer les sources",
       "diviser par source",
       "séparer les graphiques sources",
-      "split source"
+      "split source",
+      "séparer les graphiques"
     ]
   },
   {
@@ -555,7 +553,8 @@
       "vue en direct",
       "voir les données en temps réel",
       "données live",
-      "suivi temps réel"
+      "suivi temps réel",
+      "affichage live"
     ]
   },
   {
@@ -567,7 +566,8 @@
     "queries": [
       "données en temps réel",
       "voir en direct",
-      "données live mesure"
+      "données live mesure",
+      "affichage en direct"
     ]
   },
   {
@@ -630,7 +630,8 @@
     "queries": [
       "notifier quand c'est terminé",
       "alerte de fin",
-      "notification fin mesure"
+      "notification fin mesure",
+      "notification de fin"
     ]
   },
   {
@@ -652,7 +653,8 @@
     "queries": [
       "désactiver les popups",
       "désactiver les fenêtres pop-up",
-      "supprimer les notifications popup"
+      "supprimer les notifications popup",
+      "supprimer les notifications"
     ]
   },
   {
@@ -664,7 +666,8 @@
     "queries": [
       "filtrer par source",
       "filtrer le nombre de sources",
-      "filtre sources fichiers"
+      "filtre sources fichiers",
+      "filtre de sources"
     ]
   },
   {
@@ -675,7 +678,8 @@
     "queries": [
       "supprimer un fichier",
       "effacer un fichier",
-      "comment supprimer fichier"
+      "comment supprimer fichier",
+      "comment supprimer"
     ]
   },
   {
@@ -686,7 +690,8 @@
     "queries": [
       "copier un fichier",
       "dupliquer un fichier",
-      "faire une copie fichier"
+      "faire une copie fichier",
+      "faire une copie"
     ]
   },
   {
@@ -697,7 +702,8 @@
     "queries": [
       "désélectionner un fichier",
       "annuler la sélection",
-      "décharger le fichier données"
+      "décharger le fichier données",
+      "décharger le fichier"
     ]
   },
   {
@@ -710,7 +716,8 @@
       "qu'est-ce que maxRate",
       "choisir la quantité cinétique",
       "maxrate",
-      "grandeur cinétique"
+      "grandeur cinétique",
+      "choisir la quantité"
     ]
   },
   {
@@ -733,7 +740,8 @@
       "seuil R carré",
       "seuil R²",
       "valeur seuil r-carré",
-      "threshold r²"
+      "threshold r²",
+      "valeur de seuil R²"
     ]
   },
   {
@@ -746,7 +754,8 @@
     "queries": [
       "options de mise en page du rapport",
       "filigrane du rapport",
-      "paramètres rapport layout"
+      "paramètres rapport layout",
+      "paramètres de rapport"
     ]
   },
   {
@@ -759,7 +768,8 @@
     "queries": [
       "gérer les sujets de rapport",
       "qu'est-ce qu'un sujet de rapport",
-      "supprimer sujet rapport"
+      "supprimer sujet rapport",
+      "supprimer un sujet"
     ]
   },
   {

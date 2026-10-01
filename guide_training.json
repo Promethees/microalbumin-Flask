@@ -249,7 +249,11 @@
         "combine files",
         "merge csv",
         "merge files",
-        "join files"
+        "join files",
+        "combine csv files",
+        "join csv files",
+        "combine csv",
+        "join csv"
       ],
       "conditions": {},
       "steps": [
