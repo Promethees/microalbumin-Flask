@@ -45,9 +45,9 @@ def test_negative_probes(query, allowed):
 def test_same_content_keywords_count_once():
     q = "concentration please"
     qc = ai_assistant._content_words(q)
-    one, _ = ai_assistant._score_guide_keywords(["get concentration"], q, qc)
-    many, _ = ai_assistant._score_guide_keywords(
-        ["get concentration", "find concentration", "show concentration", "how to get concentration"], q, qc)
+    one = ai_assistant._score_guide_keywords(["get concentration"], q, qc)[0]
+    many = ai_assistant._score_guide_keywords(
+        ["get concentration", "find concentration", "show concentration", "how to get concentration"], q, qc)[0]
     assert one == many > 0
 
 

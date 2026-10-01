@@ -231,63 +231,99 @@ def _phrase_hit(kw_lower: str, q_lower: str) -> bool:
     return re.search(pattern, q_lower) is not None
 
 
-def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
+def _phrase_tokens(text: str) -> frozenset:
+    """Non-stop-word tokens of >= 2 chars (a CJK run counts as one token).
+
+    Unlike _content_words (a 4-char floor, for fuzzy matching), short real
+    words such as 'app', 'log' or 'csv' count here: they make a phrase more
+    specific ('app settings' vs 'settings', 'log data' vs 'data').
+    """
+    out = set()
+    for w in text.lower().split():
+        w = w.strip(_EDGE_PUNCT)
+        if len(w) >= 2 and w not in _STOPWORDS:
+            out.add(w)
+    return frozenset(out)
+
+
+def _same_word(a: str, b: str) -> bool:
+    """Equal, or equal up to an English plural 's' ('file' / 'files')."""
+    return a == b or a == b + "s" or b == a + "s"
+
+
+def _same_token_set(a: frozenset, b: frozenset) -> bool:
+    return all(any(_same_word(x, y) for y in b) for x in a) and all(
+        any(_same_word(x, y) for x in a) for y in b
+    )
+
+
+def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset):
+    """(score, dedup_key, strong) for one keyword against the query."""
     kw_lower = kw.lower().strip()
     min_len = 2 if _is_cjk(kw_lower) else 4
     kw_content = _content_words(kw_lower)
-    # Exact phrase match on word boundaries — weighted by specificity
-    # (content-word count) so one long, specific phrase ('export data to
-    # report') outranks a pile of short generic keywords.
+    kw_tokens = _phrase_tokens(kw_lower)
+    specificity = 1.0 + 0.8 * max(0, len(kw_tokens) - 1)
+    # 1. Exact phrase on word boundaries — weighted by specificity so one long,
+    #    specific phrase ('export data to report') outranks a pile of short
+    #    generic keywords.
     if len(kw_lower) >= min_len and kw_lower not in _STOPWORDS and _phrase_hit(kw_lower, q_lower):
-        return 1.0 + 0.8 * max(0, len(kw_content) - 1)
+        key = kw_tokens or frozenset([kw_lower])
+        return specificity, key, len(kw_tokens) >= 2 or _is_cjk(kw_lower)
+    # 2. Full coverage: the query says exactly what the keyword says, stop-words
+    #    and plurals aside ('how to calibrate' vs the keyword 'how calibrate').
+    #    A query that says MORE ('change the concentration unit' vs 'get
+    #    concentration') falls through to the partial scores below.
+    if kw_tokens and q_tokens and _same_token_set(kw_tokens, q_tokens):
+        return specificity, kw_tokens, len(kw_tokens) >= 2
     if not kw_content:
-        return 0.0
-    # Full coverage: the query's content words are exactly the keyword's
-    # (stop-words aside, stems allowed) — "how to calibrate" vs the keyword
-    # "how calibrate". As specific as a phrase hit. A query that says MORE
-    # ("change the concentration unit" vs "get concentration") falls through
-    # to the weaker partial scores below.
-    if q_content and all(any(_token_match(k, qw) for k in kw_content) for qw in q_content) and all(
-        any(_token_match(k, qw) for qw in q_content) for k in kw_content
-    ):
-        return 1.0 + 0.8 * max(0, len(kw_content) - 1)
+        return 0.0, None, False
+    # 3. Partial (fuzzy, prefix-aware) content-word matches.
     if len(kw_content) == 1:
         word = next(iter(kw_content))
         if len(word) < 5:
-            return 0.0
-        return 0.8 if any(_token_match(word, qw) for qw in q_content) else 0.0
-    if all(
-        any(_token_match(kw_word, qw) for qw in q_content)
-        for kw_word in kw_content
-    ):
-        return 0.8
-    return 0.0
+            return 0.0, None, False
+        if any(_token_match(word, qw) for qw in q_content):
+            return 0.8, kw_content, False
+        return 0.0, None, False
+    if all(any(_token_match(kw_word, qw) for qw in q_content) for kw_word in kw_content):
+        return 0.8, kw_content, True
+    return 0.0, None, False
 
 
-def _score_guide_keywords(keywords, q_lower: str, q_content: frozenset) -> tuple[float, bool]:
-    """Sum a guide's keyword scores, counting each distinct content-word set once.
+def _score_keyword(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset = None) -> float:
+    if q_tokens is None:
+        q_tokens = _phrase_tokens(q_lower)
+    return _keyword_hit(kw, q_lower, q_content, q_tokens)[0]
 
-    Returns (score, strong_hit). ``strong_hit`` is True when at least one hit
-    came from a multi-word keyword (all its content words present, or the exact
-    phrase) or a CJK phrase — the evidence a no-"how do I" launch needs (see
-    _should_launch_guide). A single generic word ("concentration", "chart")
-    never counts as strong on its own.
+
+def _score_guide_keywords(keywords, q_lower: str, q_content: frozenset,
+                          q_tokens: frozenset = None) -> tuple[float, bool, int]:
+    """Sum a guide's keyword scores, counting each distinct word set once.
+
+    Returns (score, strong_hit, hits). ``strong_hit`` is True when at least one
+    hit came from a multi-word keyword (exact phrase, full coverage, or all its
+    content words present) or a CJK phrase — the evidence a no-"how do I"
+    launch needs (see _should_launch_guide); a single generic word
+    ("concentration", "chart") never counts as strong on its own. ``hits`` (the
+    raw number of matching keywords) only breaks ties between guides.
     """
+    if q_tokens is None:
+        q_tokens = _phrase_tokens(q_lower)
     best: dict = {}
     strong = False
+    hits = 0
     for kw in keywords or ():
         if not isinstance(kw, str) or not kw.strip():
             continue
-        kw_lower = kw.lower().strip()
-        sc = _score_keyword(kw_lower, q_lower, q_content)
+        sc, key, is_strong = _keyword_hit(kw, q_lower, q_content, q_tokens)
         if sc <= 0:
             continue
-        key = _content_words(kw_lower) or frozenset([kw_lower])
+        hits += 1
+        strong = strong or is_strong
         if sc > best.get(key, 0.0):
             best[key] = sc
-        if len(key) >= 2 or _is_cjk(kw_lower):
-            strong = True
-    return sum(best.values()), strong
+    return sum(best.values()), strong, hits
 
 
 def _condition_excludes(conditions: dict, mode: str) -> bool:
@@ -312,7 +348,6 @@ def _mode_bonus(conditions: dict, mode: str) -> float:
         return 1.0
     return 0.0
 
-
 def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
     """Best guide for ``query`` as (example, score, strong_hit), or (None, 0, False).
 
@@ -325,9 +360,12 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
         return None, 0, False
 
     q_lower = (query or "").lower()
-    q_content = _canonicalize_content(_content_words(q_lower), _guide_vocabulary(examples))
+    vocab = _guide_vocabulary(examples)
+    q_content = _canonicalize_content(_content_words(q_lower), vocab)
+    q_tokens = _canonicalize_content(_phrase_tokens(q_lower), vocab)
     mode = (ui_context or {}).get("mode", "")
     best_score: float = 0
+    best_hits = 0
     best = None
     best_strong = False
 
@@ -335,14 +373,16 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
         conditions = ex.get("conditions") or {}
         if _condition_excludes(conditions, mode):
             continue
-        baseline, strong = _score_guide_keywords(ex.get("queries", []), q_lower, q_content)
+        baseline, strong, hits = _score_guide_keywords(ex.get("queries", []), q_lower, q_content, q_tokens)
         if baseline < 0.1:
             continue
         score = baseline
         if baseline >= _NAV_LAUNCH_SCORE:
             score += _mode_bonus(conditions, mode)
-        if score > best_score:
-            best_score, best, best_strong = score, ex, strong
+        # Ties go to the guide with more matching keywords (breadth of
+        # evidence) — dedup no longer lets that breadth inflate the score.
+        if (score, hits) > (best_score, best_hits):
+            best_score, best_hits, best, best_strong = score, hits, ex, strong
 
     return (best, best_score, best_strong) if best_score >= 0.1 else (None, 0, False)
 

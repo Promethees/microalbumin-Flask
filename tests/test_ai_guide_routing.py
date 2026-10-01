@@ -51,14 +51,8 @@ KNOWN_MISROUTES = {
     ("concentration_calc_generic", "calibration calculation"): _GENERIC,
     ("concentration_calc_generic", "what is the concentration"): _GENERIC,
     ("concentration_calc_generic", "show concentration"): _GENERIC,
-    ("set_analysis_range", "end time"):
-        "loses to select_quantity (3.0) in kinetics: 'time' hits its 'time to sat' keyword plus the kinetics bonus",
     ("expand_collapse_analyses", "show all charts"):
         "loses to view_chart (1.0): 'charts' is view_chart's own noun",
-    ("upload_file", "add file"):
-        "loses to delete_file (1.0): 'file' ties and delete_file is listed first",
-    ("upload_calibration_json", "add calibration file"):
-        "loses to load_calibration_json (1.8): 'calibration file' is that guide's phrase",
 }
 
 
