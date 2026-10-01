@@ -399,6 +399,8 @@ class UserGuide {
      * Start the user guide
      */
     start() {
+        // A fresh run / a forward skip: never inherit Previous's direction (N1).
+        this._navBack = false;
         if (!this.initialized) {
             this.init();
         }
@@ -922,6 +924,8 @@ class UserGuide {
      * Toggle the guide on/off
      */
     startWorkflow(workflowId) {
+        // A fresh run / a forward skip: never inherit Previous's direction (N1).
+        this._navBack = false;
         if (!this.initialized) {
             this.init();
         }
@@ -948,6 +952,8 @@ class UserGuide {
     }
 
     startCustomSteps(steps) {
+        // A fresh run / a forward skip: never inherit Previous's direction (N1).
+        this._navBack = false;
         if (!this.initialized) {
             this.init();
         }

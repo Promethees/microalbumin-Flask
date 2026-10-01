@@ -160,10 +160,31 @@ def test_whitelist_accepts_real_ids_from_the_source_and_rejects_invented():
     ids = ai_assistant._source_element_ids()
     assert len(ids) > 100
     w = ai_assistant._custom_step_whitelist()
-    assert ids <= w
+    assert {i for i in ids if not ai_assistant._is_denied_target(i)} <= w
     assert "#upload-file-btn" in w and "#export-analysis" in w
     out = json.loads(ai_assistant._run_tool("trigger_custom_steps", {"steps": [
         {"target": "#export-button", "title": "x", "description": "y"},
         {"target": sorted(ids - {"#export-analysis"})[0], "title": "x", "description": "y"},
     ]}))
     assert [s["target"] for s in out["custom_steps"]] == [sorted(ids - {"#export-analysis"})[0]]
+
+
+# ── N2: credential / destructive controls are never spotlightable ────────────
+
+DENIED = ["#password", "#confirm", "#swal-delete-pw", "#token-display", "#activation",
+          "#shutdown-btn", "#activateBtn", "#okapi-ai-token-input", "#delete-row-btn",
+          "#update-banner", "#token"]
+
+
+@pytest.mark.parametrize("target", DENIED)
+def test_sensitive_targets_are_rejected(target):
+    assert target not in ai_assistant._custom_step_whitelist()
+    out = json.loads(ai_assistant._run_tool("trigger_custom_steps", {"steps": [
+        {"target": target, "title": "x", "description": "enter it here"}]}))
+    assert out.get("error") == "no_valid_steps"
+
+
+def test_every_source_id_matching_the_deny_pattern_is_excluded():
+    w = ai_assistant._custom_step_whitelist()
+    leaked = [i for i in ai_assistant._source_element_ids() if ai_assistant._is_denied_target(i) and i in w]
+    assert not leaked, leaked

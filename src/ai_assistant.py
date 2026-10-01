@@ -299,18 +299,90 @@ def _keyword_features(kw: str):
     """Query-independent facts about one keyword, cached (M3)."""
     kw_lower = kw.lower().strip()
     kw_tokens = _phrase_tokens(kw_lower)
-    return kw_lower, _is_cjk(kw_lower), _content_words(kw_lower), kw_tokens, _specificity_units(kw_tokens)
+    return (kw_lower, _is_cjk(kw_lower), _content_words(kw_lower), kw_tokens,
+            _specificity_units(kw_tokens), _exact_tokens(kw_lower))
 
 
-def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset):
+# ── The exact-keyword launch (_HIT_EXACT) is strict (fix round 2, N1/N4) ─────
+# "The whole query IS one of the guide's keywords" is compared with only this
+# small filler set removed — NOT the full _STOPWORDS, which also drops
+# negations and pronouns, so "not export", "my chart", "no timeout" counted as
+# the bare keyword and launched a guide.
+_EXACT_FILLER = frozenset({
+    "how", "to", "the", "a", "an", "i", "me", "do", "please",
+    "của", "và", "là", "cho", "trong", "với", "để",                       # vi
+    "le", "la", "les", "des", "du", "de", "pour", "dans", "est", "un", "une",  # fr
+    "的", "了", "和", "是", "就", "都", "而", "及",                           # zh
+    "и", "в", "на", "с", "что", "как", "это", "по", "для",                # ru
+})
+
+# A query containing a negation never launches through _HIT_EXACT.
+_NEGATION_TOKENS = frozenset({
+    "not", "no", "don't", "dont", "doesn't", "never", "without",     # en
+    "không", "đừng", "chẳng", "chưa",                                 # vi
+    "ne", "pas", "jamais", "sans",                                    # fr
+    "не", "нет", "ни", "без",                                         # ru
+    "안",                                                              # ko
+})
+_NEGATION_SUBSTRINGS = ("n't", "n'", "不", "别", "没", "ない", "しない", "않", "말")
+
+# Keywords that reduce to one of these single generic words are too vague to
+# open a guide on their own ("data", "source", "r2", ko "데이터").
+_GENERIC_EXACT = frozenset({
+    "data", "source", "sources", "r2", "log", "logs", "file", "files", "mode",
+    "dữ liệu", "données", "数据", "データ", "данные", "데이터", "모드", "файл",
+    "模式", "モード", "режим",
+})
+
+
+def _exact_tokens(text: str) -> frozenset:
+    out = set()
+    for w in text.lower().split():
+        w = w.strip(_EDGE_PUNCT)
+        if len(w) >= 2 and w not in _EXACT_FILLER:
+            out.add(w)
+    return frozenset(out)
+
+
+def _has_negation(query: str) -> bool:
+    q = (query or "").lower()
+    if any(w.strip(_EDGE_PUNCT) in _NEGATION_TOKENS for w in q.split()):
+        return True
+    return any(sub in q for sub in _NEGATION_SUBSTRINGS)
+
+
+@functools.lru_cache(maxsize=64)
+def _shared_exact_keys(keyword_sets: tuple) -> frozenset:
+    """Exact-token sets listed under 3+ guides in one language's guide set.
+
+    Such a keyword ("đường chuẩn" in vi) cannot say which guide is meant, so it
+    never counts as _HIT_EXACT. ``keyword_sets`` is one tuple of keywords per
+    guide (hashable, so the result is cached per language)."""
+    from collections import Counter
+    counts = Counter()
+    for kws in keyword_sets:
+        counts.update({_keyword_features(k)[5] for k in kws if isinstance(k, str) and k.strip()})
+    return frozenset(k for k, n in counts.items() if n >= 3 and k)
+
+
+def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozenset,
+                 q_exact: frozenset = None, shared: frozenset = frozenset()):
     """(score, dedup_key, evidence) for one keyword against the query.
 
     evidence is 0, _HIT_STRONG or _HIT_EXACT (see _should_launch_guide).
     """
-    kw_lower, kw_cjk, kw_content, kw_tokens, units = _keyword_features(kw)
+    kw_lower, kw_cjk, kw_content, kw_tokens, units, kw_exact = _keyword_features(kw)
     min_len = 2 if kw_cjk else 4
     specificity = 1.0 + 0.8 * max(0, units - 1)
-    exact = bool(kw_tokens and q_tokens and _same_token_set(kw_tokens, q_tokens))
+    # Scoring coverage (stop-words aside) vs the stricter launch evidence.
+    cover = bool(kw_tokens and q_tokens and _same_token_set(kw_tokens, q_tokens))
+    if q_exact is None:
+        q_exact = _exact_tokens(q_lower)
+    # A generic one-word keyword, or one listed under 3+ guides, carries no
+    # launch evidence at all (it still scores, so it can rank a nav request).
+    vague = (len(kw_exact) == 1 and next(iter(kw_exact)) in _GENERIC_EXACT) or kw_exact in shared
+    strict = bool(kw_exact and q_exact and _same_token_set(kw_exact, q_exact)) and not vague
+    exact = cover and strict
     # 1. Exact phrase on word boundaries — weighted by specificity so one long,
     #    specific phrase ('export data to report') outranks a pile of short
     #    generic keywords.
@@ -318,13 +390,13 @@ def _keyword_hit(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozense
         key = kw_tokens or frozenset([kw_lower])
         if exact:
             return specificity, key, _HIT_EXACT
-        return specificity, key, _HIT_STRONG if (units >= 2 or kw_cjk) else 0
+        return specificity, key, _HIT_STRONG if (units >= 2 or kw_cjk) and not vague else 0
     # 2. Full coverage: the query says exactly what the keyword says, stop-words
     #    and plurals aside ('how to calibrate' vs the keyword 'how calibrate').
     #    A query that says MORE ('change the concentration unit' vs 'get
     #    concentration') falls through to the partial scores below.
-    if exact:
-        return specificity, kw_tokens, _HIT_EXACT
+    if cover:
+        return specificity, kw_tokens, _HIT_EXACT if exact else (_HIT_STRONG if units >= 2 and not vague else 0)
     if not kw_content:
         return 0.0, None, 0
     # 3. Partial (fuzzy, prefix-aware) content-word matches.
@@ -347,7 +419,8 @@ def _score_keyword(kw: str, q_lower: str, q_content: frozenset, q_tokens: frozen
 
 
 def _score_guide_keywords(keywords, q_lower: str, q_content: frozenset,
-                          q_tokens: frozenset = None) -> tuple[float, bool, int]:
+                          q_tokens: frozenset = None, q_exact: frozenset = None,
+                          shared: frozenset = frozenset()) -> tuple[float, bool, int]:
     """Sum a guide's keyword scores, counting each distinct word set once.
 
     Returns (score, evidence, hits). ``evidence`` is the best of the keyword
@@ -365,7 +438,7 @@ def _score_guide_keywords(keywords, q_lower: str, q_content: frozenset,
     for kw in keywords or ():
         if not isinstance(kw, str) or not kw.strip():
             continue
-        sc, key, is_strong = _keyword_hit(kw, q_lower, q_content, q_tokens)
+        sc, key, is_strong = _keyword_hit(kw, q_lower, q_content, q_tokens, q_exact, shared)
         if sc <= 0:
             continue
         hits += 1
@@ -412,6 +485,8 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
     vocab = _guide_vocabulary(examples)
     q_content = _canonicalize_content(_content_words(q_lower), vocab)
     q_tokens = _canonicalize_content(_phrase_tokens(q_lower), vocab)
+    q_exact = _canonicalize_content(_exact_tokens(q_lower), vocab)
+    shared = _shared_exact_keys(tuple(tuple(ex.get("queries", [])) for ex in examples))
     mode = (ui_context or {}).get("mode", "")
     best_score: float = 0
     best_hits = 0
@@ -422,7 +497,8 @@ def _match_guide_detail(query: str, ui_context: dict, lang: str = "en"):
         conditions = ex.get("conditions") or {}
         if _condition_excludes(conditions, mode):
             continue
-        baseline, strong, hits = _score_guide_keywords(ex.get("queries", []), q_lower, q_content, q_tokens)
+        baseline, strong, hits = _score_guide_keywords(
+            ex.get("queries", []), q_lower, q_content, q_tokens, q_exact, shared)
         if baseline < 0.1:
             continue
         score = baseline
@@ -1097,7 +1173,31 @@ def _custom_step_whitelist() -> frozenset:
             target = st.get("target")
             if isinstance(target, str) and target.strip():
                 ids.add(target.strip())
-    return frozenset(ids) | _source_element_ids()
+    return frozenset(i for i in (frozenset(ids) | _source_element_ids()) if not _is_denied_target(i))
+
+
+# Credential, destructive and licence controls an LLM-written step must never
+# spotlight (N2) — a prompt-injected step could otherwise point at "enter your
+# password here" or the shutdown button. Explicit ids (both branches) plus a
+# pattern for ones added later; applies to the whole whitelist.
+_DENIED_TARGETS = frozenset({
+    "#password", "#confirm", "#swal-delete-pw", "#swal-delete-err", "#token-display",
+    "#activation", "#licence", "#accounts", "#reset-form", "#delete-row-btn",       # online
+    "#shutdown-btn", "#activateBtn", "#okapi-ai-token-input", "#token",
+    "#update-banner", "#update-banner-version", "#swal-update-status",            # main
+})
+_DENIED_TARGET_RE = re.compile(
+    r"pass(word)?|-pw\b|token|delete|shutdown|activat|licen[cs]e|confirm|secret|"
+    r"uninstall|revoke|purge|reset-form|update-banner",
+    re.IGNORECASE,
+)
+
+
+def _is_denied_target(target: str) -> bool:
+    # The pattern applies to element ids only: SweetAlert's own ".swal2-confirm"
+    # (the dialog's OK button) is a legitimate guide target.
+    return target in _DENIED_TARGETS or (
+        target.startswith("#") and _DENIED_TARGET_RE.search(target) is not None)
 
 
 _ID_IN_SOURCE = re.compile(r"""(?:\bid\s*=\s*|\.id\s*=\s*)\\?["']([A-Za-z][\w-]*)\\?["']""")
@@ -1348,6 +1448,8 @@ _FULL_KWS = frozenset({
     "đầy đủ", "toàn", "complet", "complèt", "полн",
     "完整", "完全", "全面", "フル",
     "전체", "완전", "종합",
+    # "finalize / compile the report" names the full kind too (N3).
+    "finalize", "最终", "汇总", "最終", "финализ", "итогов", "tổng hợp", "최종",
 })
 
 # Phrases that already pin the report kind, so the clarification is skipped.
@@ -1357,6 +1459,7 @@ _REPORT_SPECIFIC_KEYWORDS = _QUICK_KWS | _FULL_KWS | frozenset({
     "thêm vào báo cáo", "xuất vào báo cáo", "lưu vào báo cáo",
     "添加到报告", "导出到报告", "保存到报告",
     "ajouter au rapport", "exporter vers le rapport", "enregistrer dans le rapport",
+    "sauver dans le rapport", "sauvegarder dans le rapport",
     "レポートに追加", "レポートにエクスポート", "レポートに保存",
     "добавить в отчёт", "добавить в отчет", "экспорт в отчёт", "сохранить в отчёт",
     "보고서에 추가", "보고서로 내보내기", "보고서에 저장",
@@ -1466,7 +1569,7 @@ _REPORT_MANAGEMENT_WORDS = frozenset({
     "chủ đề", "bố cục", "hình mờ", "mục", "xóa", "đổi tên", "tiêu đề",                 # vi
     "主题", "布局", "水印", "标志", "项目", "删除", "重命名", "标题",                     # zh
     "sujet", "mise en page", "filigrane", "élément", "supprimer", "renommer", "titre",  # fr
-    "件名", "サブジェクト", "レイアウト", "透かし", "ロゴ", "項目", "削除", "名前を変更", "タイトル",  # ja
+    "件名", "サブジェクト", "テーマ", "レイアウト", "透かし", "ロゴ", "項目", "削除", "名前を変更", "タイトル",  # ja
     "тем", "макет", "водян", "логотип", "элемент", "удал", "переимен", "заголов",       # ru
     "주제", "레이아웃", "워터마크", "로고", "항목", "삭제", "이름 변경", "제목",           # ko
 })
@@ -1714,6 +1817,10 @@ def _should_launch_guide(query: str, score: float, strong_hit: int = True) -> bo
         return False
     # The whole query IS one of the guide's keywords ("set timeout", "chart",
     # "导出数据", a bare mode name): unambiguous, so a solid hit is enough (M1/H2).
+    # Without how-to phrasing, a negated query never launches ("not export",
+    # "不要导出数据", "ne pas exporter") — it is a statement, not a request.
+    if _has_negation(query):
+        return False
     if strong_hit == _HIT_EXACT and score >= _NAV_LAUNCH_SCORE:
         return True
     return score >= _STRONG_MATCH_SCORE and bool(strong_hit)

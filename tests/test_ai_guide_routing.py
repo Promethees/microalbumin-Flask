@@ -38,8 +38,6 @@ def context_for(example: dict) -> dict:
 _GENERIC = ("unreachable in every real mode: the mode-specific concentration_calc_kinetics/"
             "_point (hard conditions.mode + bonus) outrank the unconstrained generic guide")
 KNOWN_MISROUTES = {
-    ("create_calibration_curve_workflow", "build calibration from kinetics"):
-        "loses to calibrate_kinetics_workflow (2.6): 'kinetics' + 'calibration' is that guide's phrase",
     ("concentration_calc_generic", "calculate concentration"): _GENERIC,
     ("concentration_calc_generic", "get concentration"): _GENERIC,
     ("concentration_calc_generic", "derive concentration"): _GENERIC,
@@ -51,8 +49,6 @@ KNOWN_MISROUTES = {
     ("concentration_calc_generic", "calibration calculation"): _GENERIC,
     ("concentration_calc_generic", "what is the concentration"): _GENERIC,
     ("concentration_calc_generic", "show concentration"): _GENERIC,
-    ("expand_collapse_analyses", "show all charts"):
-        "loses to view_chart (1.0): 'charts' is view_chart's own noun",
 }
 
 
@@ -248,4 +244,69 @@ def test_own_query_launch_rate():
     assert launched / total >= LAUNCH_RATE_FLOOR, f"{launched}/{total}"
 
 
-LAUNCH_RATE_FLOOR = 0.88   # 91.2 % at the fix round
+LAUNCH_RATE_FLOOR = 0.88   # 93.6 % at fix round 2 (1584 / 1692)
+
+
+# ── Fix round 2 (N1/N4): negations, pronouns and vague keywords never launch ──
+# The exact-keyword launch compares tokens with only a small filler list
+# removed (negations and pronouns are kept), refuses a negated query, and
+# ignores keywords that are one generic word or shared by 3+ guides.
+
+NEGATIVE_PROBES_EXACT = [
+    ("en", q) for q in (
+        "not export", "do not export", "so export", "then export", "could export",
+        "no merge", "we merge", "not calibrate", "not the chart", "no chart", "my chart",
+        "my concentration", "is it my concentration?", "my source", "it is the source",
+        "no timeout", "my settings", "data", "my data", "all data", "data please",
+        "r2", "source", "log", "don't export the data",
+    )
+] + [
+    ("ko", "데이터"), ("vi", "đường chuẩn"), ("zh", "模式"),
+    ("zh", "不要导出数据"), ("zh", "别合并csv"), ("ja", "データをエクスポートしない"),
+    ("ru", "не экспортировать данные"), ("fr", "ne pas exporter les données"),
+    ("vi", "không xuất dữ liệu"), ("ko", "데이터 내보내기 안 해요"),
+]
+
+
+@pytest.mark.parametrize("lang, query", NEGATIVE_PROBES_EXACT,
+                         ids=[f"{p[0]}-{p[1]}" for p in NEGATIVE_PROBES_EXACT])
+def test_negated_pronoun_and_vague_queries_do_not_launch(lang, query):
+    ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
+    assert ai_assistant.resolve_guide(query, ctx, lang)[0] is None
+
+
+def test_nav_phrasing_still_launches_with_a_negation():
+    # "how do I not show popups" is a request; the negation guard only covers
+    # statements without how-to phrasing.
+    ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
+    assert ai_assistant._should_launch_guide("how do i not export", 2.0, 0) is True
+    assert ai_assistant._should_launch_guide("not export", 9.0, ai_assistant._HIT_EXACT) is False
+
+
+# ── Test gaps: CJK weighting and exact-first ranking are pinned ──────────────
+
+@pytest.mark.parametrize("lang, query, expected", [
+    # Launch ONLY through the CJK ~1-word-per-2-chars weighting: no nav marker,
+    # the query is not itself a keyword (so no _HIT_EXACT), one CJK phrase hit.
+    ("zh", "我要导出数据", "export_data"),
+    ("ja", "今すぐデータをエクスポート", "export_data"),
+])
+def test_cjk_phrase_weighting_launches(lang, query, expected):
+    ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
+    _best, _score, evidence = ai_assistant._match_guide_detail(query, ctx, lang)
+    assert evidence != ai_assistant._HIT_EXACT and not ai_assistant._has_nav_intent(query)
+    assert ai_assistant.resolve_guide(query, ctx, lang)[0] == expected
+
+
+def test_specificity_units_weights_cjk_runs():
+    assert ai_assistant._specificity_units(frozenset({"导出数据"})) == 2
+    assert ai_assistant._specificity_units(frozenset({"export", "data"})) == 2
+    assert ai_assistant._specificity_units(frozenset({"图表"})) == 1
+
+
+def test_exact_keyword_guide_outranks_a_mode_bonus():
+    # fr "charger la calibration" IS a load_calibration_json keyword; the word
+    # "calibration" also hits nav_calibrate_mode, whose mode_not bonus (+1)
+    # gives it the higher raw score. Exact-first ranking must pick the former.
+    ctx = {"mode": "kinetics", "data_loaded": True, "app_started": True, "pending": ""}
+    assert ai_assistant.resolve_guide("charger la calibration", ctx, "fr")[0] == "load_calibration_json"

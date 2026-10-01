@@ -154,3 +154,15 @@ def test_ai_chat_js_sends_the_pending_key():
 ])
 def test_add_to_report_and_report_settings_are_not_asked(query):
     assert ai_assistant._needs_report_clarification(query, [{"role": "user", "content": query}], REPORT_CTX) is False
+
+
+# ── N3: finalize phrasings, report themes, fr "sauver dans le rapport" ───────
+
+@pytest.mark.parametrize("query", [
+    "レポートを最終化", "최종 보고서 생성", "финализировать отчёт", "汇总报告", "最终报告",
+    "tổng hợp báo cáo", "finalize the report",
+    "レポートテーマを管理", "レポートテーマに保存", "sauver dans le rapport",
+])
+def test_finalize_and_theme_phrasings_are_not_asked(query):
+    ctx = {"mode": "report", "data_loaded": False, "app_started": True, "pending": ""}
+    assert ai_assistant._needs_report_clarification(query, [{"role": "user", "content": query}], ctx) is False
