@@ -337,6 +337,7 @@ def _exact_tokens(text: str) -> frozenset:
     return frozenset(out)
 
 
+@functools.lru_cache(maxsize=4096)
 def _has_negation(query: str) -> bool:
     q = (query or "").lower()
     if any(w.strip(_EDGE_PUNCT) in _NEGATION_TOKENS for w in q.split()):
