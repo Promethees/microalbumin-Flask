@@ -164,7 +164,7 @@ body.light {
     color: var(--text-color-light);
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.react-banner-reopen) {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container) {
     padding: 8px 10px;
     font-family: 'Outfit', sans-serif;
     font-weight: 600;
@@ -185,17 +185,17 @@ button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-secti
     text-overflow: ellipsis;
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.react-banner-reopen):hover:enabled {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):hover:enabled {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
     background: #f9fafb;
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.react-banner-reopen):active:enabled {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):active:enabled {
     transform: translateY(0);
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.react-banner-reopen):disabled {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):disabled {
     background-color: #f3f4f6;
     color: #9ca3af;
     border: 1px solid #e5e7eb;
@@ -413,21 +413,21 @@ body.dark {
     color: var(--text-color-dark);
 }
 
-body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.react-banner-reopen) {
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container) {
     background-color: #1f2937;
     color: var(--text-color-dark);
     border: 1px solid #374151;
 }
 
-body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.react-banner-reopen):hover:enabled {
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):hover:enabled {
     background-color: #374151;
 }
 
-body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.react-banner-reopen):enabled {
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):enabled {
     opacity: 1;
 }
 
-body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.react-banner-reopen):disabled {
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):disabled {
     background-color: #3a3a3a;
     color: #777777;
     border: 1px solid #555555;

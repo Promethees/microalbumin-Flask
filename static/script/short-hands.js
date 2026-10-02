@@ -195,7 +195,7 @@ function formatBytes(bytes) {
 /* The controls that only happen to be <button> for keyboard/AT reasons and keep
    their surrounding typography. Mirrors the `:not(...)` chain the global button
    styling in style.css uses. */
-const NON_BUTTON_CONTROLS = '.swal2-confirm, .swal2-deny, .swal2-styled, .folder-section-toggle, .logo-btn, .toggle-container, .react-banner-reopen';
+const NON_BUTTON_CONTROLS = '.swal2-confirm, .swal2-deny, .swal2-styled, .folder-section-toggle, .logo-btn, .toggle-container';
 
 /**
  * Shrinks button text to fit within one line by reducing font size

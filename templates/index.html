@@ -60,10 +60,6 @@
     <div id="a11y-live-region" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="a11y-alert-region" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
-    {# The flag picks the web app's host offsets: this page keeps its own 20px
-       body padding and pins two panels that have to clear the bar. #}
-    {% with banner_fixed = true %}{% include '_react_banner.html' %}{% endwith %}
-
     <div id="print-report-container" class="hidden"></div>
     <!-- Global Loader Overlay -->
     <div id="global-spinner" class="hidden" role="status" aria-live="polite">

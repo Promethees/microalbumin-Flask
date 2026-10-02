@@ -135,16 +135,12 @@ def test_every_full_page_has_exactly_one_main_landmark(page, parsed):
 
 
 def test_the_skip_link_is_the_first_focusable_thing_in_the_body():
-    """It has to come before the banner, or it is not a bypass."""
+    """It has to come before the nav, or it is not a bypass."""
     for page in PAGES_WITH_NAV:
         markup = template(page)
         body = markup.index('<body>')
         skip = markup.index('class="skip-link"')
-        banner = markup.find('_react_banner.html')
         assert skip > body, '%s: skip link is outside <body>' % page
-        if banner != -1:
-            assert skip < banner, \
-                '%s: the banner is tabbed before the skip link' % page
 
 
 # ── 4.1.3 Status Messages ─────────────────────────────────────────────────────
